@@ -1,6 +1,6 @@
-# تك زون للإلكترونيات — مصدر الحقيقة للذكاء الاصطناعي (PROJECT_AI.md)
+# تك زون للإلكترونيات — مصدر الحقيقة للذكاء الاصطناعي (AGENTS.md)
 
-> **قاعدة التحديث الإلزامية:** أي تعديل أو إضافة أو حذف في المشروع (فكرة أو ملفات) يجب تضمينه في هذا الملف في نفس الـ commit — حدّث القسم المتأثر وأضف سطراً في `## سجل التغييرات` (الأحدث أولاً).
+> **قاعدة التحديث الإلزامية:** أي تعديل أو إضافة أو حذف في المشروع (فكرة أو ملفات) يجب تضمينه في `AGENTS.md` في نفس الـ commit — حدّث القسم المتأثر وأضف سطراً في `## سجل التغييرات` (الأحدث أولاً).
 
 ## 1. الفكرة
 
@@ -18,7 +18,7 @@
 `web/app.js` — الجسر `api(name, payload)` + `pageInit` + `syncTitle` + `renderSidebar` + زر جوال `tz-menu` + ثيم ليلي + `fmt/money/esc/toast`.
 `web/tailwind.css` — مصدر Tailwind + كل `@font-face` المحلية. `web/app.css` — المُجمَّع (~47KB) **محفوظ في git عمداً** (البرنامج يعمل به دون بناء).
 `package.json` — سكربت `css`: `tailwindcss -i web/tailwind.css -o web/app.css --minify` ثم node يزيل تعليقات CSS. `tailwind.config.js` — `darkMode: class` + ألوان `primary/background/surface` + خطوط `arabic/sans/body/num`.
-`README.md` — للإنسان المشغّل (مختصر). `.gitignore` — يستثني `node_modules/` و`web/fonts/` الكبيرة و`*.db*` (انظر §8).
+`README.md` — للإنسان المشغّل (شرح + مميزات + صور `screenshots/` المنسوخة من التصاميم المرجعية). `screenshots/` — صور README الثمان (منسوخة من `docs/stitch_login_screen_arabic/*/screen.png`). `AGENTS.md` — مصدر الحقيقة الحي للذكاء الاصطناعي. `.gitignore` — يستثني `node_modules/` و`web/fonts/` الكبيرة و`*.db*` (انظر §8).
 
 ## 4. قاعدة البيانات
 
@@ -95,6 +95,7 @@
 - مخزون غير سالب أبداً (بيع/تعديل/قطع صيانة تُرفض عند النقص). بيع بلا وردية مفتوحة مرفوض. الكاشير: لا أسعار شراء ولا أرباح، لا تعديل سعر، لا مرتجعات، لا تقارير، لا صفحات مدير.
 - انتقالات الصيانة الست (`REPAIR_FLOW`): `received → in_review/rejected`، `in_review → pending_approval/repaired/rejected`، `pending_approval → in_review/repaired/rejected`، `repaired → delivered`، `rejected/delivered` نهائيتان.
 - PIN بـ PBKDF2-SHA256 (200 ألف تكرار) + seed: `admin/1234`، `cashier/1111`.
+- صور `docs/**` للقراءة فقط — النسخ إلى `screenshots/` مسموح والتعديل على الأصل ممنوع.
 
 ## 8. أوامر النجاح (انسخ والصق من جذر المشروع)
 
@@ -110,4 +111,5 @@ python -c "import ast,glob; [ast.parse(open(f,encoding='utf-8').read()) for f in
 
 ## سجل التغييرات
 
-- `2026-10-12`: بناء أول + فلتر تصنيف POS + إدارة فئات + إيصال معاينة/تخصيص + طباعة 80mm + اسم محل شامل (`syncTitle`) + تجاوب (`tz-menu`/`cart-fab`) + نافذة `maximized` + توثيق حي (`PROJECT_AI.md`) + مستودع git محلي أول (`main`).
+- `2026-10-12`: إعادة تسمية `PROJECT_AI.md` → `AGENTS.md` + توسيع `README.md` بالشرح والمميزات والصور الثمان (`screenshots/`).
+- `2026-10-12`: بناء أول + فلتر تصنيف POS + إدارة فئات + إيصال معاينة/تخصيص + طباعة 80mm + اسم محل شامل (`syncTitle`) + تجاوب (`tz-menu`/`cart-fab`) + نافذة `maximized` + توثيق حي (`AGENTS.md`) + مستودع git محلي أول (`main`).
