@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>نظام نقاط البيع - تك زون للإلكترونيات</title>
+<link href="app.css" rel="stylesheet"/>
+<script>if(localStorage.getItem('tz-theme')==='dark')document.documentElement.classList.add('dark');</script>
+</head>
+<body id="shell" class="bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-200 h-screen overflow-hidden flex flex-col md:flex-row">
+<!-- LEFT SIDE: Product Catalog & Search -->
+<div class="flex-1 flex flex-col h-full overflow-hidden relative border-l border-slate-200 dark:border-slate-800">
+<!-- Header: Shift + Search & User Info -->
+<header class="p-6 pb-2">
+<div id="shift-bar" class="mb-4 flex items-center justify-center gap-3 text-sm p-3 rounded-xl border"></div>
+<div class="flex items-center justify-between mb-6 gap-3">
+<div>
+<h1 class="text-2xl font-bold text-slate-900 dark:text-white mb-1">متجر الإلكترونيات</h1>
+<p class="text-sm text-slate-500 dark:text-slate-400" id="today"></p>
+</div>
+<!-- Search Bar -->
+<div class="flex-1 max-w-lg mx-6">
+<div class="relative group">
+<div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-primary transition-colors">
+<span class="material-icons-outlined">search</span>
+</div>
+<input id="q" class="w-full bg-white dark:bg-slate-800 border-none rounded-xl py-3 pr-12 pl-4 text-slate-700 dark:text-slate-200 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 focus:ring-2 focus:ring-primary focus:outline-none transition-all placeholder:text-slate-400" placeholder="ابحث عن منتج، باركود، أو سيريال..." type="text"/>
+</div>
+</div>
+<!-- User Profile -->
+<div class="flex items-center gap-3">
+<button onclick="toggleTheme()" class="p-2 rounded-full bg-white dark:bg-slate-800 text-slate-500 hover:text-primary transition-colors shadow-sm ring-1 ring-slate-200 dark:ring-slate-700" title="وضع ليلي / نهاري">
+<span class="material-icons-outlined dark:hidden">dark_mode</span>
+<span class="material-icons-outlined hidden dark:inline">light_mode</span>
+</button>
+<div class="flex items-center gap-3 bg-white dark:bg-slate-800 py-1.5 px-2 pr-1.5 rounded-full shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
+<div class="w-9 h-9 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold" id="user-initial">؟</div>
+<div class="hidden lg:block pl-2 text-right">
+<p class="text-sm font-semibold leading-tight" id="user-name">…</p>
+<p class="text-xs text-slate-400" id="user-role">…</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Categories -->
+<div class="flex gap-3 overflow-x-auto pb-4 no-scrollbar items-center px-6" id="cats"></div>
+</header>
+<!-- Products Grid -->
+<main class="flex-1 overflow-y-auto px-6 pb-6">
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" id="grid"></div>
+</main>
+</div>
+<!-- RIGHT SIDE: Shopping Cart -->
+<div id="cart-panel" class="w-full md:w-[380px] lg:w-[420px] bg-white dark:bg-slate-800 flex-col shadow-2xl z-10 h-full hidden md:flex">
+<!-- Cart Header -->
+<div class="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
+<div>
+<h2 class="text-xl font-bold text-slate-900 dark:text-white">سلة المشتريات</h2>
+<span class="text-sm text-slate-500 dark:text-slate-400 font-numeric" id="invno">فاتورة جديدة</span>
+</div>
+<button id="clear" class="w-9 h-9 flex items-center justify-center rounded-full text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="إفراغ السلة">
+<span class="material-icons-outlined text-xl">delete_outline</span>
+</button>
+</div>
+<!-- Cart Items List -->
+<div class="flex-1 overflow-y-auto p-4 space-y-4" id="cart"></div>
+<!-- Customer + Discount -->
+<div class="px-6 pt-3 space-y-2">
+<input id="cust" class="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm" placeholder="اسم العميل (اختياري)"/>
+<div class="flex gap-2">
+<input id="disc" type="number" min="0" step="0.01" class="w-1/2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm" placeholder="خصم (مبلغ)"/>
+<input id="phone" class="w-1/2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm" placeholder="هاتف العميل (اختياري)"/>
+</div>
+</div>
+<!-- Footer Calculations & Pay -->
+<div class="p-6 bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700 shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.05)] z-20">
+<div class="space-y-3 mb-6">
+<div class="flex justify-between text-slate-600 dark:text-slate-400 text-sm">
+<span>المجموع الفرعي</span>
+<span class="font-display font-medium text-slate-800 dark:text-slate-200" id="sub">0.00 ر.س</span>
+</div>
+<div class="flex justify-between text-slate-600 dark:text-slate-400 text-sm">
+<span>الضريبة (<span id="taxrate">15</span>%)</span>
+<span class="font-display font-medium text-slate-800 dark:text-slate-200" id="tax">0.00 ر.س</span>
+</div>
+<div class="flex justify-between text-slate-600 dark:text-slate-400 text-sm">
+<span>خصم</span>
+<span class="font-display font-medium text-green-600" id="discv">-0.00 ر.س</span>
+</div>
+<div class="h-px bg-dashed border-t border-dashed border-slate-200 dark:border-slate-700 my-2"></div>
+<div class="flex justify-between items-end">
+<span class="text-lg font-bold text-slate-900 dark:text-white">الإجمالي</span>
+<span class="font-display text-2xl font-bold text-primary"><span id="total">0.00</span> <span class="text-sm font-normal text-slate-500" id="cur">ر.س</span></span>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="grid grid-cols-4 gap-3">
+<button id="btn-disc" class="col-span-1 py-4 rounded-xl border border-slate-200 dark:border-slate-600 text-slate-500 hover:border-slate-300 hover:text-slate-700 dark:hover:text-slate-300 transition-colors flex flex-col items-center justify-center gap-1 group" title="خصم">
+<span class="material-icons-outlined text-xl group-hover:scale-110 transition-transform">percent</span>
+</button>
+<button id="btn-print" class="col-span-1 py-4 rounded-xl border border-slate-200 dark:border-slate-600 text-slate-500 hover:border-slate-300 hover:text-slate-700 dark:hover:text-slate-300 transition-colors flex flex-col items-center justify-center gap-1 group" title="آخر إيصال">
+<span class="material-icons-outlined text-xl group-hover:scale-110 transition-transform">print</span>
+</button>
+<button id="btn-pay" class="col-span-2 py-4 rounded-xl bg-primary text-white font-bold text-lg shadow-lg shadow-primary/30 hover:bg-primary-dark active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+<span>دفع</span>
+<span class="material-icons-outlined">payments</span>
+</button>
+</div>
+</div>
+</div>
+<!-- زر السلة العائم للجوال -->
+<button id="cart-fab" class="md:hidden fixed bottom-20 left-4 z-40 h-14 px-5 rounded-full bg-primary text-white shadow-lg shadow-primary/40 hidden items-center gap-2 font-bold">
+<span class="material-icons-outlined">shopping_cart</span><span class="font-num">0</span>
+</button>
+<!-- Shift Modal -->
+<div id="shift-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+<div class="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+<h3 class="text-lg font-bold mb-4">إدارة الوردية</h3>
+<input id="open-cash" type="number" min="0" step="0.01" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 mb-3" placeholder="النقدية الافتتاحية"/>
+<input id="count-cash" type="number" min="0" step="0.01" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 mb-4 hidden" placeholder="عدّ النقدية الفعلي"/>
+<div class="flex gap-2">
+<button id="shift-close-x" class="flex-1 py-2 rounded-xl border border-slate-200 dark:border-slate-600">إغلاق</button>
+<button id="shift-ok" class="flex-1 py-2 rounded-xl bg-primary text-white font-bold">تأكيد</button>
+</div>
+</div>
+</div>
+<!-- Pay Modal -->
+<div id="pay-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+<div class="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+<h3 class="text-lg font-bold mb-1">إتمام الدفع</h3>
+<p class="text-sm text-slate-500 mb-4">الإجمالي: <span id="pay-total" class="font-numeric font-bold text-primary">0.00</span></p>
+<div class="grid grid-cols-3 gap-2 mb-4" id="methods">
+<button data-m="cash" class="p-3 rounded-xl border-2 border-primary bg-primary/5 text-primary font-bold">نقدي</button>
+<button data-m="wallet" class="p-3 rounded-xl border border-slate-200 dark:border-slate-600 font-medium">محفظة</button>
+<button data-m="credit" class="p-3 rounded-xl border border-slate-200 dark:border-slate-600 font-medium">آجل</button>
+</div>
+<div id="pay-lines" class="space-y-2 mb-3"></div>
+<div class="flex gap-2">
+<button id="pay-add" class="flex-1 py-2 rounded-xl border border-slate-200 dark:border-slate-600 text-sm">+ دفعة أخرى</button>
+<button id="pay-x" class="flex-1 py-2 rounded-xl border border-slate-200 dark:border-slate-600 text-sm">إلغاء</button>
+<button id="pay-ok" class="flex-1 py-2 rounded-xl bg-primary text-white font-bold">إتمام البيع</button>
+</div>
+</div>
+</div>
+<script src="app.js"></script>
+<script>
+let user = null, PRODUCTS = [], CATS = [], CAT = null, CART = [], RATE = 15, lastSale = null;
+let SHIFT = null;
+
+document.getElementById('today').textContent = new Date().toLocaleDateString('ar', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+async function refreshShift() {
+  const s = await guard(() => api('shift'));
+  if (!s) return;
+  SHIFT = s.shift;
+  const bar = document.getElementById('shift-bar');
+  if (SHIFT) {
+    bar.className = 'mb-4 flex items-center justify-center gap-3 text-sm p-3 rounded-xl border bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-900/30';
+    bar.innerHTML = `<span class="w-2 h-2 rounded-full bg-green-500"></span><span>وردية مفتوحة (${fmtDT(SHIFT.opened_at)})</span><button id="close-shift" class="px-3 py-1 rounded-lg bg-red-100 text-red-600 text-xs font-bold">إغلاق الوردية</button>`;
+    bar.querySelector('#close-shift').addEventListener('click', () => openShiftModal(false));
+  } else {
+    bar.className = 'mb-4 flex items-center justify-center gap-3 text-sm p-3 rounded-xl border bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-900/30';
+    bar.innerHTML = `<span class="w-2 h-2 rounded-full bg-red-500"></span><span>لا توجد وردية مفتوحة — لا يمكن البيع</span><button id="open-shift" class="px-3 py-1 rounded-lg bg-primary text-white text-xs font-bold">فتح وردية</button>`;
+    bar.querySelector('#open-shift').addEventListener('click', () => openShiftModal(true));
+  }
+}
+
+function openShiftModal(opening) {
+  const m = document.getElementById('shift-modal');
+  m.classList.remove('hidden'); m.classList.add('flex');
+  document.getElementById('open-cash').classList.toggle('hidden', !opening);
+  document.getElementById('count-cash').classList.toggle('hidden', opening);
+  m.dataset.mode = opening ? 'open' : 'close';
+}
+document.getElementById('shift-close-x').addEventListener('click', () => { const m = document.getElementById('shift-modal'); m.classList.add('hidden'); m.classList.remove('flex'); });
+document.getElementById('shift-ok').addEventListener('click', async () => {
+  const m = document.getElementById('shift-modal');
+  if (m.dataset.mode === 'open') {
+    const ok = await guard(() => api('shift_open', { opening_cash: toAmount(document.getElementById('open-cash').value) }));
+    if (ok) { toast('تم فتح الوردية'); refreshShift(); }
+  } else {
+    const c = await guard(() => api('shift_close', { counted_cash: toAmount(document.getElementById('count-cash').value) }));
+    if (c) { toast(c.diff == 0 ? 'الوردية متطابقة' : (c.diff > 0 ? `زيادة ${money(c.diff)}` : `عجز ${money(-c.diff)}`)); refreshShift(); }
+  }
+  m.classList.add('hidden'); m.classList.remove('flex');
+});
+
+async function loadCats() {
+  CATS = (await guard(() => api('categories'))) || [];
+  const el = document.getElementById('cats');
+  el.innerHTML = `<button data-c="" class="flex-shrink-0 px-6 py-2.5 rounded-xl shadow-lg shadow-primary/30 font-medium transition-transform active:scale-95 ${CAT == null ? 'bg-primary text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'}">الكل</button>` +
+    CATS.map((c) => `<button data-c="${c.id}" class="flex-shrink-0 px-6 py-2.5 rounded-xl font-medium transition-all active:scale-95 whitespace-nowrap ${CAT === c.id ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'}">${esc(c.name)}</button>`).join('');
+  el.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { CAT = b.dataset.c ? +b.dataset.c : null; search(); }));
+}
+
+async function search() {
+  const q = document.getElementById('q').value;
+  PRODUCTS = (await guard(() => api('products_search', { q, limit: 60, category_id: CAT }))) || [];
+  await loadCats();
+  const g = document.getElementById('grid');
+  g.innerHTML = PRODUCTS.length ? PRODUCTS.map((p) => `
+    <div class="group bg-white dark:bg-slate-800 rounded-2xl p-3 border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer" data-add="${p.id}">
+      <div class="aspect-[4/3] rounded-xl overflow-hidden bg-primary/10 dark:bg-slate-700 mb-3 flex items-center justify-center text-primary/60">
+        <span class="material-icons-outlined text-6xl">devices</span>
+      </div>
+      <div class="space-y-1">
+        <p class="text-xs font-semibold text-primary uppercase tracking-wide">${esc(p.category || '')}</p>
+        <h3 class="font-bold text-slate-800 dark:text-white line-clamp-2 h-12 leading-tight">${esc(p.name)}</h3>
+        <p class="text-xs font-num ${p.qty <= p.min_qty ? 'text-red-500' : 'text-slate-400'}">المتوفر: ${n(p.qty)}${p.tracked ? ' (سيريال)' : ''}</p>
+        <div class="flex items-center justify-between mt-2 pt-2 border-t border-dashed border-slate-200 dark:border-slate-700">
+          <span class="font-display font-bold text-lg text-slate-900 dark:text-white">${fmt(p.price)} <span class="text-xs font-normal text-slate-500">${CURRENCY}</span></span>
+          <button class="w-8 h-8 flex items-center justify-center rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors">
+            <span class="material-icons-outlined text-lg">add</span>
+          </button>
+        </div>
+      </div>
+    </div>`).join('')
+    : '<div class="col-span-full text-center text-slate-400 py-16">لا توجد منتجات مطابقة</div>';
+  g.querySelectorAll('[data-add]').forEach((el) => el.addEventListener('click', () => addToCart(+el.dataset.add)));
+}
+
+async function addToCart(id) {
+  const p = PRODUCTS.find((x) => x.id === id);
+  if (!p) return;
+  let serial_ids = [];
+  if (p.tracked) {
+    const serials = await guard(() => api('serials', { product_id: id }));
+    const inStock = (serials || []).filter((s) => s.status === 'in_stock');
+    const used = CART.filter((c) => c.product_id === id).flatMap((c) => c.serial_ids || []);
+    const free = inStock.filter((s) => !used.includes(s.id));
+    if (!free.length) { toast('لا توجد وحدات متاحة بهذا المنتج (سيريال)', 'warn'); return; }
+    serial_ids = [free[0].id];
+  }
+  const e = CART.find((c) => c.product_id === id);
+  if (e) {
+    if (p.tracked && p.qty <= e.qty) { toast('لا توجد وحدات متاحة أكثر', 'warn'); return; }
+    e.qty++;
+    if (p.tracked) e.serial_ids.push(...serial_ids);
+  } else CART.push({ product_id: id, name: p.name, unit_price: p.qty !== undefined ? p.price : p.price, qty: 1, serial_ids });
+  renderCart();
+}
+
+function cartQty() { return CART.reduce((a, c) => a + c.qty, 0); }
+
+function renderCart() {
+  const el = document.getElementById('cart');
+  const panel = document.getElementById('cart-panel');
+  const fab = document.getElementById('cart-fab');
+  if (fab) {
+    fab.querySelector('span:last-child').textContent = cartQty();
+    fab.classList.toggle('hidden', window.innerWidth >= 768);
+  }
+  if (panel && window.innerWidth < 768 && CART.length && !panel.dataset.touched) {
+    panel.classList.remove('hidden'); panel.classList.add('flex');
+    panel.style.cssText = 'position:fixed;inset:auto 0 0 0;z-index:45;max-height:70vh;border-radius:1rem 1rem 0 0';
+  }
+  if (!CART.length) el.innerHTML = '<div class="text-center text-slate-400 py-10">السلة فارغة — اختر منتجاً من القائمة</div>';
+  else el.innerHTML = CART.map((c, i) => `
+    <div class="flex gap-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-700/50 border border-transparent hover:border-slate-200 dark:hover:border-slate-600 transition-colors">
+      <div class="w-16 h-16 rounded-lg bg-white dark:bg-slate-800 text-primary overflow-hidden flex-shrink-0 flex items-center justify-center">
+        <span class="material-icons-outlined text-3xl">devices</span>
+      </div>
+      <div class="flex-1 flex flex-col justify-between">
+        <div>
+          <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm leading-tight mb-1">${esc(c.name)}</h4>
+          <p class="text-xs text-slate-500 dark:text-slate-400 font-display">${fmt(c.unit_price)} ${CURRENCY} / وحدة</p>
+        </div>
+        <div class="flex items-center justify-between mt-2">
+          <div class="flex items-center bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-600 shadow-sm h-8">
+            <button data-dec="${i}" class="w-8 h-full flex items-center justify-center text-slate-500 hover:text-primary rounded-r-lg transition-colors"><span class="material-icons-outlined text-base">remove</span></button>
+            <span class="w-8 text-center text-sm font-display font-semibold text-slate-800 dark:text-white">${n(c.qty)}</span>
+            <button data-inc="${i}" class="w-8 h-full flex items-center justify-center text-white bg-primary rounded-l-lg hover:bg-primary-dark transition-colors"><span class="material-icons-outlined text-base">add</span></button>
+          </div>
+          <span class="font-display font-bold text-slate-900 dark:text-white">${fmt(c.qty * c.unit_price)}</span>
+        </div>
+      </div>
+    </div>`).join('');
+  el.querySelectorAll('[data-dec]').forEach((b) => b.addEventListener('click', () => { const c = CART[+b.dataset.dec]; c.qty--; if (c.qty <= 0) CART.splice(CART.indexOf(c), 1); renderCart(); }));
+  el.querySelectorAll('[data-inc]').forEach((b) => b.addEventListener('click', () => { CART[+b.dataset.inc].qty++; renderCart(); }));
+  totals();
+}
+
+function totals() {
+  const sub = CART.reduce((a, c) => a + c.qty * c.unit_price, 0);
+  const disc = toAmount(document.getElementById('disc').value) * 100;
+  const taxable = Math.max(0, sub - disc);
+  const tax = Math.round(taxable * RATE / 100);
+  const total = taxable + tax;
+  document.getElementById('sub').textContent = fmt(sub) + ' ' + CURRENCY;
+  document.getElementById('tax').textContent = fmt(tax) + ' ' + CURRENCY;
+  document.getElementById('discv').textContent = '-' + fmt(disc) + ' ' + CURRENCY;
+  document.getElementById('total').textContent = fmt(total);
+  return { sub, disc, total };
+}
+document.getElementById('disc').addEventListener('input', totals);
+document.getElementById('clear').addEventListener('click', () => { CART = []; renderCart(); });
+document.getElementById('q').addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(search, 250); });
+document.getElementById('btn-print').addEventListener('click', () => {
+  if (!lastSale) { toast('لا يوجد إيصال بعد — أتمم بيعاً أولاً', 'warn'); return; }
+  location.href = 'receipt.html?id=' + lastSale;
+});
+document.getElementById('btn-disc').addEventListener('click', () => document.getElementById('disc').focus());
+
+function payLines(defaultTotal) {
+  const el = document.getElementById('pay-lines');
+  if (!el.children.length) el.innerHTML = `<div class="flex gap-2"><select class="flex-1 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-2 text-sm"><option value="cash">نقدي</option><option value="wallet">محفظة</option><option value="credit">آجل</option></select><input class="flex-1 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-2 text-sm font-numeric" placeholder="المبلغ" data-amt/></div>`;
+  return [...el.children].map((row) => ({ method: row.querySelector('select').value, amount: toAmount(row.querySelector('[data-amt]').value) }));
+}
+document.getElementById('pay-add').addEventListener('click', () => { document.getElementById('pay-lines').insertAdjacentHTML('beforeend', `<div class="flex gap-2"><select class="flex-1 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-2 text-sm"><option value="cash">نقدي</option><option value="wallet">محفظة</option><option value="credit">آجل</option></select><input class="flex-1 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-2 text-sm font-numeric" placeholder="المبلغ" data-amt/></div>`); });
+document.getElementById('btn-pay').addEventListener('click', () => {
+  if (!SHIFT) { toast('افتح وردية أولاً', 'warn'); return; }
+  if (!CART.length) { toast('السلة فارغة', 'warn'); return; }
+  const { total } = totals();
+  document.getElementById('pay-total').textContent = fmt(total) + ' ' + CURRENCY;
+  document.getElementById('pay-lines').innerHTML = '';
+  payLines();
+  const m = document.getElementById('pay-modal'); m.classList.remove('hidden'); m.classList.add('flex');
+});
+document.getElementById('pay-x').addEventListener('click', () => { const m = document.getElementById('pay-modal'); m.classList.add('hidden'); m.classList.remove('flex'); });
+document.getElementById('pay-ok').addEventListener('click', async () => {
+  const { total } = totals();
+  const pays = payLines().map((p) => ({ ...p, received: p.amount }));
+  const res = await guard(() => api('sale_create', {
+    items: CART.map((c) => ({ product_id: c.product_id, qty: c.qty, serial_ids: c.serial_ids })),
+    discount: toAmount(document.getElementById('disc').value),
+    payments: pays,
+    customer_name: document.getElementById('cust').value || null,
+    customer_phone: document.getElementById('phone').value || null,
+  }));
+  if (!res) return;
+  toast('تم البيع — فاتورة ' + res.invoice_no);
+  lastSale = res.sale_id; document.getElementById('invno').textContent = '#' + res.invoice_no;
+  CART = []; renderCart();
+  const m = document.getElementById('pay-modal'); m.classList.add('hidden'); m.classList.remove('flex');
+  location.href = 'receipt.html?id=' + res.sale_id;
+});
+
+(async () => {
+  user = await pageInit('pos');
+  if (!user) return;
+  document.getElementById('user-name').textContent = user.name;
+  document.getElementById('user-role').textContent = user.role === 'admin' ? 'مدير' : 'كاشير';
+  document.getElementById('user-initial').textContent = (user.name || '؟').slice(0, 1);
+  document.getElementById('cur').textContent = CURRENCY;
+  RATE = +((SETTINGS.tax_rate || '15'));
+  document.getElementById('taxrate').textContent = RATE;
+  await refreshShift();
+  await search();
+  renderCart();
+  // سلوك الجوال: زر السلة يفتح/يغلق اللوحة، وتُغلق بعد الدفع
+  const fab = document.getElementById('cart-fab'), panel = document.getElementById('cart-panel');
+  fab.classList.replace('hidden', 'flex');
+  const syncFab = () => fab.classList.toggle('hidden', window.innerWidth >= 768);
+  window.addEventListener('resize', () => {
+    syncFab();
+    if (window.innerWidth >= 768) { panel.classList.remove('hidden'); panel.classList.add('flex'); panel.style.cssText = ''; }
+    else if (!panel.dataset.touched) { panel.classList.add('hidden'); panel.classList.remove('flex'); }
+  });
+  fab.addEventListener('click', () => {
+    panel.dataset.touched = '1';
+    const open = panel.classList.toggle('hidden');
+    panel.classList.toggle('flex', !open);
+    panel.style.cssText = open ? '' : 'position:fixed;inset:auto 0 0 0;z-index:45;max-height:70vh;border-radius:1rem 1rem 0 0';
+    fab.querySelector('span:last-child').textContent = cartQty();
+  });
+})();
+</script>
+</body></html>

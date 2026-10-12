@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+
+<html class="scroll-smooth" dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>التقارير والتحليلات - تك زون للإلكترونيات</title>
+<link href="app.css" rel="stylesheet"/>
+<script>if(localStorage.getItem('tz-theme')==='dark')document.documentElement.classList.add('dark');</script>
+</head>
+<body id="shell" class="bg-background-light dark:bg-background-dark text-text-primary dark:text-white transition-colors duration-200 min-h-screen flex overflow-hidden">
+<!-- Main Content -->
+<main class="flex-1 flex flex-col h-screen overflow-hidden relative">
+<!-- Top Header -->
+<header class="h-16 bg-background-light dark:bg-background-dark/95 backdrop-blur-sm sticky top-0 z-10 px-6 sm:px-8 flex items-center justify-between border-b border-gray-200/50 dark:border-gray-800/50">
+<div class="hidden lg:block">
+<h2 class="text-xl font-bold text-gray-800 dark:text-white">التقارير والتحليلات</h2>
+<p class="text-xs text-gray-500">مرحباً بك مرة أخرى، هنا ملخص أداء متجرك</p>
+</div>
+<div class="flex items-center gap-3">
+<input id="f-date" type="date" class="bg-white dark:bg-card-dark rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm shadow-sm font-num"/>
+<button onclick="toggleTheme()" class="p-2 text-gray-500 hover:text-primary transition-colors relative">
+<span class="material-icons-round dark:hidden">dark_mode</span>
+<span class="material-icons-round hidden dark:inline">light_mode</span>
+</button>
+</div>
+</header>
+<!-- Scrollable Content -->
+<div class="flex-1 overflow-y-auto p-6 sm:p-8">
+<div class="max-w-7xl mx-auto space-y-8">
+<!-- Quick Actions & Period -->
+<div class="flex flex-wrap items-center justify-between gap-4">
+<div class="flex gap-2">
+<button onclick="window.print()" class="flex items-center gap-2 bg-white dark:bg-card-dark border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+<span class="material-icons-round text-lg">print</span>
+<span>طباعة</span>
+</button>
+<select id="f-month" class="bg-white dark:bg-card-dark border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm"></select>
+</div>
+<div class="flex gap-2 text-sm" id="tabs">
+<button data-p="day" class="px-4 py-2 rounded-lg bg-primary text-white font-medium">يومي</button>
+<button data-p="month" class="px-4 py-2 rounded-lg bg-white dark:bg-card-dark border border-gray-200 dark:border-gray-700 font-medium">شهري</button>
+</div>
+</div>
+<!-- Metrics Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="cards"></div>
+<!-- Charts & Tables Section -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<!-- Payments Breakdown -->
+<div class="lg:col-span-2 bg-card-light dark:bg-card-dark rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
+<div class="flex items-center justify-between mb-6">
+<h3 class="font-bold text-lg text-gray-800 dark:text-white">تفصيل الدفعات والفترة</h3>
+</div>
+<div class="space-y-3" id="breakdown"></div>
+<div class="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
+<h3 class="font-bold text-lg text-gray-800 dark:text-white mb-4">الأرباح</h3>
+<div class="grid grid-cols-2 gap-3 text-sm" id="profit"></div>
+</div>
+</div>
+<!-- Top Selling Products -->
+<div class="bg-card-light dark:bg-card-dark rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 flex flex-col">
+<div class="flex items-center justify-between mb-6">
+<h3 class="font-bold text-lg text-gray-800 dark:text-white">الأكثر مبيعاً</h3>
+</div>
+<div class="flex-1 space-y-4" id="top"></div>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+<!-- Low stock -->
+<div class="bg-card-light dark:bg-card-dark rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
+<div class="p-6 border-b border-gray-100 dark:border-gray-800"><h3 class="font-bold text-lg text-gray-800 dark:text-white">النواقص (مخزون منخفض)</h3></div>
+<div class="divide-y divide-gray-100 dark:divide-gray-800" id="low"></div>
+</div>
+<!-- Movements log -->
+<div class="bg-card-light dark:bg-card-dark rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
+<div class="p-6 border-b border-gray-100 dark:border-gray-800"><h3 class="font-bold text-lg text-gray-800 dark:text-white">سجل حركات المخزون (أحدث)</h3></div>
+<div class="divide-y divide-gray-100 dark:divide-gray-800" id="moves"></div>
+</div>
+</div>
+</div>
+<!-- Footer spacing -->
+<div class="h-8"></div>
+</div>
+</main>
+<script src="app.js"></script>
+<script>
+let PERIOD = 'day';
+
+const AR = { cash: 'نقدي', wallet: 'محفظة', credit: 'آجل' };
+
+function card(title, val, unit, icon, bg) {
+  return `<div class="bg-card-light dark:bg-card-dark rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 relative overflow-hidden group">
+  <div class="absolute top-0 right-0 w-32 h-32 ${bg} rounded-full -mr-10 -mt-10 group-hover:scale-110 transition-transform duration-500"></div>
+  <div class="relative z-10"><div class="flex justify-between items-start mb-4">
+    <div><p class="text-sm font-medium text-gray-500 dark:text-gray-400">${title}</p>
+      <h3 class="text-3xl font-bold text-gray-900 dark:text-white font-num mt-1">${val} <span class="text-lg font-normal text-gray-500">${unit}</span></h3></div>
+    <div class="w-10 h-10 rounded-lg flex items-center justify-center ${icon.c}"><span class="material-icons-round">${icon.i}</span></div>
+  </div></div></div>`;
+}
+
+function barRow(label, val, max) {
+  const pct = max ? Math.max(2, Math.round(val / max * 100)) : 0;
+  return `<div class="flex items-center gap-3">
+    <span class="w-20 text-sm text-gray-500 shrink-0">${label}</span>
+    <div class="flex-1 h-4 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden"><div class="h-full bg-primary rounded-full" style="width:${pct}%"></div></div>
+    <span class="w-28 text-left text-sm font-num font-bold">${fmt(val)} ${CURRENCY}</span></div>`;
+}
+
+async function load() {
+  const date = document.getElementById('f-date').value || todayISO();
+  const [y, m] = document.getElementById('f-month').value.split('-').map(Number);
+  let d;
+  if (PERIOD === 'day') d = await guard(() => api('report_daily', { date }));
+  else d = await guard(() => api('report_monthly', { year: y, month: m }));
+  if (!d) return;
+
+  document.getElementById('cards').innerHTML =
+    card('إجمالي المبيعات', fmt(d.sales.total), CURRENCY, { i: 'attach_money', c: 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400' }, 'bg-primary/5') +
+    card('المرتجعات', fmt(d.returns.total), CURRENCY, { i: 'assignment_return', c: 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400' }, 'bg-orange-500/5') +
+    card('عدد الفواتير', n(d.sales.count), 'فاتورة', { i: 'shopping_bag', c: 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400' }, 'bg-purple-500/5');
+
+  const max = Math.max(d.payments.cash || 0, d.payments.wallet || 0, d.payments.credit || 0, 1);
+  document.getElementById('breakdown').innerHTML =
+    `<div class="grid grid-cols-3 gap-3 mb-4 text-sm">
+      <div class="p-3 rounded-lg bg-gray-50 dark:bg-gray-800"><p class="text-gray-500 text-xs">المجموع الفرعي</p><p class="font-num font-bold">${fmt(d.sales.subtotal)}</p></div>
+      <div class="p-3 rounded-lg bg-gray-50 dark:bg-gray-800"><p class="text-gray-500 text-xs">الخصم</p><p class="font-num font-bold text-green-600">-${fmt(d.sales.discount)}</p></div>
+      <div class="p-3 rounded-lg bg-gray-50 dark:bg-gray-800"><p class="text-gray-500 text-xs">الضريبة</p><p class="font-num font-bold">${fmt(d.sales.tax)}</p></div>
+    </div>` +
+    ['cash', 'wallet', 'credit'].map((k) => barRow(AR[k], d.payments[k] || 0, max)).join('');
+
+  const from = PERIOD === 'day' ? date : `${y}-${String(m).padStart(2, '0')}-01`;
+  const to = PERIOD === 'day' ? date : `${y}-${String(m).padStart(2, '0')}-31`;
+  const [top, profit, low, moves] = await Promise.all([
+    guard(() => api('report_top', { date_from: from, date_to: to, limit: 6 })),
+    guard(() => api('report_profit', { date_from: from, date_to: to })),
+    guard(() => api('report_low')),
+    guard(() => api('report_movements', { limit: 12 })),
+  ]);
+
+  document.getElementById('top').innerHTML = (top || []).length ? (top || []).map((t) => `
+    <div class="flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 p-2 rounded-lg transition-colors -mx-2">
+      <div class="w-12 h-12 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0"><span class="material-icons-round">devices</span></div>
+      <div class="flex-1 min-w-0"><h4 class="text-sm font-bold text-gray-800 dark:text-white truncate">${esc(t.name)}</h4><p class="text-xs text-gray-500 truncate">${esc(t.sku)}</p></div>
+      <div class="text-left"><p class="text-sm font-bold text-gray-900 dark:text-white font-num">${n(t.qty)}</p><p class="text-xs text-gray-400">مباع</p></div>
+    </div>`).join('') : '<div class="text-center text-gray-400 py-6">لا مبيعات في الفترة</div>';
+
+  document.getElementById('profit').innerHTML = `
+    <div class="p-3 rounded-lg bg-gray-50 dark:bg-gray-800"><p class="text-gray-500 text-xs">إيراد البضائع</p><p class="font-num font-bold">${fmt(profit.goods_revenue)}</p></div>
+    <div class="p-3 rounded-lg bg-green-50 dark:bg-green-900/20"><p class="text-gray-500 text-xs">ربح البضائع</p><p class="font-num font-bold text-green-600">${fmt(profit.goods_profit)}</p></div>
+    <div class="p-3 rounded-lg bg-gray-50 dark:bg-gray-800"><p class="text-gray-500 text-xs">إيراد الصيانة</p><p class="font-num font-bold">${fmt(profit.repair_revenue)}</p></div>
+    <div class="p-3 rounded-lg bg-green-50 dark:bg-green-900/20"><p class="text-gray-500 text-xs">ربح الصيانة</p><p class="font-num font-bold text-green-600">${fmt(profit.repair_profit)}</p></div>`;
+
+  document.getElementById('low').innerHTML = (low || []).slice(0, 8).map((p) => `
+    <div class="flex items-center justify-between px-6 py-3">
+      <span class="text-sm font-medium">${esc(p.name)}</span>
+      <span class="text-sm font-num font-bold ${p.qty <= 0 ? 'text-slate-400' : 'text-red-500'}">${n(p.qty)} / حد ${n(p.min_qty)}</span>
+    </div>`).join('') || '<div class="p-6 text-center text-gray-400">لا نواقص</div>';
+
+  const REASON = { sale: 'بيع', return: 'مرتجع', repair_part: 'قطعة صيانة', used_purchase: 'شراء مستعمل', serial_add: 'إضافة سيريال', manual: 'يدوي', 'تعديل يدوي': 'تعديل يدوي' };
+  document.getElementById('moves').innerHTML = (moves || []).map((x) => `
+    <div class="flex items-center justify-between px-6 py-3 text-sm">
+      <div><span class="font-medium">${esc(x.product_name)}</span> <span class="text-gray-400">· ${esc(REASON[x.reason] || x.reason)}</span>
+        <div class="text-xs text-gray-400 font-num">${fmtDT(x.created_at)}${x.user_name ? ' · ' + esc(x.user_name) : ''}${x.ref ? ' · ' + esc(x.ref) : ''}</div></div>
+      <span class="font-num font-bold ${x.qty_change > 0 ? 'text-green-600' : 'text-red-500'}">${x.qty_change > 0 ? '+' : ''}${n(x.qty_change)}</span>
+    </div>`).join('') || '<div class="p-6 text-center text-gray-400">لا حركات</div>';
+}
+
+document.querySelectorAll('#tabs button').forEach((b) => b.addEventListener('click', () => {
+  PERIOD = b.dataset.p;
+  document.querySelectorAll('#tabs button').forEach((x) => x.className = 'px-4 py-2 rounded-lg bg-white dark:bg-card-dark border border-gray-200 dark:border-gray-700 font-medium');
+  b.className = 'px-4 py-2 rounded-lg bg-primary text-white font-medium';
+  load();
+}));
+document.getElementById('f-date').addEventListener('change', load);
+document.getElementById('f-month').addEventListener('change', load);
+
+(async () => {
+  if (!(await pageInit('reports', { admin: true }))) return;
+  const d = new Date();
+  document.getElementById('f-date').value = todayISO();
+  let opts = '';
+  for (let i = 0; i < 6; i++) {
+    const t = new Date(d.getFullYear(), d.getMonth() - i, 1);
+    const v = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}`;
+    opts += `<option value="${v}" ${i === 0 ? 'selected' : ''}>${v}</option>`;
+  }
+  document.getElementById('f-month').innerHTML = opts;
+  await load();
+})();
+</script>
+</body></html>

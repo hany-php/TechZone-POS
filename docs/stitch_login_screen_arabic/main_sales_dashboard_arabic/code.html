@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>نظام نقاط البيع - POS Main Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "primary-dark": "#106ac4",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["'Space Grotesk'", "'Cairo'", "sans-serif"],
+                        "arabic": ["'Cairo'", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<!-- Google Fonts: Space Grotesk for Numbers/English and Cairo for Arabic text matching -->
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&amp;family=Space+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Cairo', sans-serif; /* Default for Arabic text */
+        }
+        .font-display {
+            font-family: 'Space Grotesk', 'Cairo', sans-serif; /* Mix for numbers/tech feel */
+        }
+        /* Custom Scrollbar for a cleaner look */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-200 h-screen overflow-hidden flex flex-col md:flex-row">
+<!-- LEFT SIDE: Product Catalog & Search -->
+<div class="flex-1 flex flex-col h-full overflow-hidden relative border-l border-slate-200 dark:border-slate-800">
+<!-- Header: Search & User Info -->
+<header class="p-6 pb-2">
+<div class="flex items-center justify-between mb-6">
+<div>
+<h1 class="text-2xl font-bold text-slate-900 dark:text-white mb-1">متجر الإلكترونيات</h1>
+<p class="text-sm text-slate-500 dark:text-slate-400">الجمعة، 15 نوفمبر 2023</p>
+</div>
+<!-- Search Bar -->
+<div class="flex-1 max-w-lg mx-6">
+<div class="relative group">
+<div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-primary transition-colors">
+<span class="material-icons-outlined">search</span>
+</div>
+<input class="w-full bg-white dark:bg-slate-800 border-none rounded-xl py-3 pr-12 pl-4 text-slate-700 dark:text-slate-200 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 focus:ring-2 focus:ring-primary focus:outline-none transition-all placeholder:text-slate-400" placeholder="ابحث عن منتج، باركود، أو فئة..." type="text"/>
+</div>
+</div>
+<!-- User Profile -->
+<div class="flex items-center gap-3">
+<button class="p-2 rounded-full bg-white dark:bg-slate-800 text-slate-500 hover:text-primary transition-colors shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
+<span class="material-icons-outlined">notifications</span>
+</button>
+<div class="flex items-center gap-3 bg-white dark:bg-slate-800 py-1.5 px-2 pr-1.5 rounded-full shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
+<img class="w-9 h-9 rounded-full object-cover border border-slate-200 dark:border-slate-600" data-alt="Male cashier portrait" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAfESXoxf2ZnFA8sduNAgGpOUhp0LsnE2fM16b5-9upHoTEXO3HPRol_dTTKpjZpC_A99VV8GZiAHOHlHVcHvHbMK-tkHJgFUJGX1MHunWgwQLFdqQwcdc-KPjqgExlqpGgHdVFKNSV6x5lV8_k4rKa4mD4QLAoq8T_AHPr9TkhOxW3tycIvJPBoJxYNErqMMwuLNof2JmtY8fGT3H4UCQrLhtJzGG2duUwAyALMnGRx903rYyUPeagGT6G5UfIwK9Q436rrjhaC0Y"/>
+<div class="hidden lg:block pl-2 text-right">
+<p class="text-sm font-semibold leading-tight">أحمد محمد</p>
+<p class="text-xs text-slate-400">مدير مبيعات</p>
+</div>
+<span class="material-icons-outlined text-slate-400 text-sm pl-2">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Categories -->
+<div class="flex gap-3 overflow-x-auto pb-4 no-scrollbar items-center">
+<button class="flex-shrink-0 px-6 py-2.5 bg-primary text-white rounded-xl shadow-lg shadow-primary/30 font-medium transition-transform active:scale-95">الكل</button>
+<button class="flex-shrink-0 px-6 py-2.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl font-medium transition-all active:scale-95 whitespace-nowrap">أجهزة كمبيوتر</button>
+<button class="flex-shrink-0 px-6 py-2.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl font-medium transition-all active:scale-95 whitespace-nowrap">لابتوبات</button>
+<button class="flex-shrink-0 px-6 py-2.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl font-medium transition-all active:scale-95 whitespace-nowrap">إكسسوارات</button>
+<button class="flex-shrink-0 px-6 py-2.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl font-medium transition-all active:scale-95 whitespace-nowrap">شبكات</button>
+<button class="flex-shrink-0 px-6 py-2.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl font-medium transition-all active:scale-95 whitespace-nowrap">كاميرات</button>
+<button class="flex-shrink-0 px-6 py-2.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl font-medium transition-all active:scale-95 whitespace-nowrap">صيانة</button>
+</div>
+</header>
+<!-- Products Grid -->
+<main class="flex-1 overflow-y-auto px-6 pb-6">
+<div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+<!-- Product Card 1 -->
+<div class="group bg-white dark:bg-slate-800 rounded-2xl p-3 border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer">
+<div class="aspect-[4/3] rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-700 mb-3 relative">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Silver Laptop Open" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBPWVmsiaI_gxDQFxJiu7ye4GF0hWctwduL6Yxv0aIjUjhuCryaXOY7e2U10vdJ2ESY1z7ejbjI255W1y6t6Nuv7gaQ6uJJL9yXRzinkaJHxQ748t4ipNhLJ7sSW26k9wFVUBUkRYxYvxoXTtcaVLndxVCnd_iJ7mlDBruXQqWK0WcFxpeMp6zC93_cEU0rOQ1CfawaKKHs8yV4FsBLl-lIREfGXBtRnRBFJJOUJ2NJfIHVsb1J3KquZwhXtoQHDHItuu3QAa3nN2k"/>
+<div class="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-md shadow-sm">عرض خاص</div>
+</div>
+<div class="space-y-1">
+<p class="text-xs font-semibold text-primary uppercase tracking-wide">لابتوبات</p>
+<h3 class="font-bold text-slate-800 dark:text-white line-clamp-2 h-12 leading-tight">ماك بوك برو M2، ذاكرة 16 جيجا، 512 SSD</h3>
+<div class="flex items-center justify-between mt-2 pt-2 border-t border-dashed border-slate-200 dark:border-slate-700">
+<span class="font-display font-bold text-lg text-slate-900 dark:text-white">5,499 <span class="text-xs font-normal text-slate-500">ر.س</span></span>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors">
+<span class="material-icons-outlined text-lg">add</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Product Card 2 -->
+<div class="group bg-white dark:bg-slate-800 rounded-2xl p-3 border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer">
+<div class="aspect-[4/3] rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-700 mb-3">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Computer mouse on desk" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCPVt9A3MFzjvcXMiTpQcYLo4A8LTJLoouDCWNJXfjquDUML6ZSn5JvY1yjXRBgP_PpcKO6n4YhiaTck4ADxaUub_4PbIwaEZ4dFECV7hjSfSIC3gSK7Fl_F7IUid2Sqc2XGdpPBqyytJm4FfbCJmGuDO40MTrl6mM9u9D-6l9-Q-YtREhPnItL3_6xihrCx7s7rGGtgRibuxksF0dEybm6BMPmJ3MR65yMV2E8EU43pErsCkP3NXplqSxSBG1gOF9yv1hNz0mL3VE"/>
+</div>
+<div class="space-y-1">
+<p class="text-xs font-semibold text-primary uppercase tracking-wide">إكسسوارات</p>
+<h3 class="font-bold text-slate-800 dark:text-white line-clamp-2 h-12 leading-tight">ماوس لوجيتك لاسلكي MX Master 3S</h3>
+<div class="flex items-center justify-between mt-2 pt-2 border-t border-dashed border-slate-200 dark:border-slate-700">
+<span class="font-display font-bold text-lg text-slate-900 dark:text-white">450 <span class="text-xs font-normal text-slate-500">ر.س</span></span>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors">
+<span class="material-icons-outlined text-lg">add</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Product Card 3 -->
+<div class="group bg-white dark:bg-slate-800 rounded-2xl p-3 border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer">
+<div class="aspect-[4/3] rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-700 mb-3">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Mechanical Keyboard RGB" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD0vRJW2ih_bPwfOZus4HRCUC5T2qLsONvCSL6SKSzwRPjeA7Rt0b3XMcIDWBOZ8_wCBZ2taUAKWMxpqvpKBzIhnZ6UykRiAmW3lyaUho0fU_s5ruILNFWC8uKeqWO4A1aH6mLG-QBb7zEzd66HO6-I0FdItXyNyWUkO83eHSCdmp5lXT5PcnlcVdIWeQSKq0SJJNv6f07CZ5IrPfLOp5Qar5yjjiLbA--ZozQHWjcGx8k4xq4Z5LuetBdmdp8eYC7QIYJCGKDYZS8"/>
+</div>
+<div class="space-y-1">
+<p class="text-xs font-semibold text-primary uppercase tracking-wide">إكسسوارات</p>
+<h3 class="font-bold text-slate-800 dark:text-white line-clamp-2 h-12 leading-tight">كيبورد ميكانيكي RGB للألعاب</h3>
+<div class="flex items-center justify-between mt-2 pt-2 border-t border-dashed border-slate-200 dark:border-slate-700">
+<span class="font-display font-bold text-lg text-slate-900 dark:text-white">299 <span class="text-xs font-normal text-slate-500">ر.س</span></span>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors">
+<span class="material-icons-outlined text-lg">add</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Product Card 4 -->
+<div class="group bg-white dark:bg-slate-800 rounded-2xl p-3 border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer">
+<div class="aspect-[4/3] rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-700 mb-3">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Network Switch Ethernet" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAbjQOP-ctIPIPEs4WLTekRL2PW6rwOKeBznG1CaqfYGd6rGDVM07QTC2QMqooruTj-g5Rr3fokev22zYoJEhq09B9E2DVQ3r1mSY9uNOh4fpVYmH6V33qQo0ot82xLRr9nse-F8LzI1YCdxgoknmIDN7-zGN5wYty19rdB__3pUVegA2m6zWxGXT701dVpre6rl0gK-jxYT9xFl1iTb0hQfUwrk3lou-17pkAu-Pa_37MeO-h3Qrb4xFYWzFPXqTzEI9-7-NtHMVY"/>
+</div>
+<div class="space-y-1">
+<p class="text-xs font-semibold text-primary uppercase tracking-wide">شبكات</p>
+<h3 class="font-bold text-slate-800 dark:text-white line-clamp-2 h-12 leading-tight">سويتش شبكة تي بي لينك 8 منافذ</h3>
+<div class="flex items-center justify-between mt-2 pt-2 border-t border-dashed border-slate-200 dark:border-slate-700">
+<span class="font-display font-bold text-lg text-slate-900 dark:text-white">120 <span class="text-xs font-normal text-slate-500">ر.س</span></span>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors">
+<span class="material-icons-outlined text-lg">add</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Product Card 5 -->
+<div class="group bg-white dark:bg-slate-800 rounded-2xl p-3 border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer">
+<div class="aspect-[4/3] rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-700 mb-3">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Camera Lens" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDkfgQ1TjVdTWMDgXIf5jketqC9nCYtzDvlZH15uUAGVSqyPuKd6z-WdSHiHXYmMGgPf3WS5svI0jWLJsp10_tWELh5mT9iMiTbEQdL50tXKqXxPCTvKgLB5147p-i88WMcx2-7ubgE4ho7JQ3zwfbmxmQ85prZXhfqpSnDMeNx8sK9SsNhyVE5XtDjjUg9oI4yUhH8CzP8cyq_C6WUd7zecBJNBTJ3JUL8k90xmPbq-RZWXXggxOJ8bwdgC83TdV_oqXQ1uOvB3Pg"/>
+</div>
+<div class="space-y-1">
+<p class="text-xs font-semibold text-primary uppercase tracking-wide">كاميرات</p>
+<h3 class="font-bold text-slate-800 dark:text-white line-clamp-2 h-12 leading-tight">كاميرا مراقبة خارجية واي فاي</h3>
+<div class="flex items-center justify-between mt-2 pt-2 border-t border-dashed border-slate-200 dark:border-slate-700">
+<span class="font-display font-bold text-lg text-slate-900 dark:text-white">350 <span class="text-xs font-normal text-slate-500">ر.س</span></span>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors">
+<span class="material-icons-outlined text-lg">add</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Product Card 6 -->
+<div class="group bg-white dark:bg-slate-800 rounded-2xl p-3 border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer">
+<div class="aspect-[4/3] rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-700 mb-3">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Gaming PC Tower" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAaVlssl1Vr2KkZi87dAOq9iNvIsZ8n9UqMLMVHM8vqanySUQDhQdzZBk6ZNsOMwiLS1JJ-W0r_jYd4VvN98AGP-H95DNlF0tQj2Fhfid1lymD_GN1-maUAapvNioRwlJDCuwYKxPvwMKIIea1oQdUJicPVHfQkWuHJ-LU9_HhGbSpbWCFa30-euqiLGj1ctw8NmUnCfCMfLVabXfnZepJAtNvC-zf0fFNWb7WYTL_en0XSBAnm0W18IFdcbLsjWr5OPUuPZ3BbdSc"/>
+</div>
+<div class="space-y-1">
+<p class="text-xs font-semibold text-primary uppercase tracking-wide">أجهزة كمبيوتر</p>
+<h3 class="font-bold text-slate-800 dark:text-white line-clamp-2 h-12 leading-tight">جهاز مكتبي ديل أوبتيبليكس</h3>
+<div class="flex items-center justify-between mt-2 pt-2 border-t border-dashed border-slate-200 dark:border-slate-700">
+<span class="font-display font-bold text-lg text-slate-900 dark:text-white">2,100 <span class="text-xs font-normal text-slate-500">ر.س</span></span>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors">
+<span class="material-icons-outlined text-lg">add</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Product Card 7 -->
+<div class="group bg-white dark:bg-slate-800 rounded-2xl p-3 border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer">
+<div class="aspect-[4/3] rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-700 mb-3">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Processor Chip" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBPOTMmure8wQANh-DIDuidlXyHFvT8Bui2Y4O_A17L_WcaEpoGUPNezp3aZ0p0U_mXLKkLqdv5zs4HySKfYKD11vGmu1_IMjBdbR4uTgnfAx7VF08pGaKWXlZbMSkYDfWPj_0HcuJaV6WIXjtif9qNOUmuVgubUGPVMbdKhzMi64zfliZm_3QL3AxpedUd1qrj8uEyppFqdBIVZ2tdDyoTCtG1WaR2SJJf_NGGRF1CuDgSgwpZanMpiyyr4tzN5IeGKsxJ29CqwV4"/>
+</div>
+<div class="space-y-1">
+<p class="text-xs font-semibold text-primary uppercase tracking-wide">صيانة</p>
+<h3 class="font-bold text-slate-800 dark:text-white line-clamp-2 h-12 leading-tight">معالج إنتل كور i7 الجيل 12</h3>
+<div class="flex items-center justify-between mt-2 pt-2 border-t border-dashed border-slate-200 dark:border-slate-700">
+<span class="font-display font-bold text-lg text-slate-900 dark:text-white">1,650 <span class="text-xs font-normal text-slate-500">ر.س</span></span>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors">
+<span class="material-icons-outlined text-lg">add</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Product Card 8 -->
+<div class="group bg-white dark:bg-slate-800 rounded-2xl p-3 border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer">
+<div class="aspect-[4/3] rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-700 mb-3">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Graphics Card" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBUEhpPQPsC8xwhsTH4lgVgn_bxTWr6P1aB5YxVt1_UbH6ohTOPMiRTI-u559RFpBhT8GipPdpL9QMIZMMLuOWmf_wgFsFXCbeKIOFuechrSQo8iN_xSYpwgQMTweeLSSHeNTWNRUGUO0i0Ksq_l30FD9sKhduzmFVMD_sFXJ2tA8tARUYeRUH6usxRQXTzjpVVogxVyHUpQQ_z4ecGzchd2w2_n_XLVzSLwX6Gz4nkdLyQNWWtj_3ovwrQofQJr3zyAkL47KYrRls"/>
+</div>
+<div class="space-y-1">
+<p class="text-xs font-semibold text-primary uppercase tracking-wide">صيانة</p>
+<h3 class="font-bold text-slate-800 dark:text-white line-clamp-2 h-12 leading-tight">كرت شاشة RTX 3060 Ti</h3>
+<div class="flex items-center justify-between mt-2 pt-2 border-t border-dashed border-slate-200 dark:border-slate-700">
+<span class="font-display font-bold text-lg text-slate-900 dark:text-white">1,899 <span class="text-xs font-normal text-slate-500">ر.س</span></span>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors">
+<span class="material-icons-outlined text-lg">add</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- RIGHT SIDE: Shopping Cart -->
+<div class="w-full md:w-[380px] lg:w-[420px] bg-white dark:bg-slate-800 flex flex-col shadow-2xl z-10">
+<!-- Cart Header -->
+<div class="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
+<div>
+<h2 class="text-xl font-bold text-slate-900 dark:text-white">سلة المشتريات</h2>
+<span class="text-sm text-slate-500 dark:text-slate-400">طلب #20551</span>
+</div>
+<button class="w-9 h-9 flex items-center justify-center rounded-full text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="إفراغ السلة">
+<span class="material-icons-outlined text-xl">delete_outline</span>
+</button>
+</div>
+<!-- Cart Items List -->
+<div class="flex-1 overflow-y-auto p-4 space-y-4">
+<!-- Item 1 -->
+<div class="flex gap-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-700/50 border border-transparent hover:border-slate-200 dark:hover:border-slate-600 transition-colors">
+<div class="w-16 h-16 rounded-lg bg-white overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="Laptop Thumbnail" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBAwWVFslsMPBqhMfsn4UA5hhGKg5tPQNn3gCpTKjh64wDHkc9KO_SpwXKZprd7tHMkcPQc7hbv5yhd9BB65lRlhoklunoLUrhnvQjvMAOGMIKKnq-klFjDyxIL4UkHuVgh9gx5siNH-0qw134ABCx4XjJaSLpDkTV1vrt-qz0DMfOaAY5z30jl2gy815tl_f1qF2YCT05p7Mtv9DOi32fu0qg6FylYxf7ohu2wsFuqKMmPe2JdLgQ1YIMR9KZ9X5syvhtBrjZzATQ"/>
+</div>
+<div class="flex-1 flex flex-col justify-between">
+<div>
+<h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm leading-tight mb-1">ماك بوك برو M2</h4>
+<p class="text-xs text-slate-500 dark:text-slate-400 font-display">5,499 ر.س / وحدة</p>
+</div>
+<div class="flex items-center justify-between mt-2">
+<div class="flex items-center bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-600 shadow-sm h-8">
+<button class="w-8 h-full flex items-center justify-center text-slate-500 hover:text-primary active:bg-slate-100 dark:active:bg-slate-700 rounded-r-lg transition-colors">
+<span class="material-icons-outlined text-base">remove</span>
+</button>
+<span class="w-8 text-center text-sm font-display font-semibold text-slate-800 dark:text-white">1</span>
+<button class="w-8 h-full flex items-center justify-center text-white bg-primary rounded-l-lg hover:bg-primary-dark transition-colors">
+<span class="material-icons-outlined text-base">add</span>
+</button>
+</div>
+<span class="font-display font-bold text-slate-900 dark:text-white">5,499</span>
+</div>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="flex gap-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-700/50 border border-transparent hover:border-slate-200 dark:hover:border-slate-600 transition-colors">
+<div class="w-16 h-16 rounded-lg bg-white overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="Switch Thumbnail" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAUU15WbeAC5DcTcDxxMw2U5O_E6WcxcsHuOderwL8K98V8ZW-dTNzM1rVAiwBf4NshVdlUsl2x5L1aWvynOMCaNwMROWlgpfGz33VaS_O4Jza3vpjTklr4QZltUJjU-TDqffz4kMTWhvxkGSFMNyZl_yJaTjl4KWDdWT__lE5hraZFcr-KIp7As2HUtPiup-Fmqxe5epkczVEyw_tQxQGVQDH9_KTrkI64oWAa5_LOIkJDeHVQu6y8K9pOUzNPDZBnnuuubL_wB-s"/>
+</div>
+<div class="flex-1 flex flex-col justify-between">
+<div>
+<h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm leading-tight mb-1">سويتش شبكة تي بي لينك</h4>
+<p class="text-xs text-slate-500 dark:text-slate-400 font-display">120 ر.س / وحدة</p>
+</div>
+<div class="flex items-center justify-between mt-2">
+<div class="flex items-center bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-600 shadow-sm h-8">
+<button class="w-8 h-full flex items-center justify-center text-slate-500 hover:text-primary active:bg-slate-100 dark:active:bg-slate-700 rounded-r-lg transition-colors">
+<span class="material-icons-outlined text-base">remove</span>
+</button>
+<span class="w-8 text-center text-sm font-display font-semibold text-slate-800 dark:text-white">2</span>
+<button class="w-8 h-full flex items-center justify-center text-white bg-primary rounded-l-lg hover:bg-primary-dark transition-colors">
+<span class="material-icons-outlined text-base">add</span>
+</button>
+</div>
+<span class="font-display font-bold text-slate-900 dark:text-white">240</span>
+</div>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="flex gap-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-700/50 border border-transparent hover:border-slate-200 dark:hover:border-slate-600 transition-colors">
+<div class="w-16 h-16 rounded-lg bg-white overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="Mouse Thumbnail" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBmxS3WaV9K9iJwU2F3tqn0iMtCHVW6nmSqek38YGZSmXai-QuT5yubRkmivzQoBQKO2fWJtzCJWT7jTa6fSU5wm-yBRYxopClOkjRusix6z6ttkfn7xH9NkfHM5ep-LtDXjMIfbRYtW5cLUplQlUF52IheWab4jd6wBUh0Fc1ILFl0ZFPcnf1ZsVZV3U66wi2PIFKEpWWsyyxh-_P3e9ZAs4K6iYmbVNKRZGFGrLFrP6Y99GluDgneSYn_qZvDV1TYqdzpHtr033w"/>
+</div>
+<div class="flex-1 flex flex-col justify-between">
+<div>
+<h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm leading-tight mb-1">ماوس لوجيتك لاسلكي</h4>
+<p class="text-xs text-slate-500 dark:text-slate-400 font-display">450 ر.س / وحدة</p>
+</div>
+<div class="flex items-center justify-between mt-2">
+<div class="flex items-center bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-600 shadow-sm h-8">
+<button class="w-8 h-full flex items-center justify-center text-slate-500 hover:text-primary active:bg-slate-100 dark:active:bg-slate-700 rounded-r-lg transition-colors">
+<span class="material-icons-outlined text-base">remove</span>
+</button>
+<span class="w-8 text-center text-sm font-display font-semibold text-slate-800 dark:text-white">1</span>
+<button class="w-8 h-full flex items-center justify-center text-white bg-primary rounded-l-lg hover:bg-primary-dark transition-colors">
+<span class="material-icons-outlined text-base">add</span>
+</button>
+</div>
+<span class="font-display font-bold text-slate-900 dark:text-white">450</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Calculations & Pay -->
+<div class="p-6 bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700 shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.05)] z-20">
+<div class="space-y-3 mb-6">
+<div class="flex justify-between text-slate-600 dark:text-slate-400 text-sm">
+<span>المجموع الفرعي</span>
+<span class="font-display font-medium text-slate-800 dark:text-slate-200">6,189 ر.س</span>
+</div>
+<div class="flex justify-between text-slate-600 dark:text-slate-400 text-sm">
+<span>الضريبة (15%)</span>
+<span class="font-display font-medium text-slate-800 dark:text-slate-200">928.35 ر.س</span>
+</div>
+<div class="flex justify-between text-slate-600 dark:text-slate-400 text-sm">
+<span>خصم</span>
+<span class="font-display font-medium text-green-600">-0.00 ر.س</span>
+</div>
+<div class="h-px bg-dashed border-t border-dashed border-slate-200 dark:border-slate-700 my-2"></div>
+<div class="flex justify-between items-end">
+<span class="text-lg font-bold text-slate-900 dark:text-white">الإجمالي</span>
+<span class="font-display text-2xl font-bold text-primary">7,117.35 <span class="text-sm font-normal text-slate-500">ر.س</span></span>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="grid grid-cols-4 gap-3">
+<button class="col-span-1 py-4 rounded-xl border border-slate-200 dark:border-slate-600 text-slate-500 hover:border-slate-300 hover:text-slate-700 dark:hover:text-slate-300 transition-colors flex flex-col items-center justify-center gap-1 group">
+<span class="material-icons-outlined text-xl group-hover:scale-110 transition-transform">print</span>
+</button>
+<button class="col-span-1 py-4 rounded-xl border border-slate-200 dark:border-slate-600 text-slate-500 hover:border-slate-300 hover:text-slate-700 dark:hover:text-slate-300 transition-colors flex flex-col items-center justify-center gap-1 group">
+<span class="material-icons-outlined text-xl group-hover:scale-110 transition-transform">save</span>
+</button>
+<button class="col-span-2 py-4 rounded-xl bg-primary text-white font-bold text-lg shadow-lg shadow-primary/30 hover:bg-primary-dark active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+<span>دفع</span>
+<span class="material-icons-outlined">payments</span>
+</button>
+</div>
+</div>
+</div>
+</body></html>

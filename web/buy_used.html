@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>شراء أجهزة مستعملة - تك زون للإلكترونيات</title>
+<link href="app.css" rel="stylesheet"/>
+<script>if(localStorage.getItem('tz-theme')==='dark')document.documentElement.classList.add('dark');</script>
+</head>
+<body id="shell" class="bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-100 min-h-screen flex flex-col">
+<!-- Top Header -->
+<header class="bg-surface-light dark:bg-surface-dark border-b border-slate-200 dark:border-slate-800 h-16 flex items-center px-6 shadow-sm z-10 sticky top-0">
+<div class="flex items-center gap-4 w-full">
+<div class="flex items-center gap-3">
+<div class="bg-primary/10 p-2 rounded-lg text-primary">
+<span class="material-icons">phonelink_setup</span>
+</div>
+<div>
+<h1 class="font-bold text-lg leading-tight">شراء أجهزة مستعملة</h1>
+<p class="text-xs text-slate-500 font-display">Used Devices Purchase</p>
+</div>
+</div>
+<div class="flex-grow"></div>
+<div class="flex items-center gap-3">
+<button onclick="toggleTheme()" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 text-sm">
+<span class="material-icons-round dark:hidden">dark_mode</span>
+<span class="material-icons-round hidden dark:inline">light_mode</span>
+</button>
+<div class="hidden md:flex items-center bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+<span class="material-icons text-slate-400 text-sm ml-2">store</span>
+<span class="text-sm font-medium" id="store-lbl">تك زون للإلكترونيات</span>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex-grow p-4 md:p-6 lg:h-[calc(100vh-4rem)] overflow-hidden">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
+<!-- RIGHT COLUMN: Purchase Form (Intake) -->
+<div class="lg:col-span-4 xl:col-span-3 h-full flex flex-col gap-4 overflow-y-auto pr-1 pb-20 lg:pb-0">
+<!-- Section 1: Seller Info -->
+<div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-5">
+<h2 class="text-base font-bold mb-4 flex items-center gap-2 text-primary">
+<span class="material-icons text-sm">person</span>
+بيانات البائع
+</h2>
+<div class="space-y-4">
+<div>
+<label class="block text-xs font-medium text-slate-500 mb-1">الاسم الكامل</label>
+<input id="f-name" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" placeholder="مثال: أحمد محمد" type="text"/>
+</div>
+<div class="grid grid-cols-2 gap-3">
+<div>
+<label class="block text-xs font-medium text-slate-500 mb-1">رقم الهوية / الإقامة</label>
+<input id="f-idno" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm font-display focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-left" dir="ltr" placeholder="10xxxxxxxx" type="text"/>
+</div>
+<div>
+<label class="block text-xs font-medium text-slate-500 mb-1">رقم الجوال</label>
+<input id="f-phone" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm font-display focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-left" dir="ltr" placeholder="05xxxxxxxx" type="tel"/>
+</div>
+</div>
+</div>
+</div>
+<!-- Section 2: Device Details -->
+<div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-5">
+<h2 class="text-base font-bold mb-4 flex items-center gap-2 text-primary">
+<span class="material-icons text-sm">smartphone</span>
+تفاصيل الجهاز
+</h2>
+<div class="space-y-4">
+<div class="grid grid-cols-2 gap-3">
+<div>
+<label class="block text-xs font-medium text-slate-500 mb-1">التصنيف</label>
+<select id="f-type" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all appearance-none">
+<option>هاتف ذكي</option>
+<option>لابتوب</option>
+<option>جهاز لوحي</option>
+<option>اكسسوارات</option>
+</select>
+</div>
+<div>
+<label class="block text-xs font-medium text-slate-500 mb-1">الماركة</label>
+<select id="f-brand" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all appearance-none">
+<option>Apple</option>
+<option>Samsung</option>
+<option>Dell</option>
+<option>HP</option>
+</select>
+</div>
+</div>
+<div>
+<label class="block text-xs font-medium text-slate-500 mb-1">الموديل</label>
+<input id="f-model" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" placeholder="مثال: iPhone 13 Pro Max" type="text"/>
+</div>
+<div>
+<label class="block text-xs font-medium text-slate-500 mb-1">الرقم التسلسلي (S/N)</label>
+<div class="relative">
+<input id="f-serial" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm font-display focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all pl-10 text-left" dir="ltr" placeholder="Serial..." type="text"/>
+<span class="material-icons absolute left-3 top-2 text-slate-400 text-lg">qr_code_scanner</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Section 3: Condition & Price -->
+<div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-5 flex-grow flex flex-col">
+<h2 class="text-base font-bold mb-4 flex items-center gap-2 text-primary">
+<span class="material-icons text-sm">verified</span>
+الحالة والسعر
+</h2>
+<div class="mb-4">
+<label class="block text-xs font-medium text-slate-500 mb-2">حالة الجهاز العامة</label>
+<div class="grid grid-cols-4 gap-2" id="conds">
+<label class="cursor-pointer"><input class="peer sr-only" name="condition" value="ممتاز" type="radio"/><div class="text-center py-2 border border-slate-200 dark:border-slate-700 rounded-lg peer-checked:bg-green-50 peer-checked:border-green-500 peer-checked:text-green-700 transition-all"><span class="text-xs font-bold">ممتاز</span></div></label>
+<label class="cursor-pointer"><input checked="" class="peer sr-only" name="condition" value="جيد جداً" type="radio"/><div class="text-center py-2 border border-slate-200 dark:border-slate-700 rounded-lg peer-checked:bg-primary/10 peer-checked:border-primary peer-checked:text-primary transition-all"><span class="text-xs font-bold">جيد جداً</span></div></label>
+<label class="cursor-pointer"><input class="peer sr-only" name="condition" value="مقبول" type="radio"/><div class="text-center py-2 border border-slate-200 dark:border-slate-700 rounded-lg peer-checked:bg-yellow-50 peer-checked:border-yellow-500 peer-checked:text-yellow-700 transition-all"><span class="text-xs font-bold">مقبول</span></div></label>
+<label class="cursor-pointer"><input class="peer sr-only" name="condition" value="تالف" type="radio"/><div class="text-center py-2 border border-slate-200 dark:border-slate-700 rounded-lg peer-checked:bg-red-50 peer-checked:border-red-500 peer-checked:text-red-700 transition-all"><span class="text-xs font-bold">تالف</span></div></label>
+</div>
+</div>
+<div class="mb-4">
+<label class="block text-xs font-medium text-slate-500 mb-1">ملاحظات / عيوب</label>
+<textarea id="f-notes" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all resize-none" rows="2"></textarea>
+</div>
+<div class="grid grid-cols-2 gap-3 mb-4">
+<div>
+<label class="block text-xs font-medium text-slate-500 mb-1">وجهة التخزين</label>
+<input id="f-store" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm" placeholder="مثال: رف أ-1"/>
+</div>
+<div>
+<label class="block text-xs font-medium text-slate-500 mb-1">سعر إعادة البيع</label>
+<input id="f-resale" type="number" min="0" step="0.01" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm font-display text-left" dir="ltr" placeholder="0.00"/>
+</div>
+</div>
+<div class="mt-auto border-t border-dashed border-slate-200 dark:border-slate-700 pt-4">
+<label class="flex items-center justify-between mb-4 cursor-pointer group">
+<span class="text-sm font-medium text-slate-700 dark:text-slate-300">إضافة للمخزون تلقائياً</span>
+<input id="f-inv" checked="" type="checkbox" class="w-5 h-5 accent-blue-600"/>
+</label>
+<div class="relative mb-4">
+<label class="block text-xs font-medium text-slate-500 mb-1">سعر الشراء النهائي</label>
+<div class="relative">
+<input id="f-price" class="w-full bg-white dark:bg-slate-800 border-2 border-primary/30 focus:border-primary rounded-lg px-4 py-3 text-2xl font-bold font-display text-primary focus:outline-none transition-all pl-16 text-left" dir="ltr" placeholder="0.00" type="number" min="0" step="0.01"/>
+<span class="absolute left-4 top-4 text-slate-400 font-bold font-display" id="cur">SAR</span>
+</div>
+</div>
+<button id="btn-buy" class="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-primary/30 transition-all flex items-center justify-center gap-2 group">
+<span>إتمام الشراء</span>
+<span class="material-icons group-hover:-translate-x-1 transition-transform">arrow_back</span>
+</button>
+</div>
+</div>
+</div>
+<!-- LEFT COLUMN: Recent Transactions Table -->
+<div class="lg:col-span-8 xl:col-span-9 h-full flex flex-col gap-4">
+<!-- Filters / Search Row -->
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="relative w-full sm:max-w-md">
+<span class="material-icons absolute right-3 top-2.5 text-slate-400">search</span>
+<input id="q" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pr-10 pl-4 py-2 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" placeholder="بحث برقم العملية، اسم البائع، أو السيريال..." type="text"/>
+</div>
+<div class="flex items-center gap-2 w-full sm:w-auto" id="stat-mini"></div>
+</div>
+<!-- Table Container -->
+<div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex-grow overflow-hidden flex flex-col">
+<div class="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+<h3 class="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+<span class="w-2 h-6 bg-primary rounded-full"></span>
+العمليات الأخيرة
+</h3>
+<span class="bg-primary/10 text-primary text-xs font-display font-bold px-2 py-1 rounded-full" id="count"></span>
+</div>
+<div class="overflow-auto flex-grow">
+<table class="w-full text-right">
+<thead class="bg-slate-50 dark:bg-slate-800/50 sticky top-0 z-10">
+<tr>
+<th class="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">رقم العملية</th>
+<th class="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">التاريخ والوقت</th>
+<th class="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">البائع</th>
+<th class="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">الجهاز</th>
+<th class="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">الرقم التسلسلي</th>
+<th class="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">الحالة</th>
+<th class="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">السعر</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100 dark:divide-slate-800" id="rows"></tbody>
+</table>
+</div>
+</div>
+<!-- Stats Cards (Quick Overview) -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4" id="cards"></div>
+</div>
+</div>
+</main>
+<script src="app.js"></script>
+<script>
+async function load(q) {
+  const r = (await guard(() => api('used', { q: q || null, limit: 60 }))) || { rows: [], total: 0 };
+  document.getElementById('count').textContent = 'الكل: ' + n(r.total);
+  document.getElementById('rows').innerHTML = r.rows.length ? r.rows.map((x) => `
+    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
+      <td class="p-4 font-display text-sm font-medium text-slate-900 dark:text-white">${esc(x.ref)}</td>
+      <td class="p-4 text-sm text-slate-500 font-display"><div class="flex flex-col"><span>${x.created_at.slice(0, 10)}</span><span class="text-xs opacity-70">${x.created_at.slice(11, 16)}</span></div></td>
+      <td class="p-4 text-sm text-slate-700 dark:text-slate-300"><div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-500">${esc((x.seller_name || '؟').slice(0, 1))}</div>
+        <div><p class="font-medium">${esc(x.seller_name)}</p><p class="text-xs text-slate-500 font-display">${esc(x.seller_phone || '')}</p></div>
+      </div></td>
+      <td class="p-4 text-sm text-slate-700 dark:text-slate-300"><div class="flex items-center gap-2">
+        <span class="material-icons text-slate-400 text-sm">phone_iphone</span><span>${esc((x.brand ? x.brand + ' ' : '') + x.model)}</span>
+      </div></td>
+      <td class="p-4 text-sm text-slate-500 font-display">${esc(x.serial || '—')}</td>
+      <td class="p-4"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">${esc(x.condition || '—')}</span></td>
+      <td class="p-4 font-display font-bold text-slate-900 dark:text-white">${fmt(x.buy_price)} ${CURRENCY}</td>
+    </tr>`).join('') : '<tr><td colspan="7" class="p-8 text-center text-slate-400">لا توجد عمليات</td></tr>';
+  const s = (await guard(() => api('used_stats'))) || {};
+  document.getElementById('cards').innerHTML = `
+    <div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
+      <div class="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-lg"><span class="material-icons">shopping_bag</span></div>
+      <div><p class="text-xs text-slate-500 mb-0.5">مشتريات اليوم</p><h4 class="text-xl font-bold font-display">${n(s.today_count)}</h4></div>
+    </div>
+    <div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
+      <div class="p-3 bg-green-50 dark:bg-green-900/20 text-green-600 rounded-lg"><span class="material-icons">payments</span></div>
+      <div><p class="text-xs text-slate-500 mb-0.5">إجمالي المدفوع (اليوم)</p><h4 class="text-xl font-bold font-display">${fmt(s.today_paid)} ${CURRENCY}</h4></div>
+    </div>
+    <div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4 bg-gradient-to-l from-primary/5 to-transparent">
+      <div class="p-3 bg-primary/20 text-primary rounded-lg"><span class="material-icons">inventory_2</span></div>
+      <div><p class="text-xs text-slate-500 mb-0.5">في المخزون</p><h4 class="text-xl font-bold font-display">${n(s.in_stock)}</h4></div>
+    </div>`;
+}
+
+document.getElementById('q').addEventListener('input', (e) => { clearTimeout(window._t); window._t = setTimeout(() => load(e.target.value), 300); });
+
+document.getElementById('btn-buy').addEventListener('click', async () => {
+  const cond = document.querySelector('input[name=condition]:checked');
+  const r = await guard(() => api('used_create', {
+    seller_name: document.getElementById('f-name').value, seller_phone: document.getElementById('f-phone').value,
+    seller_id_no: document.getElementById('f-idno').value, device_type: document.getElementById('f-type').value,
+    brand: document.getElementById('f-brand').value, model: document.getElementById('f-model').value,
+    serial: document.getElementById('f-serial').value, condition: cond ? cond.value : null,
+    notes: document.getElementById('f-notes').value || null, buy_price: toAmount(document.getElementById('f-price').value),
+    storage: document.getElementById('f-store').value || null,
+    resale_price: toAmount(document.getElementById('f-resale').value) || null,
+    to_inventory: document.getElementById('f-inv').checked,
+  }));
+  if (r) {
+    toast('تم الشراء — ' + r.ref);
+    ['f-name', 'f-phone', 'f-idno', 'f-model', 'f-serial', 'f-notes', 'f-price', 'f-store', 'f-resale'].forEach((f) => document.getElementById(f).value = '');
+    load(document.getElementById('q').value);
+  }
+});
+
+(async () => {
+  if (!(await pageInit('buy_used', { admin: true }))) return;
+  document.getElementById('cur').textContent = CURRENCY;
+  document.getElementById('store-lbl').textContent = SETTINGS.store_name || 'تك زون للإلكترونيات';
+  await load();
+})();
+</script>
+</body></html>

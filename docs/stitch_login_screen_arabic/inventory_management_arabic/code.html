@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>إدارة المخزون - Inventory Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Cairo", "Space Grotesk", "sans-serif"],
+                        "arabic": ["Cairo", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<!-- Google Fonts: Cairo for Arabic, Space Grotesk for Numbers/English codes, Material Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&amp;family=Space+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Cairo', sans-serif;
+        }
+        .font-num {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-100 min-h-screen flex flex-col md:flex-row overflow-x-hidden">
+<!-- Sidebar Navigation (Desktop) / Mobile Drawer -->
+<aside class="w-full md:w-64 bg-white dark:bg-[#15202b] border-l border-slate-200 dark:border-slate-800 flex-shrink-0 hidden md:flex md:flex-col h-screen sticky top-0">
+<div class="p-6 flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-icons-outlined text-2xl">computer</span>
+</div>
+<h1 class="font-bold text-xl tracking-wide">تك ستور<span class="text-primary">.</span></h1>
+</div>
+<nav class="flex-1 px-4 py-4 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors group" href="#">
+<span class="material-icons-outlined group-hover:text-primary transition-colors">dashboard</span>
+<span class="font-medium">لوحة التحكم</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-primary/10 text-primary rounded-lg transition-colors" href="#">
+<span class="material-icons-outlined">inventory_2</span>
+<span class="font-medium">المخزون</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors group" href="#">
+<span class="material-icons-outlined group-hover:text-primary transition-colors">point_of_sale</span>
+<span class="font-medium">نقاط البيع</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors group" href="#">
+<span class="material-icons-outlined group-hover:text-primary transition-colors">receipt_long</span>
+<span class="font-medium">المبيعات</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors group" href="#">
+<span class="material-icons-outlined group-hover:text-primary transition-colors">people</span>
+<span class="font-medium">العملاء</span>
+</a>
+</nav>
+<div class="p-4 mt-auto border-t border-slate-100 dark:border-slate-800">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors" href="#">
+<span class="material-icons-outlined">logout</span>
+<span class="font-medium">تسجيل الخروج</span>
+</a>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 p-4 md:p-8 overflow-y-auto">
+<!-- Mobile Header -->
+<header class="md:hidden flex items-center justify-between mb-6">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-icons-outlined text-xl">computer</span>
+</div>
+<h1 class="font-bold text-lg">تك ستور</h1>
+</div>
+<button class="p-2 text-slate-500">
+<span class="material-icons-outlined">menu</span>
+</button>
+</header>
+<!-- Page Header -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+<div>
+<h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-1">إدارة المخزون</h2>
+<p class="text-slate-500 dark:text-slate-400 text-sm">تتبع المنتجات، تحديث الكميات، وإدارة الأسعار.</p>
+</div>
+<div class="flex gap-3">
+<button class="bg-white dark:bg-[#15202b] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 px-4 py-2.5 rounded-lg flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm">
+<span class="material-icons-outlined text-[20px]">file_download</span>
+<span class="text-sm font-medium">تصدير</span>
+</button>
+<button class="bg-primary hover:bg-blue-600 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-lg shadow-blue-500/20 transition-all">
+<span class="material-icons-outlined text-[20px]">add</span>
+<span class="text-sm font-bold">إضافة منتج جديد</span>
+</button>
+</div>
+</div>
+<!-- Stats Overview -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+<div class="bg-white dark:bg-[#15202b] p-5 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-start justify-between">
+<div>
+<p class="text-slate-500 dark:text-slate-400 text-xs font-medium mb-1">إجمالي المنتجات</p>
+<h3 class="text-2xl font-bold text-slate-900 dark:text-white font-num">1,248</h3>
+</div>
+<div class="p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-lg">
+<span class="material-icons-outlined text-xl">dns</span>
+</div>
+</div>
+<div class="bg-white dark:bg-[#15202b] p-5 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-start justify-between">
+<div>
+<p class="text-slate-500 dark:text-slate-400 text-xs font-medium mb-1">القيمة الإجمالية</p>
+<h3 class="text-2xl font-bold text-slate-900 dark:text-white font-num">SAR 450,200</h3>
+</div>
+<div class="p-2 bg-green-50 dark:bg-green-900/20 text-green-600 rounded-lg">
+<span class="material-icons-outlined text-xl">payments</span>
+</div>
+</div>
+<div class="bg-white dark:bg-[#15202b] p-5 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm ring-1 ring-red-100 dark:ring-red-900/30 flex items-start justify-between">
+<div>
+<p class="text-red-500 dark:text-red-400 text-xs font-medium mb-1">مخزون منخفض</p>
+<h3 class="text-2xl font-bold text-red-600 dark:text-red-400 font-num">12</h3>
+</div>
+<div class="p-2 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-lg">
+<span class="material-icons-outlined text-xl">warning</span>
+</div>
+</div>
+<div class="bg-white dark:bg-[#15202b] p-5 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-start justify-between">
+<div>
+<p class="text-slate-500 dark:text-slate-400 text-xs font-medium mb-1">نفذت الكمية</p>
+<h3 class="text-2xl font-bold text-slate-900 dark:text-white font-num">3</h3>
+</div>
+<div class="p-2 bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 rounded-lg">
+<span class="material-icons-outlined text-xl">remove_shopping_cart</span>
+</div>
+</div>
+</div>
+<!-- Filters & Search -->
+<div class="bg-white dark:bg-[#15202b] rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm mb-6">
+<div class="p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
+<!-- Search -->
+<div class="relative w-full md:w-96">
+<span class="absolute inset-y-0 right-3 flex items-center text-slate-400 pointer-events-none">
+<span class="material-icons-outlined text-[20px]">search</span>
+</span>
+<input class="w-full pr-10 pl-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-700 dark:text-slate-200" placeholder="بحث باسم المنتج، الباركود..." type="text"/>
+</div>
+<!-- Filters -->
+<div class="flex gap-3 w-full md:w-auto">
+<select class="px-4 py-2.5 bg-white dark:bg-[#15202b] border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary cursor-pointer">
+<option value="">كل الفئات</option>
+<option value="laptops">أجهزة لابتوب</option>
+<option value="accessories">إكسسوارات</option>
+<option value="networking">شبكات</option>
+<option value="storage">تخزين</option>
+</select>
+<select class="px-4 py-2.5 bg-white dark:bg-[#15202b] border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary cursor-pointer">
+<option value="">حالة المخزون</option>
+<option value="low">منخفض</option>
+<option value="out">نفذت الكمية</option>
+<option value="in">متوفر</option>
+</select>
+</div>
+</div>
+<!-- Table -->
+<div class="overflow-x-auto">
+<table class="w-full text-right">
+<thead class="bg-slate-50 dark:bg-slate-800/50 border-y border-slate-200 dark:border-slate-700">
+<tr>
+<th class="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">اسم المنتج</th>
+<th class="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">SKU</th>
+<th class="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">الفئة</th>
+<th class="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">السعر</th>
+<th class="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">الكمية</th>
+<th class="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">الحالة</th>
+<th class="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">إجراءات</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+<!-- Item 1 -->
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden flex-shrink-0 border border-slate-200 dark:border-slate-700">
+<img alt="كمبيوتر محمول رمادي حديث" class="h-full w-full object-cover" data-alt="Modern grey laptop computer" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDgJkyTmql9aXcCSsLWkpBpM4Dxwo-HkjmzefhCR2T1dQNfoD-yaUYDTioIx7-E_cF5qOxsGrqUyDNChWevKOGaoNDHzen0PFfa_H7K8ouHO3r4thr3C5sQ6V2CPudpIKgjzBRTznFTEIVkmVqZ9xswI8JJ9V8YywSeUxiaiP-taiya3-onhDQlDEsqhLzveCIn1mBdP05wWxwRiZxp3s-VLnUuJTZAGV3TRbyZnDuFNoHL8dH2Q0Ww8wDmvdLLyQXVSc7t4arLKG8"/>
+</div>
+<div>
+<div class="text-sm font-medium text-slate-900 dark:text-white">Dell XPS 15 Laptop</div>
+<div class="text-xs text-slate-500 dark:text-slate-400">Core i7, 16GB RAM, 512GB SSD</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400 font-num">DX-15-2023</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="px-2.5 py-1 text-xs font-medium rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">أجهزة لابتوب</span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-white font-num">SAR 5,499.00</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300 font-num font-bold">18</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="px-2.5 py-1 text-xs font-medium rounded-full bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border border-green-100 dark:border-green-900/30">متوفر</span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm">
+<div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-500 hover:text-primary transition-colors">
+<span class="material-icons-outlined text-[18px]">edit</span>
+</button>
+<button class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-500 hover:text-red-500 transition-colors">
+<span class="material-icons-outlined text-[18px]">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Item 2 (Low Stock) -->
+<tr class="hover:bg-red-50/30 dark:hover:bg-red-900/10 transition-colors group bg-red-50/10 dark:bg-red-900/5">
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden flex-shrink-0 border border-slate-200 dark:border-slate-700">
+<img alt="لوحة مفاتيح ميكانيكية مضيئة" class="h-full w-full object-cover" data-alt="RGB mechanical gaming keyboard" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBggPG2RfynUq_Fv8fHQXgD9G0pkrFbhblI57doi2RBKlX2n5EqetEVm0BiW-8MIjmYf2SuUWd3SerWqIUzmXoYh-LcpNJIZf380-2V7L25izqGKQRW8SuDc-10xupKsRmuTbd0wPj_CyscZSh9ROfLS_YNteEV7JXxADzHpqmFp0-xLCqcLMvWfqspkYHC7BmN6HHlbejQuyMeOXRVUStGg7SVR1sJiMHxAMEfJxxP5POOLuOqLX3pr6S52MOEwK3lHCdoC-IM-SE"/>
+</div>
+<div>
+<div class="text-sm font-medium text-slate-900 dark:text-white">Mechanical Keyboard RGB</div>
+<div class="text-xs text-slate-500 dark:text-slate-400">Blue Switch, Arabic Layout</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400 font-num">KB-RGB-002</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="px-2.5 py-1 text-xs font-medium rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">إكسسوارات</span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-white font-num">SAR 350.00</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm text-red-600 dark:text-red-400 font-num font-bold">2</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="px-2.5 py-1 text-xs font-medium rounded-full bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/30 flex items-center gap-1 w-fit">
+<span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                                    منخفض
+                                </span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm">
+<div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-500 hover:text-primary transition-colors">
+<span class="material-icons-outlined text-[18px]">edit</span>
+</button>
+<button class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-500 hover:text-red-500 transition-colors">
+<span class="material-icons-outlined text-[18px]">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Item 3 -->
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden flex-shrink-0 border border-slate-200 dark:border-slate-700">
+<img alt="ايباد ابل على طاولة" class="h-full w-full object-cover" data-alt="iPad tablet on table" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBj4XgRERNJzXTOG2bD8i-r7NL_2a5anN_cjbxPqhxEVU3eH4MIico0oDlWFSgBzrjUbW2fHNuJI-Wj2NqczFZ_v8D-pUZKJQSOupug8_o5Om0HwY47a760nk_fMu2C1CjJ1BViv6CgYDDdSzyko80b0JJe_HtTNnVc59qBRvYUKcy3NeYpaYFFRGxPUjJqe_XrCQ2PEjv2dIK5AexKl99tUsteJbrdJNugYDtaYRLI1PRL9ENvB18urd23UOktxNldh5eMyysCrBI"/>
+</div>
+<div>
+<div class="text-sm font-medium text-slate-900 dark:text-white">iPad Air 5th Gen</div>
+<div class="text-xs text-slate-500 dark:text-slate-400">64GB, Wi-Fi, Space Gray</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400 font-num">AP-PAD-AIR5</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="px-2.5 py-1 text-xs font-medium rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">أجهزة لوحية</span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-white font-num">SAR 2,499.00</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300 font-num font-bold">8</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="px-2.5 py-1 text-xs font-medium rounded-full bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border border-green-100 dark:border-green-900/30">متوفر</span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm">
+<div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-500 hover:text-primary transition-colors">
+<span class="material-icons-outlined text-[18px]">edit</span>
+</button>
+<button class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-500 hover:text-red-500 transition-colors">
+<span class="material-icons-outlined text-[18px]">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Item 4 -->
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden flex-shrink-0 border border-slate-200 dark:border-slate-700">
+<img alt="سماعات رأس لاسلكية" class="h-full w-full object-cover" data-alt="Wireless headphones" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBsQCMYKbrpj3mwN8ZYe0y1JZmpVRkojHU0DVLUDPiv1vgvJZywD400ypP4vAJPbXUrYrRNQxPsEv1R3_6fG0Zj-oZPs_4Ur6Y5XtB6TfvVqbbXD6SE_5mOzM3bkFwvSCNQy46xKUtUssLXfNn_fJoV7jefVCUAvgqZoFBFbqG1oZr8vw-RgOz4M__ecUdASZwpvbBpVRxvE-rhac21mlIHx61zYpfz7nFW5TBTEtbgY7c5Htx_NMd7L8ZTuqHjF5ymJaKhsh3Fm1Y"/>
+</div>
+<div>
+<div class="text-sm font-medium text-slate-900 dark:text-white">Sony WH-1000XM4</div>
+<div class="text-xs text-slate-500 dark:text-slate-400">Noise Cancelling, Black</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400 font-num">SN-HP-XM4</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="px-2.5 py-1 text-xs font-medium rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">صوتيات</span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-white font-num">SAR 1,199.00</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300 font-num font-bold">24</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="px-2.5 py-1 text-xs font-medium rounded-full bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border border-green-100 dark:border-green-900/30">متوفر</span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm">
+<div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-500 hover:text-primary transition-colors">
+<span class="material-icons-outlined text-[18px]">edit</span>
+</button>
+<button class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-500 hover:text-red-500 transition-colors">
+<span class="material-icons-outlined text-[18px]">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Item 5 (Low Stock) -->
+<tr class="hover:bg-red-50/30 dark:hover:bg-red-900/10 transition-colors group bg-red-50/10 dark:bg-red-900/5">
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden flex-shrink-0 border border-slate-200 dark:border-slate-700">
+<img alt="قرص صلب خارجي" class="h-full w-full object-cover" data-alt="External hard drive" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCe9i4i3VLyL67Csfaz6Mpht0slHRl8mql3Vp19FkxbFBh_NKjFhJ13HLMhHSVcN0vQJiWN3LtqQ_jtiDclF-XGtpwj20wbBvE2o8YFUxHeDx_OKKPfkzJdYYRNHXrUjDQ5KJU8QuwmgBoOR3aVzvPTVgQowXMpHg4mW0Kdh5PjYUfEraFNFiTX8o_EJDXVZ2GMGyK3Vo7WIeuKMTdVK0GhjUw6EAvgWnfGKv5PelnRUIZQ7GKC3gw0f4cGdHLrcdyPRTEwrzybLXM"/>
+</div>
+<div>
+<div class="text-sm font-medium text-slate-900 dark:text-white">Samsung T7 SSD</div>
+<div class="text-xs text-slate-500 dark:text-slate-400">1TB, USB 3.2, Red</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400 font-num">SM-SSD-T7</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="px-2.5 py-1 text-xs font-medium rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">تخزين</span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-white font-num">SAR 420.00</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm text-red-600 dark:text-red-400 font-num font-bold">1</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="px-2.5 py-1 text-xs font-medium rounded-full bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/30 flex items-center gap-1 w-fit">
+<span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                                    منخفض جداً
+                                </span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm">
+<div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-500 hover:text-primary transition-colors">
+<span class="material-icons-outlined text-[18px]">edit</span>
+</button>
+<button class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-500 hover:text-red-500 transition-colors">
+<span class="material-icons-outlined text-[18px]">delete</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination -->
+<div class="px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+<span class="text-sm text-slate-500 dark:text-slate-400">
+                    عرض <span class="font-bold text-slate-800 dark:text-white font-num">1</span> إلى <span class="font-bold text-slate-800 dark:text-white font-num">5</span> من <span class="font-bold text-slate-800 dark:text-white font-num">1248</span> نتيجة
+                </span>
+<div class="flex gap-2">
+<button class="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed">السابق</button>
+<button class="px-3 py-1.5 bg-primary text-white rounded-lg text-sm hover:bg-blue-600 font-num">1</button>
+<button class="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 font-num">2</button>
+<button class="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 font-num">3</button>
+<span class="px-1 text-slate-400 flex items-end">...</span>
+<button class="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800">التالي</button>
+</div>
+</div>
+</div>
+</main>
+</body></html>

@@ -1,0 +1,25 @@
+# Python / SQLite
+__pycache__/
+*.pyc
+*.pyo
+
+# SHOP_DB المؤقتة (القاعدة الحقيقية في %LOCALAPPDATA%\TechZone خارج المستودع)
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+
+# node
+node_modules/
+
+# خطوط web/fonts الكبيرة (23 ملف woff2 ~1MB) — مستثناة حجماً، تُجلب محلياً (انظر README)
+web/fonts/
+
+# سجل البرنامج إن وجد
+tz-debug.log
+
+# المحررات
+.vscode/
+.idea/
+
+# ملاحظة: web/app.css المُجمَّع (~47KB) يُحفظ عمداً في git (البرنامج يعمل به دون بناء)

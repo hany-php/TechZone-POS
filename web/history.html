@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>سجل المبيعات - تك زون للإلكترونيات</title>
+<link href="app.css" rel="stylesheet"/>
+<script>if(localStorage.getItem('tz-theme')==='dark')document.documentElement.classList.add('dark');</script>
+</head>
+<body id="shell" class="bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-200 min-h-screen flex flex-col md:flex-row font-sans overflow-x-hidden">
+<main class="flex-1 p-4 md:p-8 overflow-y-auto">
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+<div>
+<h2 class="text-2xl font-bold text-slate-900 dark:text-white">سجل المبيعات</h2>
+<p class="text-slate-500 text-sm mt-1">تتبع الطلبات اليومية وعمليات الصيانة</p>
+</div>
+<div class="flex flex-wrap items-center gap-3">
+<div class="relative">
+<span class="material-icons-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">calendar_today</span>
+<input id="date" type="date" class="pr-10 pl-4 py-2 bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary w-44 cursor-pointer font-num text-slate-700 dark:text-slate-300"/>
+</div>
+<a href="pos.html" class="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-medium transition-colors shadow-sm shadow-primary/30">
+<span class="material-icons-outlined text-lg">add</span>
+<span>طلب جديد</span>
+</a>
+</div>
+</div>
+<!-- Stats Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8" id="stats"></div>
+<!-- Main Data Section -->
+<div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+<!-- Filters & Search Toolbar -->
+<div class="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4">
+<!-- Tab Filters -->
+<div class="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-lg w-full md:w-auto" id="tabs">
+<button data-k="" class="flex-1 md:flex-none px-6 py-1.5 rounded-md text-sm font-medium bg-white dark:bg-slate-700 shadow-sm text-primary transition-all">الكل</button>
+<button data-k="sale" class="flex-1 md:flex-none px-6 py-1.5 rounded-md text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-all">مبيعات</button>
+<button data-k="repair" class="flex-1 md:flex-none px-6 py-1.5 rounded-md text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-all">صيانة</button>
+</div>
+<!-- Search -->
+<div class="relative w-full md:w-80">
+<span class="material-icons-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
+<input id="q" class="w-full pr-10 pl-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-slate-700 dark:text-slate-300" placeholder="بحث برقم الطلب أو اسم العميل..." type="text"/>
+</div>
+</div>
+<!-- Table -->
+<div class="overflow-x-auto">
+<table class="w-full text-right">
+<thead class="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 text-xs uppercase font-medium">
+<tr>
+<th class="px-6 py-4 rounded-tr-lg">رقم الطلب</th>
+<th class="px-6 py-4">النوع</th>
+<th class="px-6 py-4">الوقت</th>
+<th class="px-6 py-4">الموظف</th>
+<th class="px-6 py-4">الحالة</th>
+<th class="px-6 py-4">الإجمالي</th>
+<th class="px-6 py-4 rounded-tl-lg text-left pl-8">إجراءات</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100 dark:divide-slate-800" id="rows"></tbody>
+</table>
+</div>
+<!-- Pagination -->
+<div class="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+<span class="text-sm text-slate-500" id="count"></span>
+<div class="flex gap-1">
+<button id="prev" class="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400">
+<span class="material-icons-outlined">chevron_right</span>
+</button>
+<button id="next" class="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400">
+<span class="material-icons-outlined">chevron_left</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+<script src="app.js"></script>
+<script>
+let user, KIND = '', PAGE = 0; const PER = 15;
+
+const REPAIR_AR = { received: ['استلام', 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 border-blue-200'],
+  in_review: ['قيد الفحص', 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400 border-yellow-200'],
+  pending_approval: ['بانتظار الموافقة', 'bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 border-amber-200'],
+  repaired: ['تم الإصلاح', 'bg-teal-100 text-teal-700 dark:bg-teal-900/20 dark:text-teal-400 border-teal-200'],
+  rejected: ['مرفوض', 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400 border-red-200'],
+  delivered: ['تم التسليم', 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400 border-green-200'] };
+const SALE_AR = { completed: ['مكتمل', 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400 border-green-200'],
+  partial_return: ['إرجاع جزئي', 'bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400 border-orange-200'],
+  returned: ['مرتجع', 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400 border-red-200'] };
+
+function badge(map, k) {
+  const [t, c] = map[k] || [k, 'bg-slate-100 text-slate-600'];
+  return `<span class="px-2.5 py-1 rounded-full text-xs font-medium border ${c}">${t}</span>`;
+}
+
+async function stats() {
+  const s = (await guard(() => api('sales_stats', { date: document.getElementById('date').value || null }))) || { sales: {}, returns: {}, repairs: {} };
+  document.getElementById('stats').innerHTML = `
+  <div class="bg-white dark:bg-surface-dark p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-start justify-between">
+    <div><p class="text-slate-500 text-xs font-medium mb-1">إجمالي المبيعات (اليوم)</p>
+      <h3 class="text-2xl font-bold font-num text-slate-900 dark:text-white">${fmt(s.sales.total)} <span class="text-sm font-sans font-normal text-slate-500">${CURRENCY}</span></h3>
+      <p class="text-slate-400 text-xs mt-2">${n(s.sales.count)} فاتورة</p></div>
+    <div class="p-2 bg-primary/10 rounded-lg text-primary"><span class="material-icons-outlined">payments</span></div>
+  </div>
+  <div class="bg-white dark:bg-surface-dark p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-start justify-between">
+    <div><p class="text-slate-500 text-xs font-medium mb-1">طلبات الصيانة</p>
+      <h3 class="text-2xl font-bold font-num text-slate-900 dark:text-white">${n(s.repairs.count)} <span class="text-sm font-sans font-normal text-slate-500">طلبات</span></h3>
+      <p class="text-slate-400 text-xs mt-2"><span class="font-num text-primary font-bold">${n(s.repairs.active)}</span> قيد العمل</p></div>
+    <div class="p-2 bg-purple-500/10 rounded-lg text-purple-500"><span class="material-icons-outlined">build</span></div>
+  </div>
+  <div class="bg-white dark:bg-surface-dark p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-start justify-between">
+    <div><p class="text-slate-500 text-xs font-medium mb-1">المرتجعات</p>
+      <h3 class="text-2xl font-bold font-num text-slate-900 dark:text-white">${n(s.returns.count)}</h3>
+      <p class="text-red-500 text-xs mt-2 font-num">-${fmt(s.returns.total)} ${CURRENCY}</p></div>
+    <div class="p-2 bg-orange-500/10 rounded-lg text-orange-500"><span class="material-icons-outlined">assignment_return</span></div>
+  </div>`;
+}
+
+async function load() {
+  const r = (await guard(() => api('sales', {
+    date: document.getElementById('date').value || null, kind: KIND || null,
+    q: document.getElementById('q').value || null, limit: PER, offset: PAGE * PER,
+  }))) || { rows: [], total: 0 };
+  document.getElementById('count').textContent = `عرض ${r.rows.length} من أصل ${n(r.total)} نتيجة`;
+  const isAdmin = user.role === 'admin';
+  document.getElementById('rows').innerHTML = r.rows.length ? r.rows.map((x) => {
+    const isSale = x.kind === 'sale';
+    const no = isSale ? x.invoice_no : x.ref;
+    return `
+    <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors group">
+      <td class="px-6 py-4"><a class="font-num font-medium text-primary hover:underline" href="${isSale ? 'receipt.html?id=' + x.id : 'repair.html'}">${esc(no)}</a></td>
+      <td class="px-6 py-4"><span class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300">
+        <span class="w-1.5 h-1.5 rounded-full ${isSale ? 'bg-blue-500' : 'bg-purple-500'}"></span>${isSale ? 'مبيعات' : 'صيانة'}</span></td>
+      <td class="px-6 py-4 text-sm font-num text-slate-500">${fmtDT(x.created_at)}</td>
+      <td class="px-6 py-4 text-sm"><div class="flex items-center gap-2">
+        <div class="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-[10px] text-blue-600 dark:text-blue-400 font-bold">${esc((x.user_name || '؟').slice(0, 1))}</div>
+        <span class="text-slate-700 dark:text-slate-300">${esc(x.user_name)}</span></div></td>
+      <td class="px-6 py-4">${isSale ? badge(SALE_AR, x.status) : badge(REPAIR_AR, x.status)}</td>
+      <td class="px-6 py-4 font-num font-bold text-slate-900 dark:text-white">${fmt(isSale ? x.total : x.cost)} ${CURRENCY}</td>
+      <td class="px-6 py-4"><div class="flex items-center justify-end gap-2 transition-opacity">
+        ${isSale ? `<a class="p-1.5 rounded text-slate-400 hover:text-primary hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors" title="طباعة" href="receipt.html?id=${x.id}"><span class="material-icons-outlined text-lg">print</span></a>` : ''}
+        ${(isSale && isAdmin) ? `<button data-ret="${x.id}" class="p-1.5 rounded text-slate-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors" title="استرجاع"><span class="material-icons-outlined text-lg">replay</span></button>` : ''}
+      </div></td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="7" class="px-6 py-12 text-center text-slate-400">لا توجد نتائج</td></tr>';
+  document.querySelectorAll('[data-ret]').forEach((b) => b.addEventListener('click', () => returnSale(+b.dataset.ret)));
+}
+
+async function returnSale(id) {
+  const s = await guard(() => api('sale', { id }));
+  if (!s) return;
+  if (s.status === 'returned') { toast('مرتجعة بالفعل', 'warn'); return; }
+  const items = s.items.map((it) => `<label class="flex items-center gap-2 text-sm py-1"><input type="checkbox" data-q="${it.id}" class="w-4 h-4 accent-blue-600"/> ${esc(it.name)} × ${it.qty}</label>`).join('');
+  const ok = confirm('إرجاع الأصناف المحددة؟ (اختر من السجل أدناه)\n\n' + s.items.map((it) => `${it.id}: ${it.name} × ${it.qty}`).join('\n'));
+  if (!ok) return;
+  const sel = [...document.querySelectorAll('[data-q]')].filter((x) => x.checked).map((x) => ({ sale_item_id: +x.dataset.q, qty: 1 }));
+  const payload = sel.length ? sel : s.items.map((it) => ({ sale_item_id: it.id, qty: 1 }));
+  const r = await guard(() => api('sale_return', { sale_id: id, items: payload, reason: 'مرتجع من السجل' }));
+  if (r) { toast('تم تسجيل المرتجع: ' + fmt(r.total) + ' ' + CURRENCY); stats(); load(); }
+}
+
+document.querySelectorAll('#tabs button').forEach((b) => b.addEventListener('click', () => {
+  KIND = b.dataset.k; PAGE = 0;
+  document.querySelectorAll('#tabs button').forEach((x) => x.className = 'flex-1 md:flex-none px-6 py-1.5 rounded-md text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-all');
+  b.className = 'flex-1 md:flex-none px-6 py-1.5 rounded-md text-sm font-medium bg-white dark:bg-slate-700 shadow-sm text-primary transition-all';
+  load();
+}));
+document.getElementById('date').addEventListener('change', () => { PAGE = 0; stats(); load(); });
+document.getElementById('q').addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(() => { PAGE = 0; load(); }, 300); });
+document.getElementById('prev').addEventListener('click', () => { if (PAGE > 0) { PAGE--; load(); } });
+document.getElementById('next').addEventListener('click', () => { PAGE++; load(); });
+
+(async () => {
+  user = await pageInit('history');
+  if (!user) return;
+  document.getElementById('date').value = todayISO();
+  await stats(); await load();
+})();
+</script>
+</body></html>

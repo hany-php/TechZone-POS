@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sales History - Arabic POS</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+            extend: {
+                colors: {
+                "primary": "#137fec",
+                "background-light": "#f6f7f8",
+                "background-dark": "#101922",
+                },
+                fontFamily: {
+                "display": ["Space Grotesk", "IBM Plex Sans Arabic", "sans-serif"],
+                "sans": ["IBM Plex Sans Arabic", "sans-serif"]
+                },
+                borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+            },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'IBM Plex Sans Arabic', sans-serif;
+        }
+        .font-num {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-200 min-h-screen flex flex-col md:flex-row font-sans overflow-x-hidden">
+<!-- Sidebar Navigation (RTL: Right side) -->
+<aside class="w-full md:w-64 bg-white dark:bg-[#15202b] border-l border-slate-200 dark:border-slate-800 flex-shrink-0 z-20 hidden md:flex flex-col h-screen sticky top-0">
+<div class="p-6 flex items-center gap-3 border-b border-slate-100 dark:border-slate-800">
+<div class="w-8 h-8 rounded bg-primary flex items-center justify-center text-white">
+<span class="material-icons-outlined text-xl">computer</span>
+</div>
+<h1 class="font-bold text-lg tracking-tight">تيك ستور <span class="text-primary text-sm font-normal">POS</span></h1>
+</div>
+<nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors group" href="#">
+<span class="material-icons-outlined group-hover:text-primary transition-colors">dashboard</span>
+<span class="font-medium">لوحة التحكم</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors group" href="#">
+<span class="material-icons-outlined group-hover:text-primary transition-colors">point_of_sale</span>
+<span class="font-medium">الكاشير</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary/10 text-primary transition-colors group" href="#">
+<span class="material-icons-outlined text-primary transition-colors">receipt_long</span>
+<span class="font-medium">سجل المبيعات</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors group" href="#">
+<span class="material-icons-outlined group-hover:text-primary transition-colors">inventory_2</span>
+<span class="font-medium">المخزون</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors group" href="#">
+<span class="material-icons-outlined group-hover:text-primary transition-colors">build</span>
+<span class="font-medium">الصيانة</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors group" href="#">
+<span class="material-icons-outlined group-hover:text-primary transition-colors">people</span>
+<span class="font-medium">العملاء</span>
+</a>
+</nav>
+<div class="p-4 border-t border-slate-100 dark:border-slate-800">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors" href="#">
+<span class="material-icons-outlined">logout</span>
+<span class="font-medium">تسجيل الخروج</span>
+</a>
+</div>
+</aside>
+<!-- Mobile Header -->
+<header class="md:hidden bg-white dark:bg-[#15202b] border-b border-slate-200 dark:border-slate-800 p-4 flex justify-between items-center sticky top-0 z-30">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded bg-primary flex items-center justify-center text-white">
+<span class="material-icons-outlined text-xl">computer</span>
+</div>
+<span class="font-bold">تيك ستور</span>
+</div>
+<button class="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800">
+<span class="material-icons-outlined">menu</span>
+</button>
+</header>
+<!-- Main Content -->
+<main class="flex-1 p-4 md:p-8 overflow-y-auto">
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+<div>
+<h2 class="text-2xl font-bold text-slate-900 dark:text-white">سجل المبيعات</h2>
+<p class="text-slate-500 text-sm mt-1">تتبع الطلبات اليومية وعمليات الصيانة</p>
+</div>
+<div class="flex flex-wrap items-center gap-3">
+<div class="relative">
+<span class="material-icons-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">calendar_today</span>
+<input class="pr-10 pl-4 py-2 bg-white dark:bg-[#15202b] border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary w-40 cursor-pointer font-num text-slate-700 dark:text-slate-300" type="text" value="24 أكتوبر 2023"/>
+</div>
+<button class="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-medium transition-colors shadow-sm shadow-primary/30">
+<span class="material-icons-outlined text-lg">add</span>
+<span>طلب جديد</span>
+</button>
+</div>
+</div>
+<!-- Stats Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+<!-- Total Sales -->
+<div class="bg-white dark:bg-[#15202b] p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-start justify-between">
+<div>
+<p class="text-slate-500 text-xs font-medium mb-1">إجمالي المبيعات (اليوم)</p>
+<h3 class="text-2xl font-bold font-num text-slate-900 dark:text-white">12,450.00 <span class="text-sm font-sans font-normal text-slate-500">ر.س</span></h3>
+<p class="text-green-500 text-xs mt-2 flex items-center gap-1">
+<span class="material-icons-outlined text-sm">trending_up</span>
+<span class="font-num">+15%</span> عن الأمس
+                    </p>
+</div>
+<div class="p-2 bg-primary/10 rounded-lg text-primary">
+<span class="material-icons-outlined">payments</span>
+</div>
+</div>
+<!-- Maintenance Orders -->
+<div class="bg-white dark:bg-[#15202b] p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-start justify-between">
+<div>
+<p class="text-slate-500 text-xs font-medium mb-1">طلبات الصيانة</p>
+<h3 class="text-2xl font-bold font-num text-slate-900 dark:text-white">8 <span class="text-sm font-sans font-normal text-slate-500">طلبات</span></h3>
+<p class="text-slate-400 text-xs mt-2">
+<span class="font-num text-primary font-bold">3</span> قيد العمل
+                    </p>
+</div>
+<div class="p-2 bg-purple-500/10 rounded-lg text-purple-500">
+<span class="material-icons-outlined">build</span>
+</div>
+</div>
+<!-- Returns -->
+<div class="bg-white dark:bg-[#15202b] p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-start justify-between">
+<div>
+<p class="text-slate-500 text-xs font-medium mb-1">المرتجعات</p>
+<h3 class="text-2xl font-bold font-num text-slate-900 dark:text-white">2</h3>
+<p class="text-red-500 text-xs mt-2 flex items-center gap-1 font-num">
+                        -450.00 ر.س
+                    </p>
+</div>
+<div class="p-2 bg-orange-500/10 rounded-lg text-orange-500">
+<span class="material-icons-outlined">assignment_return</span>
+</div>
+</div>
+</div>
+<!-- Main Data Section -->
+<div class="bg-white dark:bg-[#15202b] rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+<!-- Filters & Search Toolbar -->
+<div class="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4">
+<!-- Tab Filters -->
+<div class="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-lg w-full md:w-auto">
+<button class="flex-1 md:flex-none px-6 py-1.5 rounded-md text-sm font-medium bg-white dark:bg-slate-700 shadow-sm text-primary transition-all">الكل</button>
+<button class="flex-1 md:flex-none px-6 py-1.5 rounded-md text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-all">مبيعات</button>
+<button class="flex-1 md:flex-none px-6 py-1.5 rounded-md text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-all">صيانة</button>
+</div>
+<!-- Search -->
+<div class="relative w-full md:w-80">
+<span class="material-icons-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
+<input class="w-full pr-10 pl-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-slate-700 dark:text-slate-300" placeholder="بحث برقم الطلب أو اسم العميل..." type="text"/>
+</div>
+</div>
+<!-- Table -->
+<div class="overflow-x-auto">
+<table class="w-full text-right">
+<thead class="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 text-xs uppercase font-medium">
+<tr>
+<th class="px-6 py-4 rounded-tr-lg">رقم الطلب</th>
+<th class="px-6 py-4">النوع</th>
+<th class="px-6 py-4">الوقت</th>
+<th class="px-6 py-4">الموظف</th>
+<th class="px-6 py-4">الحالة</th>
+<th class="px-6 py-4">الإجمالي</th>
+<th class="px-6 py-4 rounded-tl-lg text-left pl-8">إجراءات</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+<!-- Row 1: Sale Completed -->
+<tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors group">
+<td class="px-6 py-4">
+<a class="font-num font-medium text-primary hover:underline" href="#">#ORD-2023-854</a>
+</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300">
+<span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                                    مبيعات
+                                </span>
+</td>
+<td class="px-6 py-4 text-sm font-num text-slate-500">10:42 AM</td>
+<td class="px-6 py-4 text-sm">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-[10px] text-blue-600 dark:text-blue-400 font-bold">أ</div>
+<span class="text-slate-700 dark:text-slate-300">أحمد محمد</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400 border border-green-200 dark:border-green-900/30">مكتمل</span>
+</td>
+<td class="px-6 py-4 font-num font-bold text-slate-900 dark:text-white">4,250.00 ر.س</td>
+<td class="px-6 py-4">
+<div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1.5 rounded text-slate-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors" title="استرجاع">
+<span class="material-icons-outlined text-lg">replay</span>
+</button>
+<button class="p-1.5 rounded text-slate-400 hover:text-primary hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors" title="طباعة">
+<span class="material-icons-outlined text-lg">print</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 2: Maintenance Pending -->
+<tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors group">
+<td class="px-6 py-4">
+<a class="font-num font-medium text-primary hover:underline" href="#">#MNT-2023-102</a>
+</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300">
+<span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                                    صيانة
+                                </span>
+</td>
+<td class="px-6 py-4 text-sm font-num text-slate-500">09:15 AM</td>
+<td class="px-6 py-4 text-sm">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-[10px] text-purple-600 dark:text-purple-400 font-bold">خ</div>
+<span class="text-slate-700 dark:text-slate-300">خالد عمر</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-900/30">قيد الانتظار</span>
+</td>
+<td class="px-6 py-4 font-num font-bold text-slate-900 dark:text-white">150.00 ر.س</td>
+<td class="px-6 py-4">
+<div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1.5 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="إلغاء">
+<span class="material-icons-outlined text-lg">close</span>
+</button>
+<button class="p-1.5 rounded text-slate-400 hover:text-primary hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors" title="تفاصيل">
+<span class="material-icons-outlined text-lg">visibility</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 3: Sale Cancelled -->
+<tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors group bg-slate-50/50 dark:bg-slate-800/20">
+<td class="px-6 py-4">
+<a class="font-num font-medium text-slate-500 hover:underline line-through" href="#">#ORD-2023-853</a>
+</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400">
+<span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                                    مبيعات
+                                </span>
+</td>
+<td class="px-6 py-4 text-sm font-num text-slate-400">08:55 AM</td>
+<td class="px-6 py-4 text-sm">
+<div class="flex items-center gap-2 grayscale opacity-60">
+<div class="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-[10px] text-blue-600 font-bold">أ</div>
+<span class="text-slate-500">أحمد محمد</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400 border border-red-200 dark:border-red-900/30">ملغي</span>
+</td>
+<td class="px-6 py-4 font-num font-bold text-slate-400 decoration-slice line-through">1,200.00 ر.س</td>
+<td class="px-6 py-4">
+<div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1.5 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors" title="إعادة الطلب">
+<span class="material-icons-outlined text-lg">restore</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 4: Sale Completed -->
+<tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors group">
+<td class="px-6 py-4">
+<a class="font-num font-medium text-primary hover:underline" href="#">#ORD-2023-852</a>
+</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300">
+<span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                                    مبيعات
+                                </span>
+</td>
+<td class="px-6 py-4 text-sm font-num text-slate-500">08:30 AM</td>
+<td class="px-6 py-4 text-sm">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center text-[10px] text-teal-600 dark:text-teal-400 font-bold">س</div>
+<span class="text-slate-700 dark:text-slate-300">سارة علي</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400 border border-green-200 dark:border-green-900/30">مكتمل</span>
+</td>
+<td class="px-6 py-4 font-num font-bold text-slate-900 dark:text-white">850.00 ر.س</td>
+<td class="px-6 py-4">
+<div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1.5 rounded text-slate-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors" title="استرجاع">
+<span class="material-icons-outlined text-lg">replay</span>
+</button>
+<button class="p-1.5 rounded text-slate-400 hover:text-primary hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors" title="طباعة">
+<span class="material-icons-outlined text-lg">print</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 5: Maintenance Completed -->
+<tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors group">
+<td class="px-6 py-4">
+<a class="font-num font-medium text-primary hover:underline" href="#">#MNT-2023-101</a>
+</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300">
+<span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                                    صيانة
+                                </span>
+</td>
+<td class="px-6 py-4 text-sm font-num text-slate-500">08:10 AM</td>
+<td class="px-6 py-4 text-sm">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-[10px] text-purple-600 dark:text-purple-400 font-bold">خ</div>
+<span class="text-slate-700 dark:text-slate-300">خالد عمر</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400 border border-green-200 dark:border-green-900/30">مكتمل</span>
+</td>
+<td class="px-6 py-4 font-num font-bold text-slate-900 dark:text-white">300.00 ر.س</td>
+<td class="px-6 py-4">
+<div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1.5 rounded text-slate-400 hover:text-primary hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors" title="طباعة">
+<span class="material-icons-outlined text-lg">print</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination -->
+<div class="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+<span class="text-sm text-slate-500">عرض 1 إلى 5 من أصل 45 نتيجة</span>
+<div class="flex gap-1">
+<button class="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 disabled:opacity-50">
+<span class="material-icons-outlined">chevron_right</span>
+</button>
+<button class="px-3 py-1 rounded bg-primary text-white font-num text-sm">1</button>
+<button class="px-3 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 font-num text-sm">2</button>
+<button class="px-3 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 font-num text-sm">3</button>
+<button class="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400">
+<span class="material-icons-outlined">chevron_left</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+</body></html>

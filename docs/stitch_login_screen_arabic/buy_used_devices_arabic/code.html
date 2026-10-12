@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Buy Used Devices - Arabic POS</title>
+<!-- Google Fonts: Space Grotesk for numbers/latin, Cairo for Arabic text -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&amp;family=Space+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "primary-dark": "#0e5fb0",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"],
+                        "arabic": ["Cairo", "sans-serif"],
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Cairo', 'Space Grotesk', sans-serif;
+        }
+        /* Custom scrollbar for modern feel */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-100 min-h-screen flex flex-col">
+<!-- Top Navigation / Header -->
+<header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-16 flex items-center px-6 shadow-sm z-10 sticky top-0">
+<div class="flex items-center gap-4 w-full">
+<div class="flex items-center gap-3">
+<div class="bg-primary/10 p-2 rounded-lg text-primary">
+<span class="material-icons">phonelink_setup</span>
+</div>
+<div>
+<h1 class="font-bold text-lg leading-tight">شراء أجهزة مستعملة</h1>
+<p class="text-xs text-slate-500 font-display">Used Devices Purchase</p>
+</div>
+</div>
+<div class="flex-grow"></div> <!-- Spacer -->
+<div class="flex items-center gap-3">
+<div class="hidden md:flex items-center bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+<span class="material-icons text-slate-400 text-sm ml-2">store</span>
+<span class="text-sm font-medium">الفرع الرئيسي - الرياض</span>
+</div>
+<button class="flex items-center gap-2 bg-white dark:bg-slate-800 hover:bg-slate-50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+<span class="material-icons text-base">receipt</span>
+<span>طباعة آخر إيصال</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex-grow p-4 md:p-6 lg:h-[calc(100vh-4rem)] overflow-hidden">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
+<!-- RIGHT COLUMN: Purchase Form (Intake) -->
+<div class="lg:col-span-4 xl:col-span-3 h-full flex flex-col gap-4 overflow-y-auto pr-1 pb-20 lg:pb-0">
+<!-- Section 1: Seller Info -->
+<div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-5">
+<h2 class="text-base font-bold mb-4 flex items-center gap-2 text-primary">
+<span class="material-icons text-sm">person</span>
+                        بيانات البائع
+                    </h2>
+<div class="space-y-4">
+<div>
+<label class="block text-xs font-medium text-slate-500 mb-1">الاسم الكامل</label>
+<input class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" placeholder="مثال: أحمد محمد" type="text"/>
+</div>
+<div class="grid grid-cols-2 gap-3">
+<div>
+<label class="block text-xs font-medium text-slate-500 mb-1">رقم الهوية / الإقامة</label>
+<input class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm font-display focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-left" dir="ltr" placeholder="10xxxxxxxx" type="text"/>
+</div>
+<div>
+<label class="block text-xs font-medium text-slate-500 mb-1">رقم الجوال</label>
+<input class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm font-display focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-left" dir="ltr" placeholder="05xxxxxxxx" type="tel"/>
+</div>
+</div>
+</div>
+</div>
+<!-- Section 2: Device Details -->
+<div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-5">
+<h2 class="text-base font-bold mb-4 flex items-center gap-2 text-primary">
+<span class="material-icons text-sm">smartphone</span>
+                        تفاصيل الجهاز
+                    </h2>
+<div class="space-y-4">
+<div class="grid grid-cols-2 gap-3">
+<div>
+<label class="block text-xs font-medium text-slate-500 mb-1">التصنيف</label>
+<select class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all appearance-none">
+<option>هاتف ذكي</option>
+<option>لابتوب</option>
+<option>جهاز لوحي</option>
+<option>اكسسوارات</option>
+</select>
+</div>
+<div>
+<label class="block text-xs font-medium text-slate-500 mb-1">الماركة</label>
+<select class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all appearance-none">
+<option>Apple</option>
+<option>Samsung</option>
+<option>Dell</option>
+<option>HP</option>
+</select>
+</div>
+</div>
+<div>
+<label class="block text-xs font-medium text-slate-500 mb-1">الموديل</label>
+<input class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" placeholder="مثال: iPhone 13 Pro Max" type="text"/>
+</div>
+<div>
+<label class="block text-xs font-medium text-slate-500 mb-1">الرقم التسلسلي (S/N)</label>
+<div class="relative">
+<input class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm font-display focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all pl-10 text-left" dir="ltr" placeholder="Scan or type serial..." type="text"/>
+<span class="material-icons absolute left-3 top-2 text-slate-400 text-lg cursor-pointer hover:text-primary">qr_code_scanner</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Section 3: Condition & Price -->
+<div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-5 flex-grow flex flex-col">
+<h2 class="text-base font-bold mb-4 flex items-center gap-2 text-primary">
+<span class="material-icons text-sm">verified</span>
+                        الحالة والسعر
+                    </h2>
+<div class="mb-4">
+<label class="block text-xs font-medium text-slate-500 mb-2">حالة الجهاز العامة</label>
+<div class="grid grid-cols-4 gap-2">
+<label class="cursor-pointer">
+<input class="peer sr-only" name="condition" type="radio"/>
+<div class="text-center py-2 border border-slate-200 dark:border-slate-700 rounded-lg peer-checked:bg-green-50 peer-checked:border-green-500 peer-checked:text-green-700 transition-all">
+<span class="text-xs font-bold">ممتاز</span>
+</div>
+</label>
+<label class="cursor-pointer">
+<input checked="" class="peer sr-only" name="condition" type="radio"/>
+<div class="text-center py-2 border border-slate-200 dark:border-slate-700 rounded-lg peer-checked:bg-primary/10 peer-checked:border-primary peer-checked:text-primary transition-all">
+<span class="text-xs font-bold">جيد جداً</span>
+</div>
+</label>
+<label class="cursor-pointer">
+<input class="peer sr-only" name="condition" type="radio"/>
+<div class="text-center py-2 border border-slate-200 dark:border-slate-700 rounded-lg peer-checked:bg-yellow-50 peer-checked:border-yellow-500 peer-checked:text-yellow-700 transition-all">
+<span class="text-xs font-bold">مقبول</span>
+</div>
+</label>
+<label class="cursor-pointer">
+<input class="peer sr-only" name="condition" type="radio"/>
+<div class="text-center py-2 border border-slate-200 dark:border-slate-700 rounded-lg peer-checked:bg-red-50 peer-checked:border-red-500 peer-checked:text-red-700 transition-all">
+<span class="text-xs font-bold">تالف</span>
+</div>
+</label>
+</div>
+</div>
+<div class="mb-4">
+<label class="block text-xs font-medium text-slate-500 mb-1">ملاحظات / عيوب</label>
+<textarea class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all resize-none" rows="2"></textarea>
+</div>
+<div class="mt-auto border-t border-dashed border-slate-200 dark:border-slate-700 pt-4">
+<label class="flex items-center justify-between mb-4 cursor-pointer group">
+<span class="text-sm font-medium text-slate-700 dark:text-slate-300">إضافة للمخزون تلقائياً</span>
+<div class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/30 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary" dir="ltr"></div>
+</div>
+</label>
+<div class="relative mb-4">
+<label class="block text-xs font-medium text-slate-500 mb-1">سعر الشراء النهائي</label>
+<div class="relative">
+<input class="w-full bg-white dark:bg-slate-800 border-2 border-primary/30 focus:border-primary rounded-lg px-4 py-3 text-2xl font-bold font-display text-primary focus:outline-none transition-all pl-16 text-left" dir="ltr" placeholder="0.00" type="text"/>
+<span class="absolute left-4 top-4 text-slate-400 font-bold font-display">SAR</span>
+</div>
+</div>
+<button class="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-primary/30 transition-all flex items-center justify-center gap-2 group">
+<span>إتمام الشراء</span>
+<span class="material-icons group-hover:-translate-x-1 transition-transform">arrow_back</span>
+</button>
+</div>
+</div>
+</div>
+<!-- LEFT COLUMN: Recent Transactions Table -->
+<div class="lg:col-span-8 xl:col-span-9 h-full flex flex-col gap-4">
+<!-- Filters / Search Row -->
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="relative w-full sm:max-w-md">
+<span class="material-icons absolute right-3 top-2.5 text-slate-400">search</span>
+<input class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pr-10 pl-4 py-2 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" placeholder="بحث برقم العملية، اسم البائع، أو السيريال..." type="text"/>
+</div>
+<div class="flex items-center gap-2 w-full sm:w-auto">
+<button class="flex-1 sm:flex-none flex items-center justify-center gap-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 px-3 py-2 rounded-lg text-sm hover:bg-slate-50 transition-colors">
+<span class="material-icons text-sm">filter_list</span>
+                            تصفية
+                        </button>
+<button class="flex-1 sm:flex-none flex items-center justify-center gap-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 px-3 py-2 rounded-lg text-sm hover:bg-slate-50 transition-colors">
+<span class="material-icons text-sm">file_download</span>
+                            تصدير
+                        </button>
+</div>
+</div>
+<!-- Table Container -->
+<div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex-grow overflow-hidden flex flex-col">
+<div class="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+<h3 class="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+<span class="w-2 h-6 bg-primary rounded-full"></span>
+                            العمليات الأخيرة
+                        </h3>
+<span class="bg-primary/10 text-primary text-xs font-display font-bold px-2 py-1 rounded-full">Today: 12</span>
+</div>
+<div class="overflow-auto flex-grow">
+<table class="w-full text-right">
+<thead class="bg-slate-50 dark:bg-slate-800/50 sticky top-0 z-10">
+<tr>
+<th class="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">رقم العملية</th>
+<th class="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">التاريخ والوقت</th>
+<th class="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">البائع</th>
+<th class="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">الجهاز</th>
+<th class="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">الرقم التسلسلي</th>
+<th class="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">الحالة</th>
+<th class="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">السعر</th>
+<th class="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap w-10">إجراءات</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+<!-- Row 1 -->
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
+<td class="p-4 font-display text-sm font-medium text-slate-900 dark:text-white">#TRX-8821</td>
+<td class="p-4 text-sm text-slate-500 font-display">
+<div class="flex flex-col">
+<span>2023-10-24</span>
+<span class="text-xs opacity-70">10:45 AM</span>
+</div>
+</td>
+<td class="p-4 text-sm text-slate-700 dark:text-slate-300">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-500">م</div>
+<div>
+<p class="font-medium">محمد علي</p>
+<p class="text-xs text-slate-500 font-display">055XXXXXXX</p>
+</div>
+</div>
+</td>
+<td class="p-4 text-sm text-slate-700 dark:text-slate-300">
+<div class="flex items-center gap-2">
+<span class="material-icons text-slate-400 text-sm">phone_iphone</span>
+<span>iPhone 14 Pro</span>
+</div>
+</td>
+<td class="p-4 text-sm text-slate-500 font-display">SN-394821002</td>
+<td class="p-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                                            ممتاز
+                                        </span>
+</td>
+<td class="p-4 font-display font-bold text-slate-900 dark:text-white">3,400 SAR</td>
+<td class="p-4">
+<button class="text-slate-400 hover:text-primary transition-colors">
+<span class="material-icons text-base">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
+<td class="p-4 font-display text-sm font-medium text-slate-900 dark:text-white">#TRX-8820</td>
+<td class="p-4 text-sm text-slate-500 font-display">
+<div class="flex flex-col">
+<span>2023-10-24</span>
+<span class="text-xs opacity-70">09:30 AM</span>
+</div>
+</td>
+<td class="p-4 text-sm text-slate-700 dark:text-slate-300">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-xs font-bold text-purple-600">س</div>
+<div>
+<p class="font-medium">سارة أحمد</p>
+<p class="text-xs text-slate-500 font-display">050XXXXXXX</p>
+</div>
+</div>
+</td>
+<td class="p-4 text-sm text-slate-700 dark:text-slate-300">
+<div class="flex items-center gap-2">
+<span class="material-icons text-slate-400 text-sm">laptop_mac</span>
+<span>MacBook Air M1</span>
+</div>
+</td>
+<td class="p-4 text-sm text-slate-500 font-display">FVFX20VJK</td>
+<td class="p-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
+                                            خدوش بسيطة
+                                        </span>
+</td>
+<td class="p-4 font-display font-bold text-slate-900 dark:text-white">2,850 SAR</td>
+<td class="p-4">
+<button class="text-slate-400 hover:text-primary transition-colors">
+<span class="material-icons text-base">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
+<td class="p-4 font-display text-sm font-medium text-slate-900 dark:text-white">#TRX-8819</td>
+<td class="p-4 text-sm text-slate-500 font-display">
+<div class="flex flex-col">
+<span>2023-10-23</span>
+<span class="text-xs opacity-70">08:15 PM</span>
+</div>
+</td>
+<td class="p-4 text-sm text-slate-700 dark:text-slate-300">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-xs font-bold text-blue-600">ع</div>
+<div>
+<p class="font-medium">عبدالله عمر</p>
+<p class="text-xs text-slate-500 font-display">056XXXXXXX</p>
+</div>
+</div>
+</td>
+<td class="p-4 text-sm text-slate-700 dark:text-slate-300">
+<div class="flex items-center gap-2">
+<span class="material-icons text-slate-400 text-sm">tablet_mac</span>
+<span>iPad Pro 11</span>
+</div>
+</td>
+<td class="p-4 text-sm text-slate-500 font-display">DMPZ582K</td>
+<td class="p-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                                            ممتاز
+                                        </span>
+</td>
+<td class="p-4 font-display font-bold text-slate-900 dark:text-white">2,100 SAR</td>
+<td class="p-4">
+<button class="text-slate-400 hover:text-primary transition-colors">
+<span class="material-icons text-base">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
+<td class="p-4 font-display text-sm font-medium text-slate-900 dark:text-white">#TRX-8818</td>
+<td class="p-4 text-sm text-slate-500 font-display">
+<div class="flex flex-col">
+<span>2023-10-23</span>
+<span class="text-xs opacity-70">04:20 PM</span>
+</div>
+</td>
+<td class="p-4 text-sm text-slate-700 dark:text-slate-300">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-500">خ</div>
+<div>
+<p class="font-medium">خالد الفهد</p>
+<p class="text-xs text-slate-500 font-display">059XXXXXXX</p>
+</div>
+</div>
+</td>
+<td class="p-4 text-sm text-slate-700 dark:text-slate-300">
+<div class="flex items-center gap-2">
+<span class="material-icons text-slate-400 text-sm">watch</span>
+<span>Apple Watch S7</span>
+</div>
+</td>
+<td class="p-4 text-sm text-slate-500 font-display">H9282KJ22</td>
+<td class="p-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+                                            شاشة مكسورة
+                                        </span>
+</td>
+<td class="p-4 font-display font-bold text-slate-900 dark:text-white">450 SAR</td>
+<td class="p-4">
+<button class="text-slate-400 hover:text-primary transition-colors">
+<span class="material-icons text-base">more_vert</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination -->
+<div class="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+<span class="text-xs text-slate-500">عرض 1-4 من أصل 124</span>
+<div class="flex items-center gap-2">
+<button class="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 disabled:opacity-50" disabled="">
+<span class="material-icons text-lg">chevron_right</span>
+</button>
+<span class="text-xs font-medium bg-primary/10 text-primary px-2 py-1 rounded">1</span>
+<span class="text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800 px-2 py-1 rounded cursor-pointer transition-colors">2</span>
+<span class="text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800 px-2 py-1 rounded cursor-pointer transition-colors">3</span>
+<span class="text-xs font-medium text-slate-400 px-1">...</span>
+<button class="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500">
+<span class="material-icons text-lg">chevron_left</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Stats Cards (Quick Overview) -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+<div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
+<div class="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-lg">
+<span class="material-icons">shopping_bag</span>
+</div>
+<div>
+<p class="text-xs text-slate-500 mb-0.5">مشتريات اليوم</p>
+<h4 class="text-xl font-bold font-display">12</h4>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
+<div class="p-3 bg-green-50 dark:bg-green-900/20 text-green-600 rounded-lg">
+<span class="material-icons">payments</span>
+</div>
+<div>
+<p class="text-xs text-slate-500 mb-0.5">إجمالي المدفوع</p>
+<h4 class="text-xl font-bold font-display">8,800 SAR</h4>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4 bg-gradient-to-l from-primary/5 to-transparent">
+<div class="p-3 bg-primary/20 text-primary rounded-lg">
+<span class="material-icons">inventory_2</span>
+</div>
+<div>
+<p class="text-xs text-slate-500 mb-0.5">في المخزون</p>
+<h4 class="text-xl font-bold font-display">482</h4>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

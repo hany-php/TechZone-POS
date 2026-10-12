@@ -1,0 +1,10 @@
+{
+  "name": "tech-zone-pos",
+  "private": true,
+  "devDependencies": {
+    "tailwindcss": "3.4.17"
+  },
+  "scripts": {
+    "css": "tailwindcss -i web/tailwind.css -o web/app.css --minify && node -e \"const fs=require('fs');fs.writeFileSync('web/app.css',fs.readFileSync('web/app.css','utf8').replace(/\\/\\*[\\s\\S]*?\\*\\//g,''))\""
+  }
+}

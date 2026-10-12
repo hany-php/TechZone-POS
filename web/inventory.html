@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>إدارة المخزون - تك زون للإلكترونيات</title>
+<link href="app.css" rel="stylesheet"/>
+<script>if(localStorage.getItem('tz-theme')==='dark')document.documentElement.classList.add('dark');</script>
+</head>
+<body id="shell" class="bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-100 min-h-screen flex flex-col md:flex-row overflow-x-hidden">
+<main class="flex-1 p-4 md:p-8 overflow-y-auto">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+<div>
+<h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-1">إدارة المخزون</h2>
+<p class="text-slate-500 dark:text-slate-400 text-sm">تتبع المنتجات، تحديث الكميات، وإدارة الأسعار.</p>
+</div>
+<div class="flex gap-3">
+<button id="btn-serials" class="bg-white dark:bg-surface-dark text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 px-4 py-2.5 rounded-lg flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm">
+<span class="material-icons-outlined text-[20px]">qr_code</span>
+<span class="text-sm font-medium">الأرقام التسلسلية</span>
+</button>
+<button id="btn-new" class="bg-primary hover:bg-blue-600 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-lg shadow-blue-500/20 transition-all">
+<span class="material-icons-outlined text-[20px]">add</span>
+<span class="text-sm font-bold">إضافة منتج جديد</span>
+</button>
+</div>
+</div>
+<!-- Stats Overview -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8" id="stats"></div>
+<!-- Categories management -->
+<div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm mb-6 p-4">
+<div class="flex flex-col md:flex-row gap-3 md:items-center justify-between mb-3">
+<h3 class="font-bold text-slate-800 dark:text-white flex items-center gap-2"><span class="material-icons-outlined text-primary">category</span>الفئات</h3>
+<div class="flex gap-2">
+<input id="nc-name" class="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm" placeholder="اسم فئة جديدة"/>
+<button id="nc-add" class="px-4 py-2 rounded-lg bg-primary text-white text-sm font-bold">+ إضافة</button>
+</div>
+</div>
+<div class="flex flex-wrap gap-2" id="cat-list"></div>
+</div>
+<!-- Filters & Search -->
+<div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm mb-6">
+<div class="p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
+<div class="relative w-full md:w-96">
+<span class="absolute inset-y-0 right-3 flex items-center text-slate-400 pointer-events-none">
+<span class="material-icons-outlined text-[20px]">search</span>
+</span>
+<input id="q" class="w-full pr-10 pl-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-700 dark:text-slate-200" placeholder="بحث باسم المنتج، الباركود..." type="text"/>
+</div>
+<div class="flex gap-3 w-full md:w-auto">
+<select id="cat" class="px-4 py-2.5 bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary cursor-pointer">
+<option value="">كل الفئات</option>
+</select>
+<select id="stock" class="px-4 py-2.5 bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary cursor-pointer">
+<option value="">حالة المخزون</option>
+<option value="low">منخفض</option>
+<option value="out">نفذت الكمية</option>
+<option value="in">متوفر</option>
+</select>
+</div>
+</div>
+<!-- Table -->
+<div class="overflow-x-auto">
+<table class="w-full text-right">
+<thead class="bg-slate-50 dark:bg-slate-800/50 border-y border-slate-200 dark:border-slate-700">
+<tr>
+<th class="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">اسم المنتج</th>
+<th class="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">SKU</th>
+<th class="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">الفئة</th>
+<th class="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">السعر</th>
+<th class="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">الكمية</th>
+<th class="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">الحالة</th>
+<th class="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">إجراءات</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100 dark:divide-slate-800" id="rows"></tbody>
+</table>
+</div>
+<!-- Pagination -->
+<div class="px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+<span class="text-sm text-slate-500 dark:text-slate-400" id="count"></span>
+<div class="flex gap-2">
+<button id="prev" class="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800">السابق</button>
+<button id="next" class="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800">التالي</button>
+</div>
+</div>
+</div>
+</main>
+<!-- Product Modal -->
+<div id="modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+<div class="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+<h3 class="text-lg font-bold mb-4" id="m-title">منتج جديد</h3>
+<div class="grid grid-cols-2 gap-3">
+<input id="f-name" class="col-span-2 rounded-lg border px-3 py-2 text-sm" placeholder="اسم المنتج *"/>
+<input id="f-sku" class="rounded-lg border px-3 py-2 text-sm font-num" placeholder="SKU/باركود *"/>
+<select id="f-cat" class="rounded-lg border px-3 py-2 text-sm"></select>
+<input id="f-price" type="number" min="0" step="0.01" class="rounded-lg border px-3 py-2 text-sm font-num" placeholder="سعر البيع"/>
+<input id="f-cost" type="number" min="0" step="0.01" class="rounded-lg border px-3 py-2 text-sm font-num" placeholder="سعر الشراء (التكلفة)"/>
+<input id="f-min" type="number" min="0" class="rounded-lg border px-3 py-2 text-sm font-num" placeholder="حد التنبيه"/>
+<label class="flex items-center gap-2 text-sm"><input id="f-tracked" type="checkbox" class="w-4 h-4 accent-blue-600"/> متتبّع بالسيريال</label>
+<input id="f-serials" class="col-span-2 rounded-lg border px-3 py-2 text-sm font-num" placeholder="سيريالات (افصل بفاصلة) — للجديد فقط"/>
+<textarea id="f-notes" class="col-span-2 rounded-lg border px-3 py-2 text-sm" rows="2" placeholder="ملاحظات"></textarea>
+<div class="col-span-2 flex gap-2 mt-2">
+<button id="m-save" class="flex-1 py-2.5 rounded-xl bg-primary text-white font-bold">حفظ</button>
+<button id="m-x" class="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700">إلغاء</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Adjust / Serials Modal -->
+<div id="modal2" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+<div class="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+<h3 class="text-lg font-bold mb-4" id="m2-title"></h3>
+<div id="m2-body"></div>
+<div class="flex gap-2 mt-4">
+<button id="m2-ok" class="flex-1 py-2.5 rounded-xl bg-primary text-white font-bold">تأكيد</button>
+<button id="m2-x" class="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700">إلغاء</button>
+</div>
+</div>
+</div>
+<script src="app.js"></script>
+<script>
+let PAGE = 0; const PER = 12; let EDIT = null; let M2_MODE = null, M2_ID = null;
+
+async function loadCats() {
+  const cats = (await guard(() => api('categories'))) || [];
+  const c = document.getElementById('cat');
+  c.innerHTML = '<option value="">كل الفئات</option>' + cats.map((x) => `<option value="${x.id}">${esc(x.name)} (${x.n})</option>`).join('');
+  document.getElementById('f-cat').innerHTML = '<option value="">بدون فئة</option>' + cats.map((x) => `<option value="${x.id}">${esc(x.name)}</option>`).join('');
+  document.getElementById('cat-list').innerHTML = cats.length ? cats.map((x) => `
+    <span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm">
+      <span class="font-medium">${esc(x.name)}</span><span class="text-xs text-slate-400 font-num">(${x.n})</span>
+      <button data-cedit="${x.id}" data-cname="${esc(x.name)}" class="text-slate-400 hover:text-primary" title="تعديل"><span class="material-icons-outlined text-[16px]">edit</span></button>
+      <button data-cdel="${x.id}" class="text-slate-400 hover:text-red-500" title="حذف"><span class="material-icons-outlined text-[16px]">delete</span></button>
+    </span>`).join('') : '<span class="text-sm text-slate-400">لا فئات بعد</span>';
+  document.querySelectorAll('[data-cedit]').forEach((b) => b.addEventListener('click', async () => {
+    const nn = prompt('اسم الفئة الجديد:', b.dataset.cname);
+    if (!nn) return;
+    if (await guard(() => api('categories_update', { id: +b.dataset.cedit, name: nn }))) { toast('تم تعديل الفئة'); loadCats(); load(); }
+  }));
+  document.querySelectorAll('[data-cdel]').forEach((b) => b.addEventListener('click', async () => {
+    if (!confirm('حذف هذه الفئة؟')) return;
+    if (await guard(() => api('categories_delete', { id: +b.dataset.cdel }))) { toast('تم حذف الفئة'); loadCats(); load(); }
+  }));
+}
+
+document.getElementById('nc-add').addEventListener('click', async () => {
+  const v = document.getElementById('nc-name').value.trim();
+  if (!v) { toast('اكتب اسم الفئة أولاً', 'warn'); return; }
+  if (await guard(() => api('categories_save', { name: v }))) { toast('تمت إضافة الفئة'); document.getElementById('nc-name').value = ''; loadCats(); load(); }
+});
+
+async function stats() {
+  const s = (await guard(() => api('stock_stats'))) || {};
+  document.getElementById('stats').innerHTML = `
+  <div class="bg-white dark:bg-surface-dark p-5 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-start justify-between">
+    <div><p class="text-slate-500 dark:text-slate-400 text-xs font-medium mb-1">إجمالي المنتجات</p><h3 class="text-2xl font-bold text-slate-900 dark:text-white font-num">${n(s.count)}</h3></div>
+    <div class="p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-lg"><span class="material-icons-outlined text-xl">dns</span></div>
+  </div>
+  <div class="bg-white dark:bg-surface-dark p-5 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-start justify-between">
+    <div><p class="text-slate-500 dark:text-slate-400 text-xs font-medium mb-1">القيمة الإجمالية</p><h3 class="text-2xl font-bold text-slate-900 dark:text-white font-num">${fmt(s.value)} ${CURRENCY}</h3></div>
+    <div class="p-2 bg-green-50 dark:bg-green-900/20 text-green-600 rounded-lg"><span class="material-icons-outlined text-xl">payments</span></div>
+  </div>
+  <div class="bg-white dark:bg-surface-dark p-5 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm ring-1 ring-red-100 dark:ring-red-900/30 flex items-start justify-between">
+    <div><p class="text-red-500 dark:text-red-400 text-xs font-medium mb-1">مخزون منخفض</p><h3 class="text-2xl font-bold text-red-600 dark:text-red-400 font-num">${n(s.low)}</h3></div>
+    <div class="p-2 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-lg"><span class="material-icons-outlined text-xl">warning</span></div>
+  </div>
+  <div class="bg-white dark:bg-surface-dark p-5 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-start justify-between">
+    <div><p class="text-slate-500 dark:text-slate-400 text-xs font-medium mb-1">نفذت الكمية</p><h3 class="text-2xl font-bold text-slate-900 dark:text-white font-num">${n(s.out)}</h3></div>
+    <div class="p-2 bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 rounded-lg"><span class="material-icons-outlined text-xl">remove_shopping_cart</span></div>
+  </div>`;
+}
+
+function stockBadge(p) {
+  if (p.stock_state === 'out') return '<span class="px-2.5 py-1 text-xs font-medium rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">نفذت الكمية</span>';
+  if (p.stock_state === 'low') return `<span class="px-2.5 py-1 text-xs font-medium rounded-full bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/30 inline-flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>منخفض</span>`;
+  return '<span class="px-2.5 py-1 text-xs font-medium rounded-full bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border border-green-100 dark:border-green-900/30">متوفر</span>';
+}
+
+async function load() {
+  const r = (await guard(() => api('products', {
+    q: document.getElementById('q').value || null,
+    category_id: document.getElementById('cat').value || null,
+    stock: document.getElementById('stock').value || null,
+    limit: PER, offset: PAGE * PER,
+  }))) || { rows: [], total: 0 };
+  document.getElementById('count').textContent = `عرض ${r.total ? PAGE * PER + 1 : 0} إلى ${Math.min(r.total, (PAGE + 1) * PER)} من ${n(r.total)} نتيجة`;
+  document.getElementById('rows').innerHTML = r.rows.map((p) => `
+    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group ${p.stock_state === 'low' || p.stock_state === 'out' ? 'bg-red-50/10 dark:bg-red-900/5' : ''}">
+      <td class="px-6 py-4 whitespace-nowrap"><div class="flex items-center gap-3">
+        <div class="h-10 w-10 rounded-lg bg-slate-100 dark:bg-slate-800 text-primary flex items-center justify-center flex-shrink-0 border border-slate-200 dark:border-slate-700"><span class="material-icons-outlined">devices</span></div>
+        <div><div class="text-sm font-medium text-slate-900 dark:text-white">${esc(p.name)}</div><div class="text-xs text-slate-500 dark:text-slate-400">${esc(p.notes || (p.tracked ? 'متتبّع بالسيريال' : ''))}</div></div>
+      </div></td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400 font-num">${esc(p.sku)}</td>
+      <td class="px-6 py-4 whitespace-nowrap"><span class="px-2.5 py-1 text-xs font-medium rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">${esc(p.category || '—')}</span></td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-white font-num">${fmt(p.price)} ${CURRENCY}</td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm font-num font-bold ${p.stock_state !== 'in' ? 'text-red-600 dark:text-red-400' : 'text-slate-600 dark:text-slate-300'}">${n(p.qty)}</td>
+      <td class="px-6 py-4 whitespace-nowrap">${stockBadge(p)}</td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm"><div class="flex gap-2">
+        <button data-edit="${p.id}" class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-500 hover:text-primary transition-colors" title="تعديل"><span class="material-icons-outlined text-[18px]">edit</span></button>
+        <button data-adj="${p.id}" class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-500 hover:text-primary transition-colors" title="تعديل يدوي للكمية"><span class="material-icons-outlined text-[18px]">inventory</span></button>
+        <button data-del="${p.id}" class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-500 hover:text-red-500 transition-colors" title="حذف"><span class="material-icons-outlined text-[18px]">delete</span></button>
+      </div></td>
+    </tr>`).join('');
+  document.querySelectorAll('[data-edit]').forEach((b) => b.addEventListener('click', () => openEdit(+b.dataset.edit)));
+  document.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', async () => {
+    if (!confirm('حذف هذا المنتج؟')) return;
+    if (await guard(() => api('product_delete', { id: +b.dataset.del }))) { toast('تم الحذف'); stats(); load(); }
+  }));
+  document.querySelectorAll('[data-adj]').forEach((b) => b.addEventListener('click', () => openAdjust(+b.dataset.adj)));
+}
+
+function openModal(m) { m.classList.remove('hidden'); m.classList.add('flex'); }
+function closeModal(m) { m.classList.add('hidden'); m.classList.remove('flex'); }
+
+async function openEdit(id) {
+  const p = await guard(() => api('product', { id }));
+  if (!p) return;
+  EDIT = id;
+  document.getElementById('m-title').textContent = 'تعديل منتج';
+  document.getElementById('f-name').value = p.name;
+  document.getElementById('f-sku').value = p.sku;
+  document.getElementById('f-cat').value = p.category_id || '';
+  document.getElementById('f-price').value = (p.price / 100).toFixed(2);
+  document.getElementById('f-cost').value = p.cost == null ? '' : (p.cost / 100).toFixed(2);
+  document.getElementById('f-min').value = p.min_qty;
+  document.getElementById('f-tracked').checked = !!p.tracked;
+  document.getElementById('f-serials').value = '';
+  document.getElementById('f-notes').value = p.notes || '';
+  openModal(document.getElementById('modal'));
+}
+
+document.getElementById('btn-new').addEventListener('click', () => {
+  EDIT = null;
+  document.getElementById('m-title').textContent = 'إضافة منتج جديد';
+  ['f-name', 'f-sku', 'f-price', 'f-cost', 'f-min', 'f-serials', 'f-notes'].forEach((f) => document.getElementById(f).value = '');
+  openModal(document.getElementById('modal'));
+});
+document.getElementById('m-x').addEventListener('click', () => closeModal(document.getElementById('modal')));
+document.getElementById('m-save').addEventListener('click', async () => {
+  const serials = document.getElementById('f-serials').value.split(/[،,]/).map((s) => s.trim()).filter(Boolean);
+  const res = await guard(() => api('product_save', {
+    id: EDIT, sku: document.getElementById('f-sku').value, name: document.getElementById('f-name').value,
+    category_id: document.getElementById('f-cat').value || null, price: toAmount(document.getElementById('f-price').value),
+    cost: toAmount(document.getElementById('f-cost').value), min_qty: +document.getElementById('f-min').value || 5,
+    tracked: document.getElementById('f-tracked').checked ? 1 : 0, notes: document.getElementById('f-notes').value || null,
+    serials,
+  }));
+  if (res) { toast('تم الحفظ'); closeModal(document.getElementById('modal')); stats(); load(); }
+});
+
+function openAdjust(id) {
+  M2_MODE = 'adj'; M2_ID = id;
+  document.getElementById('m2-title').textContent = 'تعديل يدوي للكمية';
+  document.getElementById('m2-body').innerHTML = `<input id="m2-qty" type="number" class="w-full rounded-lg border px-3 py-2 font-num" placeholder="زيادة (+) أو نقص (-) — مثال: 5 أو -3"/>`;
+  openModal(document.getElementById('modal2'));
+}
+document.getElementById('btn-serials').addEventListener('click', () => {
+  M2_MODE = 'serial'; M2_ID = null;
+  document.getElementById('m2-title').textContent = 'الأرقام التسلسلية لمنتج';
+  document.getElementById('m2-body').innerHTML = `<input id="m2-pid" type="number" class="w-full rounded-lg border px-3 py-2 mb-2 font-num" placeholder="رقم المنتج (id)"/>
+    <input id="m2-sn" class="w-full rounded-lg border px-3 py-2 font-num" placeholder="رقم تسلسلي جديد"/>`;
+  openModal(document.getElementById('modal2'));
+});
+document.getElementById('m2-x').addEventListener('click', () => closeModal(document.getElementById('modal2')));
+document.getElementById('m2-ok').addEventListener('click', async () => {
+  let ok = false;
+  if (M2_MODE === 'adj') ok = await guard(() => api('product_adjust', { id: M2_ID, qty_change: +(document.getElementById('m2-qty').value || 0) }));
+  else ok = await guard(() => api('serial_add', { product_id: +(document.getElementById('m2-pid').value || 0), serial: document.getElementById('m2-sn').value }));
+  if (ok) { toast('تم'); closeModal(document.getElementById('modal2')); stats(); load(); }
+});
+
+document.getElementById('prev').addEventListener('click', () => { if (PAGE > 0) { PAGE--; load(); } });
+document.getElementById('next').addEventListener('click', () => { PAGE++; load(); });
+document.getElementById('q').addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(() => { PAGE = 0; load(); }, 300); });
+document.getElementById('cat').addEventListener('change', () => { PAGE = 0; load(); });
+document.getElementById('stock').addEventListener('change', () => { PAGE = 0; load(); });
+
+(async () => {
+  if (!(await pageInit('inventory', { admin: true }))) return;
+  await loadCats(); await stats(); await load();
+})();
+</script>
+</body></html>

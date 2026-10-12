@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Maintenance Ticket Form - Arabic POS</title>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "IBM Plex Sans Arabic", "sans-serif"],
+                        "arabic": ["IBM Plex Sans Arabic", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&amp;family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Icons -->
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'IBM Plex Sans Arabic', 'Space Grotesk', sans-serif;
+        }
+        /* Custom scrollbar for modern feel */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark min-h-screen text-slate-800 dark:text-slate-100 flex flex-col">
+<!-- Top Navigation / Header -->
+<header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="flex justify-between h-16 items-center">
+<div class="flex items-center gap-4">
+<button class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors">
+<span class="material-icons">menu</span>
+</button>
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded bg-primary flex items-center justify-center text-white font-bold">
+<span class="material-icons text-sm">construction</span>
+</div>
+<h1 class="text-xl font-bold text-slate-900 dark:text-white hidden sm:block">تك-فيكس للصيانة</h1>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="relative hidden md:block">
+<span class="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400">
+<span class="material-icons text-xl">search</span>
+</span>
+<input class="w-64 pr-10 pl-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm" placeholder="بحث عن تذكرة..." type="text"/>
+</div>
+<button class="flex items-center justify-center w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 relative">
+<span class="material-icons">notifications</span>
+<span class="absolute top-2 left-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-800"></span>
+</button>
+<div class="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold border border-primary/30">
+                        ع
+                    </div>
+</div>
+</div>
+</div>
+</header>
+<main class="flex-grow py-8 px-4 sm:px-6 lg:px-8">
+<div class="max-w-4xl mx-auto">
+<!-- Breadcrumbs & Actions -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+<div>
+<nav aria-label="Breadcrumb" class="flex text-sm text-slate-500 mb-1">
+<ol class="inline-flex items-center gap-2">
+<li class="inline-flex items-center">
+<a class="hover:text-primary transition-colors" href="#">الرئيسية</a>
+</li>
+<li class="material-icons text-xs text-slate-400 rotate-180">chevron_right</li>
+<li>
+<a class="hover:text-primary transition-colors" href="#">الصيانة</a>
+</li>
+<li class="material-icons text-xs text-slate-400 rotate-180">chevron_right</li>
+<li class="text-slate-800 dark:text-slate-200 font-medium">تذكرة جديدة</li>
+</ol>
+</nav>
+<h2 class="text-3xl font-bold text-slate-900 dark:text-white font-display">إنشاء تذكرة صيانة</h2>
+</div>
+<div class="flex gap-3">
+<button class="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors font-medium text-sm shadow-sm">
+<span class="material-icons text-lg">history</span>
+<span>السجل السابق</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Main Form Section -->
+<div class="lg:col-span-2 space-y-6">
+<!-- Customer Info Card -->
+<div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+<div class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
+<h3 class="font-bold text-lg text-slate-800 dark:text-slate-100 flex items-center gap-2">
+<span class="material-icons text-primary text-xl">person</span>
+                                بيانات العميل
+                            </h3>
+<span class="text-xs font-mono bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded">عميل جديد</span>
+</div>
+<div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Customer Name -->
+<div class="space-y-2">
+<label class="block text-sm font-medium text-slate-700 dark:text-slate-300" for="customerName">
+                                    اسم العميل <span class="text-red-500">*</span>
+</label>
+<div class="relative">
+<input class="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary/20 transition-all py-2.5 pr-10 pl-4 text-right" id="customerName" placeholder="مثال: محمد أحمد" type="text"/>
+<div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
+<span class="material-icons text-lg">badge</span>
+</div>
+</div>
+</div>
+<!-- Phone Number -->
+<div class="space-y-2">
+<label class="block text-sm font-medium text-slate-700 dark:text-slate-300" for="phone">
+                                    رقم الهاتف <span class="text-red-500">*</span>
+</label>
+<div class="relative" dir="ltr">
+<input class="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary/20 transition-all py-2.5 pl-10 pr-4 text-right" id="phone" placeholder="05xxxxxxxx" type="tel"/>
+<div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+<span class="material-icons text-lg">phone</span>
+</div>
+</div>
+</div>
+<!-- Address (Optional) -->
+<div class="space-y-2 md:col-span-2">
+<label class="block text-sm font-medium text-slate-700 dark:text-slate-300" for="address">
+                                    العنوان (اختياري)
+                                </label>
+<div class="relative">
+<input class="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary/20 transition-all py-2.5 pr-10 pl-4 text-right" id="address" placeholder="الحي، الشارع..." type="text"/>
+<div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
+<span class="material-icons text-lg">location_on</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Device Info Card -->
+<div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+<div class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center bg-slate-50/50 dark:bg-slate-800/50">
+<h3 class="font-bold text-lg text-slate-800 dark:text-slate-100 flex items-center gap-2">
+<span class="material-icons text-primary text-xl">devices</span>
+                                تفاصيل الجهاز والمشكلة
+                            </h3>
+</div>
+<div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Device Type -->
+<div class="space-y-2">
+<label class="block text-sm font-medium text-slate-700 dark:text-slate-300" for="deviceType">
+                                    نوع الجهاز <span class="text-red-500">*</span>
+</label>
+<div class="relative">
+<select class="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary/20 transition-all py-2.5 pr-10 pl-4 text-right appearance-none" id="deviceType">
+<option disabled="" selected="" value="">اختر النوع...</option>
+<option value="laptop">لابتوب</option>
+<option value="desktop">كمبيوتر مكتبي</option>
+<option value="mobile">هاتف محمول</option>
+<option value="console">جهاز ألعاب</option>
+<option value="printer">طابعة</option>
+<option value="other">أخرى</option>
+</select>
+<div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
+<span class="material-icons text-lg">computer</span>
+</div>
+<div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-500">
+<span class="material-icons text-lg">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Serial Number -->
+<div class="space-y-2">
+<label class="block text-sm font-medium text-slate-700 dark:text-slate-300" for="serialNo">
+                                    الرقم التسلسلي (S/N)
+                                </label>
+<div class="relative">
+<input class="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary/20 transition-all py-2.5 pr-10 pl-12 text-right dir-ltr font-mono text-sm uppercase" id="serialNo" placeholder="S/N..." type="text"/>
+<div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
+<span class="material-icons text-lg">qr_code</span>
+</div>
+<button class="absolute inset-y-0 left-0 flex items-center pl-3 pr-2 text-primary hover:text-primary/80" title="Scan Barcode">
+<span class="material-icons">center_focus_weak</span>
+</button>
+</div>
+</div>
+<!-- Problem Description -->
+<div class="space-y-2 md:col-span-2">
+<label class="block text-sm font-medium text-slate-700 dark:text-slate-300" for="problemDesc">
+                                    وصف المشكلة <span class="text-red-500">*</span>
+</label>
+<div class="relative">
+<textarea class="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary/20 transition-all py-3 pr-10 pl-4 resize-none" id="problemDesc" placeholder="يرجى وصف المشكلة بالتفصيل، مثلاً: الجهاز لا يعمل، الشاشة مكسورة..." rows="4"></textarea>
+<div class="absolute top-3 right-0 flex items-start pr-3 pointer-events-none text-slate-400">
+<span class="material-icons text-lg">description</span>
+</div>
+</div>
+</div>
+<!-- Accessories -->
+<div class="space-y-2 md:col-span-2">
+<label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                    الملحقات المستلمة
+                                </label>
+<div class="flex flex-wrap gap-3">
+<label class="inline-flex items-center p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 cursor-pointer hover:border-primary/50 transition-colors">
+<input class="rounded border-slate-300 text-primary focus:ring-primary/50 w-4 h-4 ml-2" type="checkbox"/>
+<span class="text-sm">شاحن</span>
+</label>
+<label class="inline-flex items-center p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 cursor-pointer hover:border-primary/50 transition-colors">
+<input class="rounded border-slate-300 text-primary focus:ring-primary/50 w-4 h-4 ml-2" type="checkbox"/>
+<span class="text-sm">حقيبة</span>
+</label>
+<label class="inline-flex items-center p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 cursor-pointer hover:border-primary/50 transition-colors">
+<input class="rounded border-slate-300 text-primary focus:ring-primary/50 w-4 h-4 ml-2" type="checkbox"/>
+<span class="text-sm">بطارية خارجية</span>
+</label>
+<label class="inline-flex items-center p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 cursor-pointer hover:border-primary/50 transition-colors">
+<input class="rounded border-slate-300 text-primary focus:ring-primary/50 w-4 h-4 ml-2" type="checkbox"/>
+<span class="text-sm">أخرى</span>
+</label>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Summary & Status Section -->
+<div class="lg:col-span-1 space-y-6">
+<!-- Ticket Status Card -->
+<div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 sticky top-24">
+<h3 class="font-bold text-lg text-slate-800 dark:text-slate-100 mb-6 flex items-center gap-2">
+<span class="material-icons text-primary text-xl">fact_check</span>
+                            حالة التذكرة والتكلفة
+                        </h3>
+<div class="space-y-6">
+<!-- Status Dropdown -->
+<div class="space-y-2">
+<label class="block text-sm font-medium text-slate-700 dark:text-slate-300" for="status">
+                                    الحالة الأولية
+                                </label>
+<div class="relative">
+<select class="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-amber-50 dark:bg-amber-900/10 text-amber-800 dark:text-amber-400 font-medium shadow-sm focus:border-amber-500 focus:ring-amber-500/20 transition-all py-3 pr-10 pl-4 text-right appearance-none border-amber-200 dark:border-amber-800" id="status">
+<option selected="" value="checking">قيد الفحص</option>
+<option value="maintenance">تحت الصيانة</option>
+<option value="waiting_parts">بانتظار قطع غيار</option>
+<option value="ready">جاهز للاستلام</option>
+</select>
+<div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-amber-600 dark:text-amber-400">
+<span class="material-icons text-lg">pending</span>
+</div>
+<div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-amber-600 dark:text-amber-400">
+<span class="material-icons text-lg">expand_more</span>
+</div>
+</div>
+<p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                    سيتم إرسال رسالة SMS للعميل عند تغيير الحالة.
+                                </p>
+</div>
+<!-- Estimated Cost -->
+<div class="space-y-2">
+<label class="block text-sm font-medium text-slate-700 dark:text-slate-300" for="cost">
+                                    التكلفة التقديرية
+                                </label>
+<div class="relative">
+<input class="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary/20 transition-all py-3 pr-10 pl-16 text-right font-mono font-medium text-lg" id="cost" placeholder="0.00" type="number"/>
+<div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
+<span class="material-icons text-lg">payments</span>
+</div>
+<div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-500 bg-slate-50 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 h-full rounded-l-lg px-3">
+<span class="text-sm font-bold">ر.س</span>
+</div>
+</div>
+</div>
+<!-- Advanced Options -->
+<div class="pt-4 border-t border-slate-100 dark:border-slate-800">
+<label class="flex items-center justify-between cursor-pointer group">
+<span class="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-primary transition-colors">طباعة إيصال استلام</span>
+<div class="relative inline-block w-11 h-6 transition duration-200 ease-in-out">
+<input checked="" class="peer absolute w-0 h-0 opacity-0" type="checkbox"/>
+<span class="block absolute cursor-pointer top-0 left-0 bottom-0 right-0 bg-slate-200 dark:bg-slate-700 rounded-full transition-all duration-200 peer-checked:bg-primary"></span>
+<span class="block absolute cursor-pointer top-1 left-1 bg-white w-4 h-4 rounded-full transition-all duration-200 peer-checked:translate-x-5"></span>
+</div>
+</label>
+</div>
+<div class="pt-2">
+<label class="flex items-center justify-between cursor-pointer group">
+<span class="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-primary transition-colors">أولوية عاجلة (+50 ر.س)</span>
+<div class="relative inline-block w-11 h-6 transition duration-200 ease-in-out">
+<input class="peer absolute w-0 h-0 opacity-0" type="checkbox"/>
+<span class="block absolute cursor-pointer top-0 left-0 bottom-0 right-0 bg-slate-200 dark:bg-slate-700 rounded-full transition-all duration-200 peer-checked:bg-primary"></span>
+<span class="block absolute cursor-pointer top-1 left-1 bg-white w-4 h-4 rounded-full transition-all duration-200 peer-checked:translate-x-5"></span>
+</div>
+</label>
+</div>
+<!-- Action Buttons -->
+<div class="pt-6 grid grid-cols-2 gap-3">
+<button class="col-span-2 w-full py-3.5 px-4 bg-primary hover:bg-primary/90 text-white rounded-xl shadow-lg shadow-primary/30 font-bold text-lg transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
+<span class="material-icons">save</span>
+                                    حفظ التذكرة
+                                </button>
+<button class="w-full py-3 px-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 font-medium transition-colors">
+                                    إلغاء
+                                </button>
+<button class="w-full py-3 px-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 font-medium transition-colors flex items-center justify-center gap-2">
+<span class="material-icons text-lg">print</span>
+                                    معاينة
+                                </button>
+</div>
+</div>
+</div>
+<!-- Quick Info -->
+<div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-100 dark:border-blue-800/30">
+<div class="flex items-start gap-3">
+<span class="material-icons text-blue-600 dark:text-blue-400 mt-0.5">info</span>
+<div class="text-sm text-blue-800 dark:text-blue-200">
+<p class="font-bold mb-1">تذكير:</p>
+<p>يرجى التأكد من إزالة جميع بطاقات الذاكرة وشرائح الاتصال من الأجهزة قبل الاستلام.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Simple Footer -->
+<footer class="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 mt-auto py-6">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-slate-500">
+<p>© 2023 نظام تك-فيكس للصيانة. جميع الحقوق محفوظة.</p>
+<div class="flex gap-4">
+<a class="hover:text-primary" href="#">سياسة الخصوصية</a>
+<a class="hover:text-primary" href="#">الدعم الفني</a>
+</div>
+</div>
+</footer>
+<!-- Decorative background element -->
+<div class="fixed top-0 left-0 w-full h-96 bg-gradient-to-b from-primary/5 to-transparent -z-10 pointer-events-none"></div>
+</body></html>

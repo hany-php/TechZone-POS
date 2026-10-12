@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>تذكرة صيانة - تك زون للإلكترونيات</title>
+<link href="app.css" rel="stylesheet"/>
+<script>if(localStorage.getItem('tz-theme')==='dark')document.documentElement.classList.add('dark');</script>
+</head>
+<body id="shell" class="bg-background-light dark:bg-background-dark min-h-screen text-slate-800 dark:text-slate-100 flex flex-col md:flex-row">
+<main class="flex-1 flex-grow py-8 px-4 sm:px-6 lg:px-8">
+<div class="max-w-6xl mx-auto">
+<!-- Breadcrumbs & Actions -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+<div>
+<nav aria-label="Breadcrumb" class="flex text-sm text-slate-500 mb-1">
+<ol class="inline-flex items-center gap-2">
+<li class="inline-flex items-center"><a class="hover:text-primary transition-colors" href="pos.html">الرئيسية</a></li>
+<li class="material-icons text-xs text-slate-400 rotate-180">chevron_right</li>
+<li><a class="hover:text-primary transition-colors" href="#" id="crumb-list">الصيانة</a></li>
+<li class="material-icons text-xs text-slate-400 rotate-180">chevron_right</li>
+<li class="text-slate-800 dark:text-slate-200 font-medium">تذكرة جديدة</li>
+</ol>
+</nav>
+<h2 class="text-3xl font-bold text-slate-900 dark:text-white font-display">إنشاء تذكرة صيانة</h2>
+</div>
+<div class="flex gap-3">
+<button id="btn-list" class="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors font-medium text-sm shadow-sm">
+<span class="material-icons text-lg">history</span>
+<span>السجل السابق</span>
+</button>
+</div>
+</div>
+<div id="list-panel" class="hidden mb-8 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6">
+<div class="flex gap-3 mb-4">
+<input id="q" class="flex-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" placeholder="بحث برقم التذكرة أو اسم العميل أو السيريال..."/>
+<select id="fs" class="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm">
+<option value="">كل الحالات</option>
+<option value="received">استلام</option>
+<option value="in_review">قيد الفحص</option>
+<option value="pending_approval">بانتظار الموافقة</option>
+<option value="repaired">تم الإصلاح</option>
+<option value="rejected">مرفوض</option>
+<option value="delivered">تم التسليم</option>
+</select>
+</div>
+<div class="space-y-2" id="rows"></div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Main Form Section -->
+<div class="lg:col-span-2 space-y-6">
+<!-- Customer Info Card -->
+<div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+<div class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
+<h3 class="font-bold text-lg text-slate-800 dark:text-slate-100 flex items-center gap-2">
+<span class="material-icons text-primary text-xl">person</span>
+بيانات العميل
+</h3>
+<span class="text-xs font-mono bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded">عميل جديد</span>
+</div>
+<div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="block text-sm font-medium text-slate-700 dark:text-slate-300" for="f-cust">اسم العميل <span class="text-red-500">*</span></label>
+<div class="relative">
+<input class="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary/20 transition-all py-2.5 pr-10 pl-4 text-right" id="f-cust" placeholder="مثال: محمد أحمد" type="text"/>
+<div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400"><span class="material-icons text-lg">badge</span></div>
+</div>
+</div>
+<div class="space-y-2">
+<label class="block text-sm font-medium text-slate-700 dark:text-slate-300" for="f-phone">رقم الهاتف <span class="text-red-500">*</span></label>
+<div class="relative" dir="ltr">
+<input class="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary/20 transition-all py-2.5 pl-10 pr-4 text-right" id="f-phone" placeholder="05xxxxxxxx" type="tel"/>
+<div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400"><span class="material-icons text-lg">phone</span></div>
+</div>
+</div>
+<div class="space-y-2 md:col-span-2">
+<label class="block text-sm font-medium text-slate-700 dark:text-slate-300" for="f-addr">العنوان (اختياري)</label>
+<div class="relative">
+<input class="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary/20 transition-all py-2.5 pr-10 pl-4 text-right" id="f-addr" placeholder="الحي، الشارع..." type="text"/>
+<div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400"><span class="material-icons text-lg">location_on</span></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Device Info Card -->
+<div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+<div class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center bg-slate-50/50 dark:bg-slate-800/50">
+<h3 class="font-bold text-lg text-slate-800 dark:text-slate-100 flex items-center gap-2">
+<span class="material-icons text-primary text-xl">devices</span>
+تفاصيل الجهاز والمشكلة
+</h3>
+</div>
+<div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="block text-sm font-medium text-slate-700 dark:text-slate-300" for="f-type">نوع الجهاز <span class="text-red-500">*</span></label>
+<div class="relative">
+<select class="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary/20 transition-all py-2.5 pr-10 pl-4 text-right appearance-none" id="f-type">
+<option disabled="" selected="" value="">اختر النوع...</option>
+<option value="لابتوب">لابتوب</option>
+<option value="كمبيوتر مكتبي">كمبيوتر مكتبي</option>
+<option value="هاتف محمول">هاتف محمول</option>
+<option value="جهاز ألعاب">جهاز ألعاب</option>
+<option value="طابعة">طابعة</option>
+<option value="أخرى">أخرى</option>
+</select>
+<div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400"><span class="material-icons text-lg">computer</span></div>
+<div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-500"><span class="material-icons text-lg">expand_more</span></div>
+</div>
+</div>
+<div class="space-y-2">
+<label class="block text-sm font-medium text-slate-700 dark:text-slate-300" for="f-sn">الرقم التسلسلي (S/N)</label>
+<div class="relative">
+<input class="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary/20 transition-all py-2.5 pr-10 pl-12 text-right dir-ltr font-mono text-sm uppercase" id="f-sn" placeholder="S/N..." type="text"/>
+<div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400"><span class="material-icons text-lg">qr_code</span></div>
+</div>
+</div>
+<div class="space-y-2 md:col-span-2">
+<label class="block text-sm font-medium text-slate-700 dark:text-slate-300" for="f-prob">وصف المشكلة <span class="text-red-500">*</span></label>
+<div class="relative">
+<textarea class="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary/20 transition-all py-3 pr-10 pl-4 resize-none" id="f-prob" placeholder="يرجى وصف المشكلة بالتفصيل، مثلاً: الجهاز لا يعمل، الشاشة مكسورة..." rows="4"></textarea>
+<div class="absolute top-3 right-0 flex items-start pr-3 pointer-events-none text-slate-400"><span class="material-icons text-lg">description</span></div>
+</div>
+</div>
+<div class="space-y-2 md:col-span-2">
+<label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">الملحقات المستلمة</label>
+<div class="flex flex-wrap gap-3" id="accs">
+<label class="inline-flex items-center p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 cursor-pointer hover:border-primary/50 transition-colors"><input value="شاحن" class="rounded border-slate-300 text-primary focus:ring-primary/50 w-4 h-4 ml-2" type="checkbox"/><span class="text-sm">شاحن</span></label>
+<label class="inline-flex items-center p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 cursor-pointer hover:border-primary/50 transition-colors"><input value="حقيبة" class="rounded border-slate-300 text-primary focus:ring-primary/50 w-4 h-4 ml-2" type="checkbox"/><span class="text-sm">حقيبة</span></label>
+<label class="inline-flex items-center p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 cursor-pointer hover:border-primary/50 transition-colors"><input value="بطارية خارجية" class="rounded border-slate-300 text-primary focus:ring-primary/50 w-4 h-4 ml-2" type="checkbox"/><span class="text-sm">بطارية خارجية</span></label>
+<label class="inline-flex items-center p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 cursor-pointer hover:border-primary/50 transition-colors"><input value="أخرى" class="rounded border-slate-300 text-primary focus:ring-primary/50 w-4 h-4 ml-2" type="checkbox"/><span class="text-sm">أخرى</span></label>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Summary & Status Section -->
+<div class="lg:col-span-1 space-y-6">
+<div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 sticky top-24">
+<h3 class="font-bold text-lg text-slate-800 dark:text-slate-100 mb-6 flex items-center gap-2">
+<span class="material-icons text-primary text-xl">fact_check</span>
+التكلفة والحفظ
+</h3>
+<div class="space-y-6">
+<div class="space-y-2">
+<label class="block text-sm font-medium text-slate-700 dark:text-slate-300" for="f-cost">التكلفة التقديرية</label>
+<div class="relative">
+<input class="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary/20 transition-all py-3 pr-10 pl-16 text-right font-mono font-medium text-lg" id="f-cost" placeholder="0.00" type="number" min="0" step="0.01"/>
+<div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400"><span class="material-icons text-lg">payments</span></div>
+<div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-500 bg-slate-50 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 h-full rounded-l-lg px-3"><span class="text-sm font-bold" id="cur">ر.س</span></div>
+</div>
+</div>
+<div class="pt-4 border-t border-slate-100 dark:border-slate-800">
+<label class="flex items-center justify-between cursor-pointer group">
+<span class="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-primary transition-colors">أولوية عاجلة (+50)</span>
+<input id="f-urgent" type="checkbox" class="w-5 h-5 accent-blue-600"/>
+</label>
+</div>
+<div class="pt-6 grid grid-cols-2 gap-3">
+<button id="btn-save" class="col-span-2 w-full py-3.5 px-4 bg-primary hover:bg-primary/90 text-white rounded-xl shadow-lg shadow-primary/30 font-bold text-lg transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
+<span class="material-icons">save</span>
+حفظ التذكرة
+</button>
+<button id="btn-clear" class="w-full py-3 px-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 font-medium transition-colors">إلغاء</button>
+<button onclick="window.print()" class="w-full py-3 px-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 font-medium transition-colors flex items-center justify-center gap-2">
+<span class="material-icons text-lg">print</span>
+معاينة
+</button>
+</div>
+</div>
+</div>
+<div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-100 dark:border-blue-800/30">
+<div class="flex items-start gap-3">
+<span class="material-icons text-blue-600 dark:text-blue-400 mt-0.5">info</span>
+<div class="text-sm text-blue-800 dark:text-blue-200">
+<p class="font-bold mb-1">تذكير:</p>
+<p>يرجى التأكد من إزالة جميع بطاقات الذاكرة وشرائح الاتصال من الأجهزة قبل الاستلام.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Parts section (يظهر بعد إنشاء تذكرة، للبحث في نفس الصفحة) -->
+<div id="parts-panel" class="hidden mt-8 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6"></div>
+</div>
+</main>
+<footer class="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 mt-auto py-6">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-slate-500">
+<p>© تك زون للإلكترونيات. جميع الحقوق محفوظة.</p>
+<div class="flex gap-4">
+<button onclick="toggleTheme()" class="hover:text-primary">وضع ليلي / نهاري</button>
+</div>
+</div>
+</footer>
+<div class="fixed top-0 left-0 w-full h-96 bg-gradient-to-b from-primary/5 to-transparent -z-10 pointer-events-none"></div>
+<script src="app.js"></script>
+<script>
+let OPEN_ID = null, OPEN_REF = null;
+
+const STATUS_AR = { received: 'استلام', in_review: 'قيد الفحص', pending_approval: 'بانتظار الموافقة', repaired: 'تم الإصلاح', rejected: 'مرفوض', delivered: 'تم التسليم' };
+
+document.getElementById('btn-clear').addEventListener('click', () => ['f-cust', 'f-phone', 'f-addr', 'f-sn', 'f-prob', 'f-cost'].forEach((f) => document.getElementById(f).value = ''));
+document.getElementById('btn-list').addEventListener('click', () => document.getElementById('list-panel').classList.toggle('hidden'));
+document.getElementById('crumb-list').addEventListener('click', (e) => { e.preventDefault(); document.getElementById('list-panel').classList.toggle('hidden'); });
+
+document.getElementById('btn-save').addEventListener('click', async () => {
+  const accs = [...document.querySelectorAll('#accs input:checked')].map((x) => x.value).join('، ');
+  const r = await guard(() => api('repair_create', {
+    customer_name: document.getElementById('f-cust').value, customer_phone: document.getElementById('f-phone').value,
+    address: document.getElementById('f-addr').value || null, device_type: document.getElementById('f-type').value || null,
+    serial: document.getElementById('f-sn').value || null, problem: document.getElementById('f-prob').value,
+    accessories: accs || null, cost: toAmount(document.getElementById('f-cost').value),
+    priority: document.getElementById('f-urgent').checked ? 1 : 0,
+  }));
+  if (r) {
+    toast('تم إنشاء التذكرة ' + r.ref);
+    OPEN_ID = r.id; OPEN_REF = r.ref;
+    showParts(r);
+    loadList();
+  }
+});
+
+function showParts(r) {
+  const p = document.getElementById('parts-panel');
+  p.classList.remove('hidden');
+  p.innerHTML = `<h3 class="font-bold text-lg mb-2">التذكرة ${esc(r.ref || OPEN_REF)} — قطع الغيار والحالة</h3>
+  <div class="flex flex-wrap gap-2 mb-4" id="trans"></div>
+  <div class="flex gap-2 mb-4">
+    <input id="pp-id" type="number" class="flex-1 rounded-lg border px-3 py-2 font-num" placeholder="رقم المنتج (id)"/>
+    <input id="pp-qty" type="number" min="1" value="1" class="w-24 rounded-lg border px-3 py-2 font-num" placeholder="كمية"/>
+    <button id="pp-add" class="px-4 py-2 rounded-lg bg-primary text-white font-bold">+ إضافة قطعة</button>
+  </div>
+  <div class="text-sm text-slate-500" id="plist">تُحمَّل قطع الغيار عند فتح التذكرة...</div>`;
+  document.getElementById('pp-add').addEventListener('click', async () => {
+    const ok = await guard(() => api('repair_add_part', { repair_id: OPEN_ID, product_id: +document.getElementById('pp-id').value, qty: +document.getElementById('pp-qty').value || 1 }));
+    if (ok) { toast('تمت إضافة القطعة — التكلفة ' + fmt(ok.cost) + ' ' + CURRENCY); loadTicket(); }
+  });
+  loadTicket();
+}
+
+async function loadTicket() {
+  if (!OPEN_ID) return;
+  const t = await guard(() => api('repair', { id: OPEN_ID }));
+  if (!t) return;
+  document.getElementById('plist').innerHTML = (t.parts.length ? t.parts.map((x) => `<div class="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800"><span>${esc(x.name)} × ${x.qty}</span><span class="font-num">${fmt(x.line_total)} ${CURRENCY}</span></div>`).join('') : 'لا قطع بعد.')
+    + `<div class="flex justify-between pt-2 font-bold"><span>التكلفة</span><span class="font-num">${fmt(t.cost)} ${CURRENCY}</span></div>`;
+  document.getElementById('trans').innerHTML = t.transitions.length
+    ? t.transitions.map((s) => `<button data-s="${s}" class="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm hover:bg-primary hover:text-white transition-colors">${STATUS_AR[s]}</button>`).join('')
+    : `<span class="text-sm text-slate-400">حالة نهائية: ${STATUS_AR[t.status]}</span>`;
+  document.querySelectorAll('#trans button').forEach((b) => b.addEventListener('click', async () => {
+    const ok = await guard(() => api('repair_set_status', { id: OPEN_ID, status: b.dataset.s }));
+    if (ok) { toast('الحالة الآن: ' + STATUS_AR[ok.status]); loadTicket(); loadList(); }
+  }));
+}
+
+async function loadList() {
+  const r = (await guard(() => api('repairs', { q: document.getElementById('q').value || null, status: document.getElementById('fs').value || null, limit: 40 }))) || { rows: [] };
+  document.getElementById('rows').innerHTML = r.rows.length ? r.rows.map((t) => `
+    <div class="flex items-center justify-between gap-3 p-3 rounded-lg border border-slate-100 dark:border-slate-800 hover:border-primary/40 transition-colors">
+      <div>
+        <p class="font-bold font-num">${esc(t.ref)} <span class="text-xs font-normal text-slate-500">${STATUS_AR[t.status]}</span></p>
+        <p class="text-sm text-slate-500">${esc(t.customer_name)} — ${esc(t.device_type)} <span class="font-num">${fmtDT(t.created_at)}</span></p>
+      </div>
+      <button data-open="${t.id}" class="px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-sm font-bold">فتح</button>
+    </div>`).join('') : '<div class="text-center text-slate-400 py-6">لا نتائج</div>';
+  document.querySelectorAll('[data-open]').forEach((b) => b.addEventListener('click', async () => {
+    OPEN_ID = +b.dataset.open;
+    const t = await guard(() => api('repair', { id: OPEN_ID }));
+    if (t) { OPEN_REF = t.ref; showParts(t); }
+  }));
+}
+
+document.getElementById('q').addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(loadList, 300); });
+document.getElementById('fs').addEventListener('change', loadList);
+
+(async () => {
+  if (!(await pageInit('repair'))) return;
+  document.getElementById('cur').textContent = CURRENCY;
+  await loadList();
+})();
+</script>
+</body></html>

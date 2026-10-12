@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+
+<html class="scroll-smooth" dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Reports &amp; Analytics - Arabic POS</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#137fec",
+              "primary-dark": "#0e5eb0",
+              "background-light": "#f6f7f8",
+              "background-dark": "#101922",
+              "card-light": "#ffffff",
+              "card-dark": "#1a2632",
+              "text-primary": "#1f2937",
+              "text-secondary": "#6b7280",
+            },
+            fontFamily: {
+              "display": ["Space Grotesk", "Tajawal", "sans-serif"],
+              "body": ["Tajawal", "sans-serif"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&amp;family=Tajawal:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Tajawal', sans-serif;
+        }
+        .font-num {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        /* Custom scrollbar for better look */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #374151;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-text-primary dark:text-white transition-colors duration-200 min-h-screen flex overflow-hidden">
+<!-- Sidebar (Right Side for RTL) -->
+<aside class="w-64 bg-card-light dark:bg-card-dark border-l border-gray-200 dark:border-gray-800 flex-col hidden lg:flex h-screen sticky top-0 z-20 shadow-sm">
+<div class="h-16 flex items-center justify-center border-b border-gray-100 dark:border-gray-800 px-6">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white">
+<span class="material-icons-round text-xl">computer</span>
+</div>
+<h1 class="font-bold text-xl tracking-wide text-gray-800 dark:text-white">تك ستور</h1>
+</div>
+</div>
+<nav class="flex-1 overflow-y-auto py-6 px-4 space-y-1">
+<div class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4 px-2">القائمة الرئيسية</div>
+<a class="flex items-center gap-3 px-4 py-3 bg-primary/10 text-primary rounded-xl font-medium transition-colors" href="#">
+<span class="material-icons-round">dashboard</span>
+<span>لوحة التحكم</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white rounded-xl font-medium transition-colors" href="#">
+<span class="material-icons-round">point_of_sale</span>
+<span>المبيعات</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white rounded-xl font-medium transition-colors" href="#">
+<span class="material-icons-round">inventory_2</span>
+<span>المخزون</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white rounded-xl font-medium transition-colors" href="#">
+<span class="material-icons-round">build</span>
+<span>الصيانة</span>
+<span class="mr-auto bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 text-xs font-bold px-2 py-0.5 rounded-full font-num">3</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white rounded-xl font-medium transition-colors" href="#">
+<span class="material-icons-round">people</span>
+<span>العملاء</span>
+</a>
+<div class="text-xs font-semibold text-gray-400 uppercase tracking-wider mt-8 mb-4 px-2">الإعدادات</div>
+<a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white rounded-xl font-medium transition-colors" href="#">
+<span class="material-icons-round">bar_chart</span>
+<span>التقارير</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white rounded-xl font-medium transition-colors" href="#">
+<span class="material-icons-round">settings</span>
+<span>الإعدادات العامة</span>
+</a>
+</nav>
+<div class="p-4 border-t border-gray-100 dark:border-gray-800">
+<div class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50">
+<img class="w-10 h-10 rounded-full object-cover ring-2 ring-white dark:ring-gray-700" data-alt="User profile picture of a man smiling" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDI97dwfz_heQfrAlYHHkX8h67yyl22K4N5hHUL5VjL8JE7HFMbUfMOYw-gcTp261VYbWND3_rN77fBJJ0JggX7kFXwdpuk-CICfjbVI7udkhddr4LJLpEr3glz3uE47uS6XiOrjy4n6lV9x-ZquamUA7JU_cpzqMCwdB1WUzpGp_P6CoWIsOnqot64IbWCLY-Zg0z3q2VWpE12p3ylYFnyHz1Y91IicHX7y_Sx7bP2RVjeIGiyhSR-Nke0D33PjgKoBf7RxOq5Heo"/>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-bold text-gray-900 dark:text-white truncate">أحمد محمد</p>
+<p class="text-xs text-gray-500 truncate">مدير المتجر</p>
+</div>
+<button class="text-gray-400 hover:text-primary">
+<span class="material-icons-round">logout</span>
+</button>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col h-screen overflow-hidden relative">
+<!-- Top Header -->
+<header class="h-16 bg-background-light dark:bg-background-dark/95 backdrop-blur-sm sticky top-0 z-10 px-6 sm:px-8 flex items-center justify-between border-b border-gray-200/50 dark:border-gray-800/50">
+<div class="flex items-center gap-4 lg:hidden">
+<button class="p-2 -mr-2 text-gray-600 dark:text-gray-300">
+<span class="material-icons-round">menu</span>
+</button>
+<h1 class="font-bold text-lg text-gray-800 dark:text-white">تك ستور</h1>
+</div>
+<div class="hidden lg:block">
+<h2 class="text-xl font-bold text-gray-800 dark:text-white">التقارير والتحليلات</h2>
+<p class="text-xs text-gray-500">مرحباً بك مرة أخرى، هنا ملخص أداء متجرك</p>
+</div>
+<div class="flex items-center gap-3">
+<div class="relative hidden sm:flex items-center bg-white dark:bg-card-dark rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 shadow-sm">
+<span class="material-icons-round text-gray-400 text-sm ml-2">calendar_today</span>
+<span class="text-sm font-medium text-gray-700 dark:text-gray-300">آخر 7 أيام</span>
+<span class="material-icons-round text-gray-400 text-sm mr-2">expand_more</span>
+</div>
+<button class="p-2 text-gray-500 hover:text-primary transition-colors relative">
+<span class="material-icons-round">notifications</span>
+<span class="absolute top-1.5 left-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-background-light dark:border-background-dark"></span>
+</button>
+</div>
+</header>
+<!-- Scrollable Content -->
+<div class="flex-1 overflow-y-auto p-6 sm:p-8">
+<div class="max-w-7xl mx-auto space-y-8">
+<!-- Quick Actions & Date Filter (Mobile) -->
+<div class="flex flex-wrap items-center justify-between gap-4">
+<div class="flex gap-2">
+<button class="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-primary/20">
+<span class="material-icons-round text-lg">file_download</span>
+<span>تصدير التقرير</span>
+</button>
+<button class="flex items-center gap-2 bg-white dark:bg-card-dark border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+<span class="material-icons-round text-lg">print</span>
+<span>طباعة</span>
+</button>
+</div>
+</div>
+<!-- Metrics Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Card 1: Total Sales -->
+<div class="bg-card-light dark:bg-card-dark rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-10 -mt-10 group-hover:scale-110 transition-transform duration-500"></div>
+<div class="relative z-10">
+<div class="flex justify-between items-start mb-4">
+<div>
+<p class="text-sm font-medium text-gray-500 dark:text-gray-400">إجمالي المبيعات</p>
+<h3 class="text-3xl font-bold text-gray-900 dark:text-white font-num mt-1">54,200 <span class="text-lg font-normal text-gray-500">ر.س</span></h3>
+</div>
+<div class="w-10 h-10 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 flex items-center justify-center">
+<span class="material-icons-round">attach_money</span>
+</div>
+</div>
+<div class="flex items-center gap-2 text-sm">
+<span class="flex items-center text-green-600 dark:text-green-400 font-medium font-num bg-green-50 dark:bg-green-900/20 px-1.5 py-0.5 rounded text-xs">
+<span class="material-icons-round text-base">trending_up</span>
+                                    12.5%
+                                </span>
+<span class="text-gray-400">مقارنة بالأسبوع الماضي</span>
+</div>
+</div>
+</div>
+<!-- Card 2: Maintenance Profit -->
+<div class="bg-card-light dark:bg-card-dark rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full -mr-10 -mt-10 group-hover:scale-110 transition-transform duration-500"></div>
+<div class="relative z-10">
+<div class="flex justify-between items-start mb-4">
+<div>
+<p class="text-sm font-medium text-gray-500 dark:text-gray-400">أرباح الصيانة</p>
+<h3 class="text-3xl font-bold text-gray-900 dark:text-white font-num mt-1">8,500 <span class="text-lg font-normal text-gray-500">ر.س</span></h3>
+</div>
+<div class="w-10 h-10 rounded-lg bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 flex items-center justify-center">
+<span class="material-icons-round">build_circle</span>
+</div>
+</div>
+<div class="flex items-center gap-2 text-sm">
+<span class="flex items-center text-green-600 dark:text-green-400 font-medium font-num bg-green-50 dark:bg-green-900/20 px-1.5 py-0.5 rounded text-xs">
+<span class="material-icons-round text-base">trending_up</span>
+                                    5.2%
+                                </span>
+<span class="text-gray-400">مقارنة بالأسبوع الماضي</span>
+</div>
+</div>
+</div>
+<!-- Card 3: Order Count -->
+<div class="bg-card-light dark:bg-card-dark rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full -mr-10 -mt-10 group-hover:scale-110 transition-transform duration-500"></div>
+<div class="relative z-10">
+<div class="flex justify-between items-start mb-4">
+<div>
+<p class="text-sm font-medium text-gray-500 dark:text-gray-400">عدد الطلبات</p>
+<h3 class="text-3xl font-bold text-gray-900 dark:text-white font-num mt-1">142 <span class="text-lg font-normal text-gray-500">طلب</span></h3>
+</div>
+<div class="w-10 h-10 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+<span class="material-icons-round">shopping_bag</span>
+</div>
+</div>
+<div class="flex items-center gap-2 text-sm">
+<span class="flex items-center text-red-500 dark:text-red-400 font-medium font-num bg-red-50 dark:bg-red-900/20 px-1.5 py-0.5 rounded text-xs">
+<span class="material-icons-round text-base">trending_down</span>
+                                    2.1%
+                                </span>
+<span class="text-gray-400">مقارنة بالأسبوع الماضي</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Charts & Tables Section -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<!-- Main Chart Area -->
+<div class="lg:col-span-2 bg-card-light dark:bg-card-dark rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
+<div class="flex items-center justify-between mb-6">
+<h3 class="font-bold text-lg text-gray-800 dark:text-white">اتجاهات المبيعات</h3>
+<select class="bg-gray-50 dark:bg-gray-800 border-none text-sm rounded-lg py-1 px-3 text-gray-600 dark:text-gray-300 focus:ring-0 cursor-pointer">
+<option>هذا الأسبوع</option>
+<option>هذا الشهر</option>
+</select>
+</div>
+<!-- CSS Bar Chart (Simulated) -->
+<div class="relative h-64 flex items-end justify-between gap-2 sm:gap-4 px-2">
+<!-- Y-Axis Grid Lines -->
+<div class="absolute inset-0 flex flex-col justify-between pointer-events-none pb-8 text-xs text-gray-400 font-num">
+<div class="border-b border-gray-100 dark:border-gray-800 w-full flex items-end"><span class="-translate-y-1/2 absolute -right-8">10k</span></div>
+<div class="border-b border-gray-100 dark:border-gray-800 w-full flex items-end"><span class="-translate-y-1/2 absolute -right-8">7.5k</span></div>
+<div class="border-b border-gray-100 dark:border-gray-800 w-full flex items-end"><span class="-translate-y-1/2 absolute -right-8">5k</span></div>
+<div class="border-b border-gray-100 dark:border-gray-800 w-full flex items-end"><span class="-translate-y-1/2 absolute -right-8">2.5k</span></div>
+<div class="border-b border-gray-100 dark:border-gray-800 w-full flex items-end"><span class="-translate-y-1/2 absolute -right-8">0</span></div>
+</div>
+<!-- Bars -->
+<div class="relative z-10 flex-1 flex flex-col justify-end items-center group">
+<div class="w-full max-w-[40px] bg-primary/20 hover:bg-primary transition-all duration-300 rounded-t-lg h-[40%] relative">
+<div class="opacity-0 group-hover:opacity-100 absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs py-1 px-2 rounded font-num whitespace-nowrap z-20 transition-opacity">4,000</div>
+</div>
+<span class="text-xs text-gray-500 mt-2">سبت</span>
+</div>
+<div class="relative z-10 flex-1 flex flex-col justify-end items-center group">
+<div class="w-full max-w-[40px] bg-primary/20 hover:bg-primary transition-all duration-300 rounded-t-lg h-[65%] relative">
+<div class="opacity-0 group-hover:opacity-100 absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs py-1 px-2 rounded font-num whitespace-nowrap z-20 transition-opacity">6,500</div>
+</div>
+<span class="text-xs text-gray-500 mt-2">أحد</span>
+</div>
+<div class="relative z-10 flex-1 flex flex-col justify-end items-center group">
+<div class="w-full max-w-[40px] bg-primary/20 hover:bg-primary transition-all duration-300 rounded-t-lg h-[35%] relative">
+<div class="opacity-0 group-hover:opacity-100 absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs py-1 px-2 rounded font-num whitespace-nowrap z-20 transition-opacity">3,500</div>
+</div>
+<span class="text-xs text-gray-500 mt-2">إثنين</span>
+</div>
+<div class="relative z-10 flex-1 flex flex-col justify-end items-center group">
+<div class="w-full max-w-[40px] bg-primary hover:bg-primary-dark transition-all duration-300 rounded-t-lg h-[85%] relative shadow-lg shadow-primary/20">
+<div class="opacity-0 group-hover:opacity-100 absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs py-1 px-2 rounded font-num whitespace-nowrap z-20 transition-opacity">8,500</div>
+</div>
+<span class="text-xs font-bold text-primary mt-2">ثلاثاء</span>
+</div>
+<div class="relative z-10 flex-1 flex flex-col justify-end items-center group">
+<div class="w-full max-w-[40px] bg-primary/20 hover:bg-primary transition-all duration-300 rounded-t-lg h-[55%] relative">
+<div class="opacity-0 group-hover:opacity-100 absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs py-1 px-2 rounded font-num whitespace-nowrap z-20 transition-opacity">5,500</div>
+</div>
+<span class="text-xs text-gray-500 mt-2">أربعاء</span>
+</div>
+<div class="relative z-10 flex-1 flex flex-col justify-end items-center group">
+<div class="w-full max-w-[40px] bg-primary/20 hover:bg-primary transition-all duration-300 rounded-t-lg h-[70%] relative">
+<div class="opacity-0 group-hover:opacity-100 absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs py-1 px-2 rounded font-num whitespace-nowrap z-20 transition-opacity">7,000</div>
+</div>
+<span class="text-xs text-gray-500 mt-2">خميس</span>
+</div>
+<div class="relative z-10 flex-1 flex flex-col justify-end items-center group">
+<div class="w-full max-w-[40px] bg-primary/20 hover:bg-primary transition-all duration-300 rounded-t-lg h-[45%] relative">
+<div class="opacity-0 group-hover:opacity-100 absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs py-1 px-2 rounded font-num whitespace-nowrap z-20 transition-opacity">4,500</div>
+</div>
+<span class="text-xs text-gray-500 mt-2">جمعة</span>
+</div>
+</div>
+</div>
+<!-- Top Selling Products -->
+<div class="bg-card-light dark:bg-card-dark rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 flex flex-col">
+<div class="flex items-center justify-between mb-6">
+<h3 class="font-bold text-lg text-gray-800 dark:text-white">الأكثر مبيعاً</h3>
+<a class="text-xs text-primary font-medium hover:underline" href="#">عرض الكل</a>
+</div>
+<div class="flex-1 space-y-4">
+<!-- Item 1 -->
+<div class="flex items-center gap-4 group cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 p-2 rounded-lg transition-colors -mx-2">
+<div class="w-12 h-12 rounded-lg bg-gray-100 dark:bg-gray-700 flex-shrink-0 relative overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Silver laptop computer closed view" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBga6YaXmElX5F6g3o3gHBsUDBmRjUmpEB33zBgL9ErmXvY8GY4VLD7bSzzijFxQVQATNy00Ik3jdPBtNGfaimUPCjN-I111T5f2RiY3j09Al9WvaFCPsEWtg6Z-V0lHsNfCPOHW7DdKox7zsDB6urWlCg4z9W6sTw-fjc5LDgmgsghTfPGDFcCwfZ24JZnnTY3g4GxI9eGvQXyVQH22dWaaDTfi0PANtymTOeSgpt4wLIwk6gUwnDsH5ZCAGrxj43iAwjeg5wpYlY"/>
+</div>
+<div class="flex-1 min-w-0">
+<h4 class="text-sm font-bold text-gray-800 dark:text-white truncate">MacBook Pro M2</h4>
+<p class="text-xs text-gray-500 truncate">أجهزة لابتوب</p>
+</div>
+<div class="text-left">
+<p class="text-sm font-bold text-gray-900 dark:text-white font-num">12</p>
+<p class="text-xs text-gray-400">مباع</p>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="flex items-center gap-4 group cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 p-2 rounded-lg transition-colors -mx-2">
+<div class="w-12 h-12 rounded-lg bg-gray-100 dark:bg-gray-700 flex-shrink-0 relative overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Graphics card computer component close up" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA3H4_0iagSHjTGggwvqFjAS6UNVG6LwDjHV9h8ttfBF-KTpOOq6-alKviw56yq_EJEkQ_obSX0xppUbFCowHgWPTkcgua_QM3TbQVFvEbI87wjWlRmNKCsSFtjXhxoKbGXBrabrzPNG-0lO-2_omy2NROmJdVEXciwyhKHpD9sbpDGd6POCmFtLYuWeHH4AdOVOYJkgYb_ylzAdoH11keKLF3yak2O1H3wSRZsB-KC2ElRuHs7Yqhei8P9pGYdNVqDGef_fzDtAZA"/>
+</div>
+<div class="flex-1 min-w-0">
+<h4 class="text-sm font-bold text-gray-800 dark:text-white truncate">NVIDIA RTX 4070</h4>
+<p class="text-xs text-gray-500 truncate">كروت شاشة</p>
+</div>
+<div class="text-left">
+<p class="text-sm font-bold text-gray-900 dark:text-white font-num">8</p>
+<p class="text-xs text-gray-400">مباع</p>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="flex items-center gap-4 group cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 p-2 rounded-lg transition-colors -mx-2">
+<div class="w-12 h-12 rounded-lg bg-gray-100 dark:bg-gray-700 flex-shrink-0 relative overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Internal SSD drive black color" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBL7M16CA5wGQ1eob6469ETZJbF_DJiIhS0sOGHUsaIAlI-ylZPEIzyxX39AR4WW_rgbuROQIPtPYeNNfC5SboQmvAKrfT5QI3mM2ZY0DebWAb-eZ5rjnWy8QFlPIIArfSs7OvqyKz0dvufseQOPKo0u19iMMW3EmFMfm1hREre6GLy6NaKNvZTgRJvs41TJk56ueBNxLG927c13SjXbZlgbg-US14D-U8SS7UWSORwO4VMqqA1-kwk281zXpEn3B0q0xOmf680rEw"/>
+</div>
+<div class="flex-1 min-w-0">
+<h4 class="text-sm font-bold text-gray-800 dark:text-white truncate">Samsung SSD 1TB</h4>
+<p class="text-xs text-gray-500 truncate">تخزين</p>
+</div>
+<div class="text-left">
+<p class="text-sm font-bold text-gray-900 dark:text-white font-num">45</p>
+<p class="text-xs text-gray-400">مباع</p>
+</div>
+</div>
+<!-- Item 4 -->
+<div class="flex items-center gap-4 group cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 p-2 rounded-lg transition-colors -mx-2">
+<div class="w-12 h-12 rounded-lg bg-gray-100 dark:bg-gray-700 flex-shrink-0 relative overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Mechanical keyboard with RGB lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAplCRJltyeVz-pqidD25UW81GuPYlmJmtOi3ofp1qoVI3etExRVcYUN671NdaSdGwyT-evf9Ro9NrvNL0pF3i4sl9ET3FJZyCkOKcfzKZ6DwepzrQlPazMEuJoTcrZ1Wz7QTX5MyQw4KeMGZx7iyqbwCL53OdRpcdv3q9ic5X1iJyqCrM6pF-Rqod5R3EUFFjQG8GYECbxsswDloyWzAV9hpnKcFTtkz2g23Dc9JXQOtem16yKyGn2K7QglOMgrtaqMPV_mm9PL9s"/>
+</div>
+<div class="flex-1 min-w-0">
+<h4 class="text-sm font-bold text-gray-800 dark:text-white truncate">Logitech MX Keys</h4>
+<p class="text-xs text-gray-500 truncate">إكسسوارات</p>
+</div>
+<div class="text-left">
+<p class="text-sm font-bold text-gray-900 dark:text-white font-num">23</p>
+<p class="text-xs text-gray-400">مباع</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Recent Orders Table -->
+<div class="bg-card-light dark:bg-card-dark rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
+<div class="p-6 border-b border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+<h3 class="font-bold text-lg text-gray-800 dark:text-white">أحدث الطلبات</h3>
+<div class="flex items-center gap-2">
+<div class="relative">
+<span class="material-icons-round absolute top-2.5 right-3 text-gray-400 text-sm">search</span>
+<input class="bg-gray-50 dark:bg-gray-800 border-none rounded-lg text-sm pr-9 pl-4 py-2 w-full sm:w-64 focus:ring-1 focus:ring-primary text-gray-800 dark:text-gray-200 placeholder-gray-400" placeholder="بحث برقم الطلب..." type="text"/>
+</div>
+<button class="bg-gray-50 dark:bg-gray-800 p-2 rounded-lg text-gray-500 hover:text-primary transition-colors">
+<span class="material-icons-round text-lg">filter_list</span>
+</button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-right">
+<thead class="bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 text-xs font-semibold uppercase tracking-wider">
+<tr>
+<th class="px-6 py-4 rounded-tr-lg">رقم الطلب</th>
+<th class="px-6 py-4">العميل</th>
+<th class="px-6 py-4">المنتجات</th>
+<th class="px-6 py-4">التاريخ</th>
+<th class="px-6 py-4">الحالة</th>
+<th class="px-6 py-4 rounded-tl-lg">الإجمالي</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+<tr class="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+<td class="px-6 py-4 text-sm font-medium text-primary font-num">#ORD-2451</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xs font-bold">ع</div>
+<span class="text-sm text-gray-700 dark:text-gray-300">عمر خالد</span>
+</div>
+</td>
+<td class="px-6 py-4 text-sm text-gray-500">لابتوب ASUS TUF...</td>
+<td class="px-6 py-4 text-sm text-gray-500 font-num">12 أكتوبر، 2023</td>
+<td class="px-6 py-4">
+<span class="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-1 rounded-md text-xs font-bold">مكتمل</span>
+</td>
+<td class="px-6 py-4 text-sm font-bold text-gray-900 dark:text-white font-num">4,500 ر.س</td>
+</tr>
+<tr class="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+<td class="px-6 py-4 text-sm font-medium text-primary font-num">#ORD-2450</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center text-xs font-bold">س</div>
+<span class="text-sm text-gray-700 dark:text-gray-300">سارة أحمد</span>
+</div>
+</td>
+<td class="px-6 py-4 text-sm text-gray-500">ماوس لوجيتك G502</td>
+<td class="px-6 py-4 text-sm text-gray-500 font-num">11 أكتوبر، 2023</td>
+<td class="px-6 py-4">
+<span class="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 px-2 py-1 rounded-md text-xs font-bold">قيد المعالجة</span>
+</td>
+<td class="px-6 py-4 text-sm font-bold text-gray-900 dark:text-white font-num">250 ر.س</td>
+</tr>
+<tr class="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+<td class="px-6 py-4 text-sm font-medium text-primary font-num">#ORD-2449</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 flex items-center justify-center text-xs font-bold">م</div>
+<span class="text-sm text-gray-700 dark:text-gray-300">محمد علي</span>
+</div>
+</td>
+<td class="px-6 py-4 text-sm text-gray-500">صيانة جهاز مكتبي</td>
+<td class="px-6 py-4 text-sm text-gray-500 font-num">11 أكتوبر، 2023</td>
+<td class="px-6 py-4">
+<span class="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-1 rounded-md text-xs font-bold">في الصيانة</span>
+</td>
+<td class="px-6 py-4 text-sm font-bold text-gray-900 dark:text-white font-num">150 ر.س</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-4 border-t border-gray-100 dark:border-gray-800 flex justify-center">
+<button class="text-sm text-primary font-medium hover:underline flex items-center gap-1">
+                            عرض جميع الطلبات
+                            <span class="material-icons-round text-sm">arrow_back</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Footer spacing -->
+<div class="h-8"></div>
+</div>
+</main>
+</body></html>

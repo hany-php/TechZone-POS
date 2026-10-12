@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>شاشة الدفع - Payment Screen</title>
+<!-- Google Fonts: Space Grotesk for numbers/latin and Cairo for Arabic text -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&amp;family=Space+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Icons -->
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "primary-hover": "#0e6ad0",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Cairo", "Space Grotesk", "sans-serif"],
+                        "numbers": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar for receipt preview */
+        .receipt-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .receipt-scroll::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .receipt-scroll::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 4px;
+        }
+        .receipt-scroll::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+        }
+        
+        /* Dashed line utility */
+        .dashed-line {
+            background-image: linear-gradient(to right, #ccc 50%, rgba(255,255,255,0) 0%);
+            background-position: bottom;
+            background-size: 8px 1px;
+            background-repeat: repeat-x;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display min-h-screen flex items-center justify-center p-4">
+<!-- Modal Container -->
+<div class="bg-white dark:bg-[#1a2632] w-full max-w-[1200px] h-[90vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-gray-100 dark:border-gray-800">
+<!-- Right Side: Receipt Preview (On the Left in LTR, but Right in RTL flow visually this is the "Side" panel) -->
+<!-- Note: In RTL layout, the first element in flex-row appears on the Right. Wait, flex-row in RTL puts first item on right.
+             The user asked for Receipt on the LEFT side. So in RTL HTML structure:
+             [Receipt Panel] [Payment Panel] -> Visual: [Payment] [Receipt] ? 
+             Let's structure logical order: Payment (Right), Receipt (Left).
+             In RTL, flex-row items are laid out Right to Left.
+             Item 1: Payment Panel (Right)
+             Item 2: Receipt Panel (Left)
+        -->
+<!-- Payment Processing Zone (Main Interaction) -->
+<div class="flex-1 flex flex-col p-6 md:p-8 bg-white dark:bg-[#1a2632] relative z-10 order-1">
+<!-- Header -->
+<div class="flex justify-between items-center mb-6">
+<div>
+<h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">إتمام عملية الدفع</h1>
+<p class="text-gray-500 dark:text-gray-400 text-sm">اختر طريقة الدفع وأدخل المبلغ</p>
+</div>
+<button class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition-colors">
+<span class="material-icons-outlined">close</span>
+</button>
+</div>
+<!-- Total Amount Display -->
+<div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-6 mb-6 flex justify-between items-center border border-blue-100 dark:border-blue-800">
+<span class="text-gray-600 dark:text-gray-300 font-medium text-lg">المبلغ الإجمالي</span>
+<div class="text-right">
+<span class="text-4xl font-bold text-primary font-numbers">2,450.00</span>
+<span class="text-primary/70 text-sm font-medium mr-1">ر.س</span>
+</div>
+</div>
+<!-- Payment Methods -->
+<div class="mb-6">
+<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">طريقة الدفع</label>
+<div class="grid grid-cols-3 gap-3">
+<!-- Cash (Selected) -->
+<button class="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-primary bg-primary/5 text-primary transition-all duration-200">
+<span class="material-icons-outlined text-3xl mb-2">payments</span>
+<span class="font-bold">نقدي</span>
+</button>
+<!-- Card -->
+<button class="flex flex-col items-center justify-center p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-primary/50 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 transition-all duration-200">
+<span class="material-icons-outlined text-3xl mb-2">credit_card</span>
+<span class="font-medium">بطاقة</span>
+</button>
+<!-- Transfer -->
+<button class="flex flex-col items-center justify-center p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-primary/50 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 transition-all duration-200">
+<span class="material-icons-outlined text-3xl mb-2">qr_code_scanner</span>
+<span class="font-medium">تحويل</span>
+</button>
+</div>
+</div>
+<div class="flex gap-6 h-full">
+<!-- Numpad & Input Section -->
+<div class="flex-1 flex flex-col">
+<!-- Received Amount Input -->
+<div class="mb-4 relative">
+<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">المبلغ المستلم</label>
+<div class="relative">
+<input class="w-full text-left pl-16 pr-4 py-4 text-2xl font-bold font-numbers text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none" dir="ltr" type="text" value="2500"/>
+<span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">SAR</span>
+</div>
+</div>
+<!-- Quick Amounts -->
+<div class="flex gap-2 mb-4">
+<button class="flex-1 py-2 px-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg text-sm font-numbers text-gray-700 dark:text-gray-200 transition-colors">+ 10</button>
+<button class="flex-1 py-2 px-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg text-sm font-numbers text-gray-700 dark:text-gray-200 transition-colors">+ 50</button>
+<button class="flex-1 py-2 px-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg text-sm font-numbers text-gray-700 dark:text-gray-200 transition-colors">+ 100</button>
+<button class="flex-1 py-2 px-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg text-sm font-numbers text-gray-700 dark:text-gray-200 transition-colors">+ 500</button>
+</div>
+<!-- Change Display -->
+<div class="flex justify-between items-center p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-100 dark:border-green-800 mb-auto">
+<span class="text-green-800 dark:text-green-300 font-bold">المتبقي للعميل</span>
+<div class="flex items-baseline gap-1 text-green-700 dark:text-green-400">
+<span class="text-2xl font-bold font-numbers">50.00</span>
+<span class="text-sm">ر.س</span>
+</div>
+</div>
+</div>
+<!-- Numpad Grid -->
+<div class="w-64 grid grid-cols-3 gap-3">
+<button class="h-14 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm text-xl font-numbers font-medium hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-800 dark:text-white transition-colors">1</button>
+<button class="h-14 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm text-xl font-numbers font-medium hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-800 dark:text-white transition-colors">2</button>
+<button class="h-14 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm text-xl font-numbers font-medium hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-800 dark:text-white transition-colors">3</button>
+<button class="h-14 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm text-xl font-numbers font-medium hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-800 dark:text-white transition-colors">4</button>
+<button class="h-14 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm text-xl font-numbers font-medium hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-800 dark:text-white transition-colors">5</button>
+<button class="h-14 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm text-xl font-numbers font-medium hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-800 dark:text-white transition-colors">6</button>
+<button class="h-14 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm text-xl font-numbers font-medium hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-800 dark:text-white transition-colors">7</button>
+<button class="h-14 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm text-xl font-numbers font-medium hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-800 dark:text-white transition-colors">8</button>
+<button class="h-14 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm text-xl font-numbers font-medium hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-800 dark:text-white transition-colors">9</button>
+<button class="h-14 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm text-xl font-numbers font-medium hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-800 dark:text-white transition-colors">.</button>
+<button class="h-14 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm text-xl font-numbers font-medium hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-800 dark:text-white transition-colors">0</button>
+<button class="h-14 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 shadow-sm hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 transition-colors flex items-center justify-center">
+<span class="material-icons-outlined">backspace</span>
+</button>
+</div>
+</div>
+<!-- Action Buttons Footer -->
+<div class="mt-auto pt-6 border-t border-gray-100 dark:border-gray-800 flex gap-4">
+<button class="flex-1 bg-primary hover:bg-primary-hover text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 transition-transform active:scale-[0.98]">
+<span class="material-icons-outlined">check_circle</span>
+                    إتمام البيع (Enter)
+                </button>
+<button class="px-6 py-4 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors">
+<span class="material-icons-outlined">print</span>
+                    طباعة
+                </button>
+</div>
+</div>
+<!-- Left Side: Receipt Preview (Visual confirmation) -->
+<div class="w-full md:w-[400px] bg-gray-50 dark:bg-[#15202b] border-r border-gray-200 dark:border-gray-800 flex flex-col p-6 order-2 relative overflow-hidden">
+<!-- Background pattern for texture -->
+<div class="absolute inset-0 opacity-[0.03] pointer-events-none" style="background-image: radial-gradient(#000 1px, transparent 1px); background-size: 20px 20px;"></div>
+<h2 class="text-sm uppercase tracking-wider text-gray-500 font-semibold mb-4 flex items-center gap-2">
+<span class="material-icons-outlined text-base">receipt_long</span>
+                معاينة الإيصال
+            </h2>
+<!-- Receipt Paper -->
+<div class="bg-white text-black shadow-lg rounded-sm w-full h-full flex flex-col relative receipt-scroll overflow-y-auto font-mono text-sm leading-tight pb-8">
+<!-- Receipt Top Edge Decoration -->
+<div class="h-2 w-full bg-gradient-to-b from-gray-100 to-white"></div>
+<div class="p-5 flex-1 flex flex-col items-center">
+<!-- Store Branding -->
+<div class="w-16 h-16 bg-black rounded-full flex items-center justify-center text-white mb-3">
+<span class="material-icons-outlined text-3xl">computer</span>
+</div>
+<h3 class="font-bold text-lg mb-1">متجر التكنولوجيا الحديثة</h3>
+<p class="text-xs text-gray-500 text-center mb-1">شارع الملك فهد، الرياض</p>
+<p class="text-xs text-gray-500 mb-4">هاتف: 920000000</p>
+<div class="w-full border-b border-dashed border-gray-300 mb-4"></div>
+<!-- Receipt Meta -->
+<div class="w-full flex justify-between text-xs text-gray-600 mb-4">
+<div class="text-right">
+<p>رقم الفاتورة: <span class="font-numbers">#INV-8023</span></p>
+<p>الكاشير: <span class="">أحمد محمد</span></p>
+</div>
+<div class="text-left" dir="ltr">
+<p class="font-numbers">2023-10-25</p>
+<p class="font-numbers">14:30 PM</p>
+</div>
+</div>
+<!-- Items Header -->
+<div class="w-full grid grid-cols-4 gap-2 text-xs font-bold border-b border-black pb-2 mb-2">
+<div class="col-span-2">الصنف</div>
+<div class="text-center">الكمية</div>
+<div class="text-left">السعر</div>
+</div>
+<!-- Items List -->
+<div class="w-full flex flex-col gap-3 mb-4">
+<div class="grid grid-cols-4 gap-2 text-xs">
+<div class="col-span-2">
+<p class="font-bold">لابتوب ماك بوك برو</p>
+<p class="text-[10px] text-gray-500">M2 Chip, 512GB</p>
+</div>
+<div class="text-center font-numbers">1</div>
+<div class="text-left font-numbers">5,400.00</div>
+</div>
+<div class="grid grid-cols-4 gap-2 text-xs">
+<div class="col-span-2">
+<p class="font-bold">ماوس لاسلكي</p>
+<p class="text-[10px] text-gray-500">Logitech MX3</p>
+</div>
+<div class="text-center font-numbers">1</div>
+<div class="text-left font-numbers">450.00</div>
+</div>
+<div class="grid grid-cols-4 gap-2 text-xs">
+<div class="col-span-2">
+<p class="font-bold">حقيبة لابتوب</p>
+<p class="text-[10px] text-gray-500">جلد طبيعي</p>
+</div>
+<div class="text-center font-numbers">1</div>
+<div class="text-left font-numbers">200.00</div>
+</div>
+</div>
+<div class="w-full border-b border-dashed border-gray-300 mb-3"></div>
+<!-- Totals -->
+<div class="w-full space-y-1 mb-4">
+<div class="flex justify-between text-xs text-gray-600">
+<span>المجموع الفرعي</span>
+<span class="font-numbers">6,050.00</span>
+</div>
+<div class="flex justify-between text-xs text-gray-600">
+<span>الخصم</span>
+<span class="font-numbers text-red-500">- 3,600.00</span>
+</div>
+<div class="flex justify-between text-xs text-gray-600">
+<span>ضريبة القيمة المضافة (15%)</span>
+<span class="font-numbers">319.56</span>
+</div>
+</div>
+<div class="w-full border-t border-black pt-2 mb-6">
+<div class="flex justify-between items-center text-lg font-bold">
+<span>الإجمالي</span>
+<span class="font-numbers">2,450.00</span>
+</div>
+</div>
+<!-- Barcode -->
+<div class="w-full flex flex-col items-center mb-4">
+<div class="h-12 w-48 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAiIHByZXNlcnZlQXNwZWN0UmF0aW89Im5vbmUiPjxwYXRoIGQ9Ik0wIDBoMnYxMEgwem00IDBoMXYxMEg0em0zIDBoMXYxMEg3em0zIDBoMnYxMEgxMHptNCAwaDF2MTBIMTR6bTMgMGgxdjEwSDE3em0zIDBoMnYxMEgyMHptNCAwaDF2MTBIMjR6bTMgMGgxdjEwSDI3em0zIDBoMnYxMEgzMHptNCAwaDF2MTBIMzR6bTMgMGgxdjEwSDM3em0zIDBoMnYxMEg0MHptNCAwaDF2MTBINDIzem0zIDBoMXYxMEg0N3ptMyAwaDJ2MTBINTB6bTQgMGgxdjEwHDU0em0zIDBoMXYxMEg1N3ptMyAwaDJ2MTBGNjB6bTQgMGgxdjEwSDY0em0zIDBoMXYxMEg2N3ptMyAwaDJ2MTBHNzB6bTQgMGgxdjEwSDc0em0zIDBoMXYxMEg3N3ptMyAwaDJ2MTBIODB6bTQgMGgxdjEwSDg0em0zIDBoMXYxMEg4N3ptMyAwaDJ2MTBIOTB6bTQgMGgxdjEwSDk0em0zIDBoMXYxMEg5N3ptMiAwaDF2MTBIOTl6IiBmaWxsPSIjMDAwIi8+PC9zdmc+')] bg-repeat-x opacity-80" data-alt="Receipt barcode pattern"></div>
+<span class="text-[10px] mt-1 font-numbers tracking-widest">0123456789</span>
+</div>
+<p class="text-xs text-gray-500 font-bold mb-1">شكراً لزيارتكم</p>
+<p class="text-[10px] text-gray-400">يرجى الاحتفاظ بالإيصال للاستبدال</p>
+</div>
+<!-- Jagged Edge CSS -->
+<div class="h-4 w-full bg-white relative" style="background: linear-gradient(-45deg, transparent 8px, white 8px) 0 100%, linear-gradient(45deg, transparent 8px, white 8px) 0 100%; background-size: 16px 16px; background-repeat: repeat-x;"></div>
+</div>
+<!-- Receipt Shadow under the paper -->
+<div class="absolute bottom-6 left-6 right-6 h-4 bg-black/20 blur-lg rounded-[100%] z-0"></div>
+</div>
+</div>
+</body></html>
