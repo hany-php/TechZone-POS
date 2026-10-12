@@ -3,7 +3,9 @@ import datetime
 import hashlib
 import os
 import pathlib
+import shutil
 import sqlite3
+import sys
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
@@ -165,15 +167,44 @@ CREATE INDEX IF NOT EXISTS idx_serials_serial ON serials(serial);
 """
 
 
+def _app_root() -> pathlib.Path:
+    """جذر التطبيق: بجانب الـ exe عند التجميد (frozen)، وإلا جذر المشروع."""
+    if getattr(sys, "frozen", False):
+        return pathlib.Path(sys.executable).resolve().parent
+    return pathlib.Path(__file__).resolve().parent.parent
+
+
+def _legacy_path() -> pathlib.Path:
+    """مسار القاعدة القديم (للترحيل لمرة واحدة فقط)؛ تجاوز للفحص عبر SHOP_DB_LEGACY."""
+    env = os.environ.get("SHOP_DB_LEGACY")
+    if env:
+        return pathlib.Path(env)
+    return pathlib.Path(os.environ.get("LOCALAPPDATA", str(pathlib.Path.home()))) / "TechZone" / "shop.db"
+
+
 def db_path() -> str:
-    """%LOCALAPPDATA%\\TechZone\\shop.db, overridable via SHOP_DB (used by selfcheck)."""
+    """data/shop.db بجانب جذر التطبيق، overridable via SHOP_DB (used by selfcheck)."""
     env = os.environ.get("SHOP_DB")
     if env:
         return env
-    base = pathlib.Path(os.environ.get("LOCALAPPDATA", str(pathlib.Path.home())))
-    p = base / "TechZone" / "shop.db"
+    p = _app_root() / "data" / "shop.db"
     p.parent.mkdir(parents=True, exist_ok=True)
     return str(p)
+
+
+def _migrate_once() -> None:
+    """ترحيل لمرة واحدة: نسخ القاعدة القديمة إلى data/shop.db إن لم توجد الجديدة."""
+    target = pathlib.Path(db_path())
+    if target.exists():
+        return
+    legacy = _legacy_path()
+    if legacy.exists() and legacy != target:
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(legacy, target)
+            print(f"migrated legacy db: {legacy} -> {target}")
+        except OSError:
+            pass
 
 
 def now() -> str:
@@ -186,6 +217,7 @@ def hash_pin(pin: str, salt: bytes) -> bytes:
 
 
 def connect() -> sqlite3.Connection:
+    _migrate_once()  # نسخ القاعدة القديمة لمرة واحدة إن لزم (لا أثر مع SHOP_DB الموجود)
     conn = sqlite3.connect(db_path(), timeout=10)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys=ON")

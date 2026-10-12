@@ -1,12 +1,21 @@
 """نقطة تشغيل التطبيق: نافذة pywebview واحدة تعرض web/index.html."""
 import pathlib
+import sys
 
 import webview
 
 from api import Api
 
-ROOT = pathlib.Path(__file__).resolve().parent.parent
-WEB = ROOT / "web"
+if getattr(sys, "frozen", False):
+    # onedir: ملفات --add-data داخل sys._MEIPASS (dist/TechZone/_internal/web)
+    _BASE = pathlib.Path(getattr(sys, "_MEIPASS", pathlib.Path(sys.executable).resolve().parent))
+    WEB = _BASE / "web"
+    if not (WEB / "index.html").exists():  # احتياطي: web/ بجانب الـ exe
+        WEB = pathlib.Path(sys.executable).resolve().parent / "web"
+    ROOT = pathlib.Path(sys.executable).resolve().parent  # data/ بجانب الـ exe
+else:
+    ROOT = pathlib.Path(__file__).resolve().parent.parent
+    WEB = ROOT / "web"
 
 
 import db

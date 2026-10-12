@@ -177,4 +177,24 @@ check(f"contract ok ({len(names)} names)", not missing)
 if missing:
     print("MISSING:", missing)
 
+# 14) مسار القاعدة بجانب المشروع + ترحيل القديمة لمرة واحدة
+_shop_db_saved = os.environ.pop("SHOP_DB", None)
+try:
+    p = pathlib.Path(db.db_path())
+    check("db beside project", p.name == "shop.db" and p.parent.name == "data" and ROOT in p.parents)
+    with tempfile.TemporaryDirectory() as td:
+        legacy = pathlib.Path(td) / "legacy.db"
+        target = pathlib.Path(td) / "new.db"
+        legacy.write_bytes(b"fake-legacy-db")
+        os.environ["SHOP_DB"] = str(target)
+        os.environ["SHOP_DB_LEGACY"] = str(legacy)
+        try:
+            db._migrate_once()
+            check("legacy migrated", target.read_bytes() == b"fake-legacy-db")
+        finally:
+            os.environ.pop("SHOP_DB_LEGACY", None)
+finally:
+    if _shop_db_saved is not None:
+        os.environ["SHOP_DB"] = _shop_db_saved
+
 print(f"\nALL {N} CHECKS PASSED")

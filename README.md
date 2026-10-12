@@ -94,13 +94,25 @@ npm run css
 python app\main.py
 ```
 
+نسخة الـ exe (بلا بايثون ولا تيرمينال): دبل كليك على `dist\TechZone\TechZone.exe`.
+
+## بناء exe
+
+دبل كليك على `build-exe.bat` من جذر المشروع (يعمل من أي cwd): يتحقق من `python`/`pip`، يثبت `pyinstaller` و`pywebview` عند الحاجة، ينظف `build/` و`dist/`، ثم يبني:
+
+```powershell
+pyinstaller --noconfirm --clean --name TechZone --windowed --onedir --add-data "web;web" app\main.py
+```
+
+`--windowed` بلا تيرمينال، `--onedir` أسرع وأسهل تحديثاً من onefile أثناء التطوير، وتُضمَّن `web/` كاملة. أعِد البناء بعد أي تغيير في الكود. ملف `TechZone.spec` محفوظ في git ويُبنى منه لاحقاً؛ `build/` و`dist/` مستثناة من git.
+
 ## الفحص
 
 ```powershell
 python app\selfcheck.py
 ```
 
-يطبع أسطر `PASS` ويعيد `0` عند النجاح (`ALL 40 CHECKS PASSED`). يستخدم قاعدة بيانات مؤقتة عبر متغير `SHOP_DB`.
+يطبع أسطر `PASS` ويعيد `0` عند النجاح (`ALL 42 CHECKS PASSED`). يستخدم قاعدة بيانات مؤقتة عبر متغير `SHOP_DB`.
 
 ## الدخول الافتراضي (PIN من 4 أرقام)
 
@@ -111,8 +123,11 @@ python app\selfcheck.py
 
 ## قاعدة البيانات
 
-المسار الافتراضي: `%LOCALAPPDATA%\TechZone\shop.db` (يُنشأ تلقائياً).
+المسار الافتراضي: `data/shop.db` بجانب جذر المشروع (يُنشأ تلقائياً، وأول `connect()` يرحّل نسخة `%LOCALAPPDATA%\TechZone\shop.db` القديمة إن وجدت).
+نسخة الـ exe تقرأ/تكتب `data/shop.db` بجانب الـ exe (`dist\TechZone\data\shop.db`).
 للتجاوز (فحص/اختبار): عيّن متغير البيئة `SHOP_DB` إلى مسار ملف آخر.
+
+تنبيه: عند نقل البرنامج لبارتشن آخر انسخ مجلد `data/` معه — وإلا بدأ بقاعدة seed جديدة. `data/shop.db` خارج git (بيانات تشغيلية) فاحتفظ بنسخة احتياطية بنفسك.
 
 ملاحظات:
 

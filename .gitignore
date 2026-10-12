@@ -3,11 +3,16 @@ __pycache__/
 *.pyc
 *.pyo
 
-# SHOP_DB المؤقتة (القاعدة الحقيقية في %LOCALAPPDATA%\TechZone خارج المستودع)
+# SHOP_DB المؤقتة (القاعدة التشغيلية data/shop.db بجانب المشروع خارج git)
 *.db
 *.db-wal
 *.db-shm
 *.db-journal
+!data/.gitkeep
+
+# PyInstaller
+build/
+dist/
 
 # node
 node_modules/

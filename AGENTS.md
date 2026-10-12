@@ -13,7 +13,8 @@
 
 ## 3. البنية
 
-`app/main.py` — نقطة التشغيل: عنوان النافذة من `settings.store_name` + نافذة `maximized=True` (`1360×860`, حد أدنى `360×500`). يقرأ `web/index.html` كـ `file://`.
+`app/main.py` — نقطة التشغيل: عنوان النافذة من `settings.store_name` + نافذة `maximized=True` (`1360×860`, حد أدنى `360×500`). يقرأ `web/index.html` كـ `file://`. عند التجميد (`sys.frozen`): `web/` من `sys._MEIPASS` (onedir: `dist/TechZone/_internal/web`) و`data/` بجانب الـ exe.
+`build-exe.bat` — دبل كليك يعيد بناء `dist/TechZone/TechZone.exe` (`--windowed --onedir --add-data "web;web"`). `TechZone.spec` محفوظ في git؛ `build/` و`dist/` مستثناة.
 `app/db.py` — المخطط + الاتصال + الـ seed. `app/api.py` — كل دوال النظام + `call(name, payload)` dispatcher للواجهة (`window.pywebview.api.call`). `app/selfcheck.py` — فحص assert واحد قابل للتشغيل.
 `web/app.js` — الجسر `api(name, payload)` + `pageInit` + `syncTitle` + `renderSidebar` + زر جوال `tz-menu` + ثيم ليلي + `fmt/money/esc/toast`.
 `web/tailwind.css` — مصدر Tailwind + كل `@font-face` المحلية. `web/app.css` — المُجمَّع (~47KB) **محفوظ في git عمداً** (البرنامج يعمل به دون بناء).
@@ -22,7 +23,7 @@
 
 ## 4. قاعدة البيانات
 
-- المسار: `%LOCALAPPDATA%\TechZone\shop.db` (يُنشأ تلقائياً)؛ تجاوز عبر `SHOP_DB` (يستخدمه selfcheck). `PRAGMA foreign_keys=ON` + `journal_mode=WAL`. المبالغ `INTEGER` وحدات صغرى (1 عملة = 100).
+- المسار: `data/shop.db` بجانب جذر المشروع (وعند التجميد: `data/` بجانب الـ exe)؛ ترحيل تلقائي لمرة واحدة من المسار القديم `%LOCALAPPDATA%\TechZone\shop.db` عبر `shutil.copy2` عند أول `connect()`؛ تجاوز عبر `SHOP_DB` (يستخدمه selfcheck) و`SHOP_DB_LEGACY` (يفحص منطق الترحيل بأمان). `PRAGMA foreign_keys=ON` + `journal_mode=WAL`. المبالغ `INTEGER` وحدات صغرى (1 عملة = 100).
 - الجداول (15): `users(id, username, name, role, pin_salt, pin_hash, created_at)` — `categories(id, name)` — `products(id, sku, name, category_id, price, cost, qty, min_qty, tracked, notes, active, created_at)` — `serials(id, product_id, serial, status[in_stock|sold|in_repair], created_at)` — `shifts(id, user_id, opened_at, closed_at, opening_cash, counted_cash, expected_cash, diff)` — `sales(id, invoice_no, shift_id, user_id, created_at, customer_name, customer_phone, subtotal, discount, tax, total, status[completed|partial_return|returned], notes)` — `sale_items(id, sale_id, product_id, serial_id, name, qty, unit_price, line_total)` — `payments(id, sale_id, method[cash|wallet|credit], amount, received, change)` — `sale_returns(id, sale_id, user_id, created_at, reason, total)` — `sale_return_items(id, return_id, sale_item_id, qty, amount)` — `used_device_purchases(id, ref, user_id, created_at, seller_*, device_type, brand, model, serial, condition, notes, buy_price, storage, resale_price, product_id)` — `repairs(id, ref, user_id, created_at, updated_at, customer_*, address, device_type, serial, problem, accessories, notes, status[6], priority, cost)` — `repair_parts(id, repair_id, product_id, name, qty, unit_price, line_total)` — `stock_movements(id, created_at, user_id, product_id, serial_id, qty_change, qty_after, reason, ref)` — `settings(key, value)`.
 - مفاتيح `settings` (15): `store_name`، `store_address`، `store_phone`، `currency`، `tax_rate` (الخمسة المزروعة) + العشرة الجديدة: `store_email`، `store_cr`، `store_vat`، `receipt_thanks`، `receipt_footer`، `receipt_logo` (data:image ≤200KB)، `receipt_show_logo`، `receipt_show_barcode`، `receipt_show_tax`، `receipt_show_payments` (قيم `0`/`1`).
 - Seed: مستخدم `admin/1234` (المدير) و`cashier/1111` (أحمد محمد) + 9 فئات + 14 منتجاً تجريبياً (منها متتبّع `DL-OPTI-P4` بسيريالات `DL-88231+`).
@@ -111,6 +112,7 @@ python -c "import ast,glob; [ast.parse(open(f,encoding='utf-8').read()) for f in
 
 ## سجل التغييرات
 
+- `2026-10-12`: قاعدة البيانات بجانب المشروع (`data/shop.db` + ترحيل تلقائي من `%LOCALAPPDATA%`) + بناء exe بضغطة واحدة (`build-exe.bat` → `dist/TechZone/TechZone.exe ~5.4MB` + دعم frozen في `main.py`/`db.py`) + فحصا selfcheck الجديدان (42/42). تنبيه: الـ exe المجمد لا يقلع من داخل مجلد المشروع (pythonnet/ClrLoader) — يعمل من أي مسار آخر.
 - `2026-10-12`: توثيق مهلة الجسر و`store_title()` في §6 (رسالة بدل البياض خارج النافذة).
 - `2026-10-12`: إعادة تسمية `PROJECT_AI.md` → `AGENTS.md` + توسيع `README.md` بالشرح والمميزات والصور الثمان (`screenshots/`).
 - `2026-10-12`: بناء أول + فلتر تصنيف POS + إدارة فئات + إيصال معاينة/تخصيص + طباعة 80mm + اسم محل شامل (`syncTitle`) + تجاوب (`tz-menu`/`cart-fab`) + نافذة `maximized` + توثيق حي (`AGENTS.md`) + مستودع git محلي أول (`main`).
