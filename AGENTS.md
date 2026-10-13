@@ -14,7 +14,7 @@
 ## 3. البنية
 
 `app/main.py` — نقطة التشغيل: عنوان النافذة من `settings.store_name` + نافذة `maximized=True` (`1360×860`, حد أدنى `360×500`). يقرأ `web/index.html` كـ `file://`. عند التجميد (`sys.frozen`): `web/` من `sys._MEIPASS` (onedir: `dist/TechZone/_internal/web`) و`data/` بجانب الـ exe.
-`build-exe.bat` — دبل كليك يعيد بناء `dist/TechZone/TechZone.exe` (`--windowed --onedir --add-data "web;web"`). `TechZone.spec` محفوظ في git؛ `build/` و`dist/` مستثناة.
+`build-exe.bat` — دبل كليك يعيد بناء `dist/TechZone.exe` (`--windowed --onefile --add-data "web;web"`). `TechZone.spec` محفوظ في git؛ `build/` و`dist/` مستثناة.
 `app/db.py` — المخطط + الاتصال + الـ seed. `app/api.py` — كل دوال النظام + `call(name, payload)` dispatcher للواجهة (`window.pywebview.api.call`). `app/selfcheck.py` — فحص assert واحد قابل للتشغيل.
 `web/app.js` — الجسر `api(name, payload)` + `pageInit` + `syncTitle` + `renderSidebar` + زر جوال `tz-menu` + ثيم ليلي + `fmt/money/esc/toast`.
 `web/tailwind.css` — مصدر Tailwind + كل `@font-face` المحلية. `web/app.css` — المُجمَّع (~47KB) **محفوظ في git عمداً** (البرنامج يعمل به دون بناء).
@@ -112,6 +112,7 @@ python -c "import ast,glob; [ast.parse(open(f,encoding='utf-8').read()) for f in
 
 ## سجل التغييرات
 
+- `2026-10-12`: إصلاح خطأ `Python.Runtime.Loader.Initialize` في ملف الـ exe عبر تغيير نمط البناء من `--onedir` إلى `--onefile` في `build-exe.bat`.
 - `2026-10-12`: قاعدة البيانات بجانب المشروع (`data/shop.db` + ترحيل تلقائي من `%LOCALAPPDATA%`) + بناء exe بضغطة واحدة (`build-exe.bat` → `dist/TechZone/TechZone.exe ~5.4MB` + دعم frozen في `main.py`/`db.py`) + فحصا selfcheck الجديدان (42/42). تنبيه: الـ exe المجمد لا يقلع من داخل مجلد المشروع (pythonnet/ClrLoader) — يعمل من أي مسار آخر.
 - `2026-10-12`: توثيق مهلة الجسر و`store_title()` في §6 (رسالة بدل البياض خارج النافذة).
 - `2026-10-12`: إعادة تسمية `PROJECT_AI.md` → `AGENTS.md` + توسيع `README.md` بالشرح والمميزات والصور الثمان (`screenshots/`).

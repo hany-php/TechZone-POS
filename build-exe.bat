@@ -7,7 +7,7 @@ python -c "import PyInstaller" 2>nul || python -m pip install pyinstaller
 python -c "import webview" 2>nul || python -m pip install pywebview
 if exist build rmdir /s /q build
 if exist dist rmdir /s /q dist
-python -m PyInstaller --noconfirm --clean --name TechZone --windowed --onedir --add-data "web;web" app\main.py
+python -m PyInstaller --noconfirm --clean --name TechZone --windowed --onefile --add-data "web;web" app\main.py
 echo.
 echo EXE: "%~dp0dist\TechZone\TechZone.exe"
 pause
