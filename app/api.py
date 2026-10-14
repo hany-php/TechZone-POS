@@ -55,6 +55,164 @@ _FALLBACK_JPEG = (
 )
 
 
+
+def _win32_copy_pdf_to_clipboard(filepath: str) -> bool:
+    """نسخ ملف الـ PDF إلى حافظة ويندوز (CF_HDROP = 15) مباشرة عبر Win32 API المتوافق مع 64-bit."""
+    if os.name != "nt":
+        return False
+    import ctypes
+    from ctypes import wintypes
+    import struct
+    import time
+
+    CF_HDROP = 15
+    GMEM_MOVEABLE = 0x0002
+    GMEM_ZEROINIT = 0x0040
+
+    kernel32 = ctypes.windll.kernel32
+    user32 = ctypes.windll.user32
+
+    kernel32.GlobalAlloc.argtypes = [wintypes.UINT, ctypes.c_size_t]
+    kernel32.GlobalAlloc.restype = wintypes.HANDLE
+    kernel32.GlobalLock.argtypes = [wintypes.HANDLE]
+    kernel32.GlobalLock.restype = ctypes.c_void_p
+    kernel32.GlobalUnlock.argtypes = [wintypes.HANDLE]
+    kernel32.GlobalUnlock.restype = wintypes.BOOL
+    user32.OpenClipboard.argtypes = [wintypes.HWND]
+    user32.OpenClipboard.restype = wintypes.BOOL
+    user32.EmptyClipboard.argtypes = []
+    user32.EmptyClipboard.restype = wintypes.BOOL
+    user32.SetClipboardData.argtypes = [wintypes.UINT, wintypes.HANDLE]
+    user32.SetClipboardData.restype = wintypes.HANDLE
+    user32.CloseClipboard.argtypes = []
+    user32.CloseClipboard.restype = wintypes.BOOL
+
+    header = struct.pack("<IiiII", 20, 0, 0, 0, 1)
+    path_bytes = filepath.encode("utf-16le") + b"\x00\x00\x00\x00"
+    payload = header + path_bytes
+
+    for _ in range(6):
+        if user32.OpenClipboard(None):
+            try:
+                user32.EmptyClipboard()
+                h_global = kernel32.GlobalAlloc(GMEM_MOVEABLE | GMEM_ZEROINIT, len(payload))
+                if h_global:
+                    ptr = kernel32.GlobalLock(h_global)
+                    if ptr:
+                        ctypes.memmove(ptr, payload, len(payload))
+                        kernel32.GlobalUnlock(h_global)
+                        if user32.SetClipboardData(CF_HDROP, h_global):
+                            return True
+            finally:
+                user32.CloseClipboard()
+        time.sleep(0.05)
+    return False
+
+
+def _find_whatsapp_hwnd():
+    """البحث السريع عن مقبض نافذة واتساب المرئية (WhatsApp / واتساب) على ويندوز."""
+    if os.name != "nt":
+        return None
+    import ctypes
+    from ctypes import wintypes
+
+    user32 = ctypes.windll.user32
+    WNDENUMPROC = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+    found = []
+
+    def cb(hwnd, _):
+        if user32.IsWindowVisible(hwnd):
+            length = user32.GetWindowTextLengthW(hwnd)
+            if length > 0:
+                buf = ctypes.create_unicode_buffer(length + 1)
+                user32.GetWindowTextW(hwnd, buf, length + 1)
+                title = buf.value.replace("\u200e", "").replace("\u200f", "").strip()
+                if "WhatsApp" in title or "واتساب" in title:
+                    found.append(hwnd)
+        return True
+
+    user32.EnumWindows(WNDENUMPROC(cb), 0)
+    return found[0] if found else None
+
+
+def _win32_auto_paste_into_whatsapp(pdf_abs: str, was_already_open: bool = False):
+    """التقاط نافذة واتساب فور تفعيلها بلحظات ولصق ملف الـ PDF مباشرة مع النص دون تأخير."""
+    if os.name != "nt":
+        return
+    import ctypes
+    from ctypes import wintypes
+    import time
+
+    user32 = ctypes.windll.user32
+    kernel32 = ctypes.windll.kernel32
+
+    # رصد سريع جداً (كل 40 مللي ثانية) للحظة ظهور/تفعيل نافذة واتساب
+    wa_hwnd = None
+    t0 = time.monotonic()
+    for _ in range(75):  # حد أقصى 3 ثوانٍ في حال كان البرنامج مغلقاً تماماً
+        wa_hwnd = _find_whatsapp_hwnd()
+        if wa_hwnd:
+            fg = user32.GetForegroundWindow()
+            if fg == wa_hwnd or (time.monotonic() - t0) >= 0.20:
+                break
+        time.sleep(0.04)
+
+    if not wa_hwnd:
+        wa_hwnd = _find_whatsapp_hwnd()
+
+    if wa_hwnd:
+        try:
+            fg_hwnd = user32.GetForegroundWindow()
+            if fg_hwnd != wa_hwnd:
+                fg_tid = user32.GetWindowThreadProcessId(fg_hwnd, None) if fg_hwnd else 0
+                cur_tid = kernel32.GetCurrentThreadId()
+                if fg_tid and fg_tid != cur_tid:
+                    user32.AttachThreadInput(cur_tid, fg_tid, True)
+                user32.ShowWindow(wa_hwnd, 9)  # SW_RESTORE
+                user32.SetForegroundWindow(wa_hwnd)
+                if fg_tid and fg_tid != cur_tid:
+                    user32.AttachThreadInput(cur_tid, fg_tid, False)
+        except Exception:
+            pass
+
+    # انتظار قصير جداً فقط ريثما يضع واتساب النص في صندوق المحادثة (0.55 ثانية إذا كان مفتوحاً)
+    time.sleep(0.55 if was_already_open else 1.25)
+
+    # تأكيد وجود ملف الـ PDF في الحافظة قبل اللصق مباشرة
+    _win32_copy_pdf_to_clipboard(pdf_abs)
+
+    if wa_hwnd:
+        # نقرة سريعة داخل خانة كتابة الرسالة أسفل منتصف نافذة واتساب لتفعيل التركيز
+        rect = wintypes.RECT()
+        if user32.GetWindowRect(wa_hwnd, ctypes.byref(rect)):
+            win_w = rect.right - rect.left
+            win_h = rect.bottom - rect.top
+            if win_w > 300 and win_h > 300:
+                click_x = rect.left + int(win_w * 0.50)
+                click_y = rect.bottom - 52
+                user32.SetCursorPos(click_x, click_y)
+                time.sleep(0.02)
+                user32.mouse_event(0x0002, 0, 0, 0, 0)  # MOUSEEVENTF_LEFTDOWN
+                time.sleep(0.01)
+                user32.mouse_event(0x0004, 0, 0, 0, 0)  # MOUSEEVENTF_LEFTUP
+                time.sleep(0.05)
+
+    # إرسال Ctrl+V فوري عبر keybd_event مع Scan Codes الحقيقية
+    VK_CONTROL = 0x11
+    VK_V = 0x56
+    KEYEVENTF_KEYUP = 0x0002
+    scan_ctrl = user32.MapVirtualKeyW(VK_CONTROL, 0)
+    scan_v = user32.MapVirtualKeyW(VK_V, 0)
+
+    user32.keybd_event(VK_CONTROL, scan_ctrl, 0, 0)
+    time.sleep(0.02)
+    user32.keybd_event(VK_V, scan_v, 0, 0)
+    time.sleep(0.02)
+    user32.keybd_event(VK_V, scan_v, KEYEVENTF_KEYUP, 0)
+    time.sleep(0.02)
+    user32.keybd_event(VK_CONTROL, scan_ctrl, KEYEVENTF_KEYUP, 0)
+
+
 def _jpeg_to_pdf_bytes(jpeg_bytes: bytes, img_w: int, img_h: int) -> bytes:
     """تحويل صورة الفاتورة (JPEG) إلى ملف PDF 1.4 قياسي يعمل على جميع الأجهزة بدون مكتبات خارجية."""
     img_w = max(1, int(img_w or 720))
@@ -1534,54 +1692,26 @@ class Api:
         wa_web = f"https://web.whatsapp.com/send?phone={digits}&text={encoded_text}"
         opened = False
 
-        # 2) على نظام ويندوز: نسخ ملف الـ PDF للحافظة + فتح المحادثة مع النص (مما يضع المؤشر داخل مربع الكتابة تلقائياً) + لصق المرفق (Ctrl+V)
+        # 2) على نظام ويندوز: نسخ ملف الـ PDF للحافظة مباشرة (Win32 CF_HDROP) + فتح محادثة واتساب مع نص الفاتورة + تفعيل خانة الكتابة ولصق الملف تلقائياً
         if os.name == "nt":
+            import threading
+            was_already_open = _find_whatsapp_hwnd() is not None
+            _win32_copy_pdf_to_clipboard(pdf_abs)
             try:
-                ps_pdf = pdf_abs.replace("'", "''")
-                ps_proto = wa_proto.replace("'", "''")
-                ps_web = wa_web.replace("'", "''")
-                ps_script = f"""
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type @"
-using System;
-using System.Runtime.InteropServices;
-public class Win32Focus {{
-    [DllImport("user32.dll")]
-    public static extern bool SetForegroundWindow(IntPtr hWnd);
-    [DllImport("user32.dll")]
-    public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
-}}
-"@
-
-$files = New-Object System.Collections.Specialized.StringCollection
-$files.Add('{ps_pdf}')
-[System.Windows.Forms.Clipboard]::SetFileDropList($files)
-try {{ Set-Clipboard -LiteralPath '{ps_pdf}' -ErrorAction SilentlyContinue }} catch {{}}
-
-try {{
-    Start-Process '{ps_proto}' -ErrorAction Stop
-}} catch {{
-    Start-Process '{ps_web}'
-}}
-
-Start-Sleep -Milliseconds 2600
-
-$procs = Get-Process | Where-Object {{ ($_.ProcessName -match 'WhatsApp' -or $_.MainWindowTitle -match 'WhatsApp|واتساب') -and $_.MainWindowHandle -ne 0 }}
-foreach ($p in $procs) {{
-    [Win32Focus]::ShowWindowAsync($p.MainWindowHandle, 9) | Out-Null
-    [Win32Focus]::SetForegroundWindow($p.MainWindowHandle) | Out-Null
-}}
-Start-Sleep -Milliseconds 500
-[System.Windows.Forms.SendKeys]::SendWait('^v')
-"""
-                creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
-                subprocess.Popen(
-                    ["powershell", "-NoProfile", "-STA", "-WindowStyle", "Hidden", "-Command", ps_script],
-                    creationflags=creation_flags,
-                )
+                os.startfile(wa_proto)
                 opened = True
-            except Exception:
-                opened = False
+            except OSError:
+                try:
+                    webbrowser.open(wa_web)
+                    opened = True
+                except Exception:
+                    opened = False
+            if opened:
+                threading.Thread(
+                    target=_win32_auto_paste_into_whatsapp,
+                    args=(pdf_abs, was_already_open),
+                    daemon=True,
+                ).start()
 
         if not opened:
             try:
