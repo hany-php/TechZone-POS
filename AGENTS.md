@@ -4,7 +4,7 @@
 
 ## 1. الفكرة
 
-نظام نقاط بيع عربي (RTL) يعمل **offline بالكامل**: مخزون، مبيعات، شراء أجهزة مستعملة، صيانة، ورديات، تقارير. يعمل داخل نافذة `pywebview` واحدة `maximized`، بواجهة ليلية ومتجاوبة مع الجوال.
+نظام نقاط بيع عربي (RTL) يعمل **offline بالكامل**: مخزون، مبيعات، عملاء وحسابات آجلة وسندات قبض، شراء أجهزة مستعملة، صيانة، ورديات، موظفون بصلاحيات مخصصة لكل فرد، وتقارير. يعمل داخل نافذة `pywebview` واحدة `maximized`، بواجهة ليلية ومتجاوبة مع الجوال، ومهيأ افتراضياً للسوق المصري (`ج.م`، ضريبة 14% قابلة للتفعيل أو الإيقاف الكامل).
 
 ## 2. التقنية
 
@@ -13,113 +13,40 @@
 
 ## 3. البنية
 
-`app/main.py` — نقطة التشغيل: عنوان النافذة من `settings.store_name` + نافذة `maximized=True` (`1360×860`, حد أدنى `360×500`). يقرأ `web/index.html` كـ `file://`. عند التجميد (`sys.frozen`): `web/` من `sys._MEIPASS` (onedir: `dist/TechZone/_internal/web`) و`data/` بجانب الـ exe.
-`build-exe.bat` — دبل كليك يعيد بناء `dist/TechZone.exe` (`--windowed --onefile --add-data "web;web"`). `TechZone.spec` محفوظ في git؛ `build/` و`dist/` مستثناة.
-`app/db.py` — المخطط + الاتصال + الـ seed. `app/api.py` — كل دوال النظام + `call(name, payload)` dispatcher للواجهة (`window.pywebview.api.call`). `app/selfcheck.py` — فحص assert واحد قابل للتشغيل.
-`web/app.js` — الجسر `api(name, payload)` + `pageInit` + `syncTitle` + `renderSidebar` + زر جوال `tz-menu` + ثيم ليلي + `fmt/money/esc/toast`.
-`web/tailwind.css` — مصدر Tailwind + كل `@font-face` المحلية. `web/app.css` — المُجمَّع (~47KB) **محفوظ في git عمداً** (البرنامج يعمل به دون بناء).
-`package.json` — سكربت `css`: `tailwindcss -i web/tailwind.css -o web/app.css --minify` ثم node يزيل تعليقات CSS. `tailwind.config.js` — `darkMode: class` + ألوان `primary/background/surface` + خطوط `arabic/sans/body/num`.
-`README.md` — للإنسان المشغّل (شرح + مميزات + صور `screenshots/` المنسوخة من التصاميم المرجعية). `screenshots/` — صور README الثمان (منسوخة من `docs/stitch_login_screen_arabic/*/screen.png`). `AGENTS.md` — مصدر الحقيقة الحي للذكاء الاصطناعي. `.gitignore` — يستثني `node_modules/` و`web/fonts/` الكبيرة و`*.db*` (انظر §8).
+`app/main.py` — نقطة التشغيل: عنوان النافذة من `settings.store_name` + نافذة `maximized=True` (`1360×860`, حد أدنى `360×500`). يقرأ `web/index.html` كـ `file://`. عند التجميد (`sys.frozen`): `web/` من `sys._MEIPASS` و`data/` بجانب الـ exe.
+`build-exe.bat` — دبل كليك يعيد بناء `dist/TechZone.exe` (`--windowed --onefile --add-data "web;web"`). `push-github.bat` — دبل كليك يرفع التعديلات إلى GitHub. `TechZone.spec` محفوظ في git؛ `build/` و`dist/` مستثناة.
+`app/db.py` — المخطط (17 جدولاً) + الاتصال + الـ seed المهيأ لمصر + ترحيل العملاء وترقية الأعمدة تلقائياً.
+`app/api.py` — كل دوال النظام + نظام الصلاحيات المخصصة `_perm(key)` + `call(name, payload)` dispatcher للواجهة (`window.pywebview.api.call`).
+`app/selfcheck.py` — فحص assert واحد قابل للتشغيل (56 فحصاً).
+`web/app.js` — الجسر `api(name, payload)` + `hasPerm` + `pageInit` + `syncTitle` + `renderSidebar` + زر جوال `tz-menu` + ثيم ليلي + `fmt/money/esc/toast`.
+`web/tailwind.css` — مصدر Tailwind + كل `@font-face` المحلية. `web/app.css` — المُجمَّع (~47KB) **محفوظ في git عمداً**. `web/fonts/` — 23 ملف `.woff2` محلي.
 
 ## 4. قاعدة البيانات
 
-- المسار: `data/shop.db` بجانب جذر المشروع (وعند التجميد: `data/` بجانب الـ exe)؛ ترحيل تلقائي لمرة واحدة من المسار القديم `%LOCALAPPDATA%\TechZone\shop.db` عبر `shutil.copy2` عند أول `connect()`؛ تجاوز عبر `SHOP_DB` (يستخدمه selfcheck) و`SHOP_DB_LEGACY` (يفحص منطق الترحيل بأمان). `PRAGMA foreign_keys=ON` + `journal_mode=WAL`. المبالغ `INTEGER` وحدات صغرى (1 عملة = 100).
-- الجداول (15): `users(id, username, name, role, pin_salt, pin_hash, created_at)` — `categories(id, name)` — `products(id, sku, name, category_id, price, cost, qty, min_qty, tracked, notes, active, created_at)` — `serials(id, product_id, serial, status[in_stock|sold|in_repair], created_at)` — `shifts(id, user_id, opened_at, closed_at, opening_cash, counted_cash, expected_cash, diff)` — `sales(id, invoice_no, shift_id, user_id, created_at, customer_name, customer_phone, subtotal, discount, tax, total, status[completed|partial_return|returned], notes)` — `sale_items(id, sale_id, product_id, serial_id, name, qty, unit_price, line_total)` — `payments(id, sale_id, method[cash|wallet|credit], amount, received, change)` — `sale_returns(id, sale_id, user_id, created_at, reason, total)` — `sale_return_items(id, return_id, sale_item_id, qty, amount)` — `used_device_purchases(id, ref, user_id, created_at, seller_*, device_type, brand, model, serial, condition, notes, buy_price, storage, resale_price, product_id)` — `repairs(id, ref, user_id, created_at, updated_at, customer_*, address, device_type, serial, problem, accessories, notes, status[6], priority, cost)` — `repair_parts(id, repair_id, product_id, name, qty, unit_price, line_total)` — `stock_movements(id, created_at, user_id, product_id, serial_id, qty_change, qty_after, reason, ref)` — `settings(key, value)`.
-- مفاتيح `settings` (15): `store_name`، `store_address`، `store_phone`، `currency`، `tax_rate` (الخمسة المزروعة) + العشرة الجديدة: `store_email`، `store_cr`، `store_vat`، `receipt_thanks`، `receipt_footer`، `receipt_logo` (data:image ≤200KB)، `receipt_show_logo`، `receipt_show_barcode`، `receipt_show_tax`، `receipt_show_payments` (قيم `0`/`1`).
-- Seed: مستخدم `admin/1234` (المدير) و`cashier/1111` (أحمد محمد) + 9 فئات + 14 منتجاً تجريبياً (منها متتبّع `DL-OPTI-P4` بسيريالات `DL-88231+`).
+- المسار: `data/shop.db` بجانب جذر المشروع (وعند التجميد: `data/` بجانب الـ exe). المبالغ `INTEGER` وحدات صغرى (1 عملة = 100 قرش).
+- الجداول (17): `users(id, username, name, role, pin_salt, pin_hash, permissions, created_at)` — `categories(id, name)` — `products(...)` — `serials(...)` — `shifts(...)` — `customers(id, name, phone, created_at)` — `sales(...)` — `sale_items(...)` — `payments(id, sale_id, method[cash|wallet|credit], amount, received, change, ref_no)` — `customer_payments(id, ref, customer_id, sale_id, user_id, shift_id, created_at, amount, method[cash|wallet], ref_no, notes)` — `sale_returns(...)` — `sale_return_items(...)` — `used_device_purchases(...)` — `repairs(...)` — `repair_parts(...)` — `stock_movements(...)` — `settings(key, value)`.
+- مفاتيح `settings` (16): `store_name`، `store_address`، `store_phone`، `currency` (ج.م)، `tax_enabled` (`0`/`1`)، `tax_rate` (14) + `store_email`، `store_cr`، `store_vat`، `receipt_thanks`، `receipt_footer`، `receipt_logo`، `receipt_show_logo`، `receipt_show_barcode`، `receipt_show_tax`، `receipt_show_payments`.
 
-## 5. الـ API (كل دوال `Api` العامة — مقروءة من الكود)
+## 5. الصلاحيات المخصصة لكل مستخدم (15 صلاحية)
 
-الدور: `—` = بلا تسجيل، `user` = أي مسجّل، `admin` = مدير فقط.
+المدير (`role='admin'`) يملك كل الصلاحيات تلقائياً. أي موظف آخر يمكن للمدير تخصيص صلاحياته الفردية عبر 15 مفتاحاً في `users.permissions`:
+`pos_sell`، `pos_price`، `sales_return`، `sales_all`، `inventory_view`، `inventory_edit`، `cost_view`، `customers_view`، `customers_edit`، `customers_delete`، `repair_view`، `repair_edit`، `used_manage`، `reports_view`، `settings_manage`.
 
-| الدالة | المعاملات | الدور | السلوك |
-|---|---|---|---|
-| `users` | — | — | قائمة المستخدمين (username/name/role) لشاشة الدخول |
-| `login` | `username, pin` | — | PIN من 4 أرقام، PBKDF2 مقارن بـ `hmac.compare_digest`، يخزن الجلسة في `_STATE` |
-| `session` / `logout` | — | — | قراءة/مسح جلسة النافذة الواحدة |
-| `settings` | — | user | كل مفاتيح `settings` كقاموس |
-| `settings_save` | `**kv` | admin | 15 مفتاحاً مسموحاً فقط؛ القيمة الفارغة `""` تُتجاهل **إلا** أعلام العرض الأربعة (يجب `"0"`/`"1"` — و`"0"` تُحفظ وتُقرأ)؛ `receipt_logo` يجب أن يبدأ `data:image/` و≤200KB؛ مفاتيح مجهولة/`None` تُتجاهل بصمت؛ يعيد الإعدادات كاملة |
-| `categories` | — | user | الفئات + عدد منتجات كل فئة |
-| `categories_save` | `name` | admin | اسم غير فارغ وفريد |
-| `categories_update` | `id, name` | admin | تعديل الاسم (غير فارغ + فريد + موجودة) |
-| `categories_delete` | `id` | admin | مرفوض إن عليها منتجات نشطة |
-| `products` | `q, category_id, stock[out\|low\|in], limit, offset` | user | بحث + فلاتر؛ `cost` مخفي (`None`) عن الكاشير + `stock_state` محسوب |
-| `product` | `id` | user | منتج واحد (نفس حجب `cost`) |
-| `product_save` | `id?, sku, name, category_id?, price, cost, min_qty, tracked, notes?, serials?` | admin | إضافة/تعديل؛ سيريالات جديدة تزيد الكمية وتكتب حركة `serial_add` |
-| `product_delete` | `id` | admin | حذف ناعم (`active=0`) |
-| `products_search` | `q?, limit, category_id?` | user | يطابق الاسم/SKU/**سيريال in_stock**؛ `category_id` اختياري؛ `q` فارغ = الأحدث بالاسم |
-| `product_adjust` | `id, qty_change, reason` | admin | تعديل يدوي؛ رفض الصفر والسالب الناتج؛ يكتب `stock_movements` |
-| `serials` | `product_id` | user | سيريالات منتج |
-| `serial_add` | `product_id, serial` | admin | سيريال فريد + زيادة كمية + حركة |
-| `shift` | — | user | الوردية المفتوحة + مبيعات اليوم + مبيعات الوردية |
-| `shift_open` | `opening_cash` | user | وردية واحدة مفتوحة لكل مستخدم |
-| `shift_close` | `counted_cash` | user | يحسب `expected/diff` من مدفوعات `cash` |
-| `shifts` | — | admin | آخر 50 وردية + إجمالي مبيعات كل وردية |
-| `sale_create` | `items[{product_id, qty, unit_price?, serial_ids?}], discount, payments[{method, amount, received?}], customer_*?, notes?` | user | وردية إلزامية؛ الكاشير لا يعدّل السعر (يُتجاهل `unit_price`)؛ المتتبّع يتطلب `serial_ids` بعدد الكمية؛ خصم ≤ المجموع؛ ضريبة `tax_rate%` تقريب نصف-لأعلى؛ مجموع الدفعات = الإجمالي تماماً؛ `received<cash.amount` مرفوض؛ فاتورة `INV-00000` ثم `INV-#####`؛ يخصم المخزون ويكتب حركات `sale` ودفعات |
-| `sale` | `id` | user | فاتورة + أصناف + دفعات + `user_name` |
-| `receipt_text` | `id` | user | نص إيصال حراري، كل سطر ≤80 عموداً |
-| `sales` | `date?, kind[sale\|repair]?, q?, limit, offset` | user | الكاشير يرى مبيعاته فقط؛ 500 كحد داخلي |
-| `sales_stats` | `date?` | user | عدّادات اليوم (مبيعات/مرتجعات/صيانة) |
-| `sale_return` | `sale_id, items[{sale_item_id, qty}], reason?` | admin | إرجاع جزئي/كلي؛ يعيد المخزون والسيريال؛ مبلغ الإرجاع بأسعار الأصناف **دون الضريبة** (ponytail)؛ يحدّث `status` |
-| `used_create` | `seller_name, model, serial?, ... buy_price, resale_price?, to_inventory=True` | admin | `buy_price>0` إلزامي؛ السيريال إلزامي وفريد عند الإضافة للمخزون؛ ينشئ منتج `USED-<ref>` + سيريال + حركة `used_purchase`؛ مرجع `TRX-YYYYMMDDHHMMSS` |
-| `used` / `used_stats` | `q?, limit, offset` | user | سجل المشتريات المستعملة / إحصاءات اليوم + إجمالي المخزون |
-| `repair_create` | `customer_name, customer_phone, device_type, problem, ...` | user | الحقول الأربعة إلزامية؛ الحالة `received`؛ مرجع `RPR-...` |
-| `repairs` | `q?, status?, limit, offset` | user | بحث بالمرجع/العميل/السيريال + فلتر حالة |
-| `repair` | `id` | user | تذكرة + قطعها + `transitions` المتاحة |
-| `repair_set_status` | `id, status` | user | انتقال ضمن `REPAIR_FLOW` فقط وإلا `انتقال غير مسموح` |
-| `repair_add_part` | `repair_id, product_id, qty` | user | مرفوض للمنتهية (`delivered/rejected`)؛ السعر = `cost` (أو `price`)؛ يخصم المخزون ويضيف للتكلفة |
-| `report_daily` | `date?` | admin | إحصاء فترة (مبيعات/مرتجعات/دفعات/صيانة) |
-| `report_monthly` | `year, month` | admin | نفسها لنطاق شهري |
-| `report_top` | `date_from?, date_to?, limit` | admin | الأصناف الأعلى مبيعاً |
-| `report_profit` | `date_from?, date_to?` | admin | ربح البضائع (`line_total - cost×qty`) + ربح الصيانة |
-| `report_low` | — | user | منتجات `qty ≤ min_qty` |
-| `report_movements` | `limit` | admin | أحدث حركات المخزون + أسماء المنتجات/المستخدمين |
-| `stock_stats` | — | user | عدّاد/قيمة/منخفض/نافد |
+## 6. الواجهة (10 صفحات)
 
-## 6. الواجهة (8 صفحات)
-
-| الصفحة | الدور |
+| الصفحة | الوصف |
 |---|---|
 | `index.html` | تسجيل الدخول بالـ PIN + اختيار المستخدم |
-| `pos.html` | نقاط البيع: فلتر فئات + بحث (`products_search` مع `category_id`) + سلة + زر سلة جوال `cart-fab` + شريط وردية |
-| `history.html` | سجل المبيعات والصيانة + رابط الإيصال `receipt.html?id=` |
-| `receipt.html` | معاينة الإيصال وتخصيصه: `renderPaper()` تعكس الفورم (مدير) أو `SETTINGS` (كاشير)؛ لا عنصر `print-head` — الطباعة CSS فقط تخفي كل شيء عدا `#paper` بعرض `80mm`؛ بوابة مدير لنموذج التخصيص |
-| `repair.html` | تذاكر الصيانة + انتقالات الحالة + إضافة قطع |
-| `inventory.html` | المخزون (مدير): جدول + فلاتر + قسم إدارة الفئات (إضافة/تعديل `prompt`/حذف) |
-| `buy_used.html` | شراء أجهزة مستعملة (مدير) |
-| `reports.html` | التقارير والتحليلات (مدير) |
-
-مشترك: `pageInit(name, {admin?})` — جلسة + إعدادات + شريط جانبي، تحويل لغير المسجّل إلى `index.html` وللكاشير في صفحات المدير إلى `pos.html`. `syncTitle(label)` — عنوان الصفحة/النافذة من `store_name` (وعنوان إقلاع النافذة من القاعدة عبر `store_title()` في `main.py`). الشريط الجانبي `renderSidebar` يخفي صفحات المدير عن الكاشير. زر الجوال `tz-menu` يفتح الشريط كدرج منزلق. مهلة الجسر 4 ثوانٍ: فتح صفحة من متصفح عادي (خارج النافذة) يعرض رسالة «تعذر الاتصال بالبرنامج الداخلي» بدل البياض. الثيم الليلي يُطبَّق مبكراً من `localStorage.tz-theme` لتفادي الوميض. بوابات المدير داخل الصفحات: تخصيص الإيصال + تعديل الأسعار + المرتجعات + التقارير.
-
-## 7. قواعد العمل
-
-- مخزون غير سالب أبداً (بيع/تعديل/قطع صيانة تُرفض عند النقص). بيع بلا وردية مفتوحة مرفوض. الكاشير: لا أسعار شراء ولا أرباح، لا تعديل سعر، لا مرتجعات، لا تقارير، لا صفحات مدير.
-- انتقالات الصيانة الست (`REPAIR_FLOW`): `received → in_review/rejected`، `in_review → pending_approval/repaired/rejected`، `pending_approval → in_review/repaired/rejected`، `repaired → delivered`، `rejected/delivered` نهائيتان.
-- PIN بـ PBKDF2-SHA256 (200 ألف تكرار) + seed: `admin/1234`، `cashier/1111`.
-- صور `docs/**` للقراءة فقط — النسخ إلى `screenshots/` مسموح والتعديل على الأصل ممنوع.
-
-## 8. أوامر النجاح (انسخ والصق من جذر المشروع)
-
-```powershell
-python -m compileall -q app
-python app\selfcheck.py
-Select-String -Path web\*.html,web\app.js -Pattern 'https?://'  # يجب: بلا نتائج (offline)
-(Get-ChildItem web\*.html).Count  # يجب: 8
-python -c "import webview; print(webview.__version__)"  # يجب: 6.2.1
-(Get-ChildItem web\fonts\*.woff2).Count  # يجب: 23
-python -c "import ast,glob; [ast.parse(open(f,encoding='utf-8').read()) for f in glob.glob('app/*.py')]; print('syntax ok')"
-```
+| `pos.html` | نقاط البيع: حساب تلقائي للباقي عند إدخال نقدية أكبر، تحذير وتحويل تلقائي للآجل عند إدخال نقدية أقل، إلزام اختيار العميل للبيع الآجل، وإلزام الرقم المرجعي لدفع المحفظة |
+| `customers.html` | إدارة العملاء والمديونيات: عرض إجمالي الآجل والمسدد والمديونية المتبقية + فلتر «عليه مديونية فقط» |
+| `customer_details.html` | كشف حساب العميل التفصيلي + إصدار وحذف سندات القبض لتسديد الدفعات الآجلة (نقدي/محفظة برقم مرجعي) |
+| `history.html` | سجل المبيعات والصيانة + نافذة استرجاع تفاعلية |
+| `receipt.html` | معاينة الإيصال وإعدادات المتجر (تفعيل/إيقاف الضريبة، النسبة، العملة، الشعار، وعرض مرجع المحفظة) |
+| `repair.html` | تذاكر الصيانة + فتح مباشر عبر `?id=` + قائمة منسدلة لقطع الغيار + إكمال تلقائي للعملاء |
+| `inventory.html` | المخزون: جدول + فلاتر + إدارة الفئات + نافذة عرض وإضافة السيريالات لكل منتج |
+| `buy_used.html` | شراء أجهزة مستعملة |
+| `reports.html` | التقارير والتحليلات + سجل الورديات + إدارة الموظفين وتخصيص صلاحيات كل موظف |
 
 ## سجل التغييرات
 
-- `2026-10-12`: إضافة نظام متكامل لإدارة العملاء وربطهم بالفواتير:
-  1. إنشاء جدول `customers` مستقل وترحيله تلقائياً من المبيعات.
-  2. إضافة حقل `customer_id` لجدول `sales` وربطه بالعملاء.
-  3. صفحة إدارة العملاء (`web/customers.html`) وصفحة تفاصيل العميل وسجل عملياته (`web/customer_details.html`).
-  4. ميزة الإكمال التلقائي (Autocomplete) للعملاء في نقاط البيع (`pos.html`) والتسجيل التلقائي عند البيع.
-  5. إضافة حقل العملة في صفحة تخصيص الإيصال (`receipt.html`) لتغييرها من "ر.س" إلى "ج.م" أو غيرها.
-- `2026-10-12`: إصلاح خطأ `Python.Runtime.Loader.Initialize` في ملف الـ exe عبر تغيير نمط البناء من `--onedir` إلى `--onefile` في `build-exe.bat`.
-- `2026-10-12`: قاعدة البيانات بجانب المشروع (`data/shop.db` + ترحيل تلقائي من `%LOCALAPPDATA%`) + بناء exe بضغطة واحدة (`build-exe.bat` → `dist/TechZone/TechZone.exe ~5.4MB` + دعم frozen في `main.py`/`db.py`) + فحصا selfcheck الجديدان (42/42). تنبيه: الـ exe المجمد لا يقلع من داخل مجلد المشروع (pythonnet/ClrLoader) — يعمل من أي مسار آخر.
-- `2026-10-12`: توثيق مهلة الجسر و`store_title()` في §6 (رسالة بدل البياض خارج النافذة).
-- `2026-10-12`: إعادة تسمية `PROJECT_AI.md` → `AGENTS.md` + توسيع `README.md` بالشرح والمميزات والصور الثمان (`screenshots/`).
-- `2026-10-12`: بناء أول + فلتر تصنيف POS + إدارة فئات + إيصال معاينة/تخصيص + طباعة 80mm + اسم محل شامل (`syncTitle`) + تجاوب (`tz-menu`/`cart-fab`) + نافذة `maximized` + توثيق حي (`AGENTS.md`) + مستودع git محلي أول (`main`).
+- `2026-10-14`: إضافة حسابات العملاء الآجلة وسندات القبض، نظام الصلاحيات المخصصة لكل موظف (15 صلاحية)، خيار تشغيل/إيقاف الضريبة وتهيئة الإعدادات لمصر (`ج.م`، 14%)، تحسين دفع نقاط البيع (حساب الباقي تلقائياً، تحويل النقص النقدي إلى آجل بموافقة الكاشير مع إجبار اختيار العميل، ورقم العملية المرجعية لتحويل المحفظة)، وإضافة `push-github.bat` وتحديث `selfcheck.py` (56/56).

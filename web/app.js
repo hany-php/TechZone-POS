@@ -1,4 +1,4 @@
-/* تك زون للإلكترونيات — جسر API + تنقّل + وضع ليلي + تنسيق (مشترك لكل الصفحات) */
+/* تك زون للإلكترونيات — جسر API + تنقّل + صلاحيات + وضع ليلي + تنسيق (مشترك لكل الصفحات) */
 
 /* ===== الوضع الليلي (مبكر جداً لتجنب الوميض) ===== */
 if (localStorage.getItem('tz-theme') === 'dark') document.documentElement.classList.add('dark');
@@ -13,8 +13,6 @@ const _apiWait = new Promise((resolve, reject) => {
   if (window.pywebview && window.pywebview.api) resolve();
   else {
     window.addEventListener('pywebviewready', resolve, { once: true });
-    // لو الصفحة فُتحت خارج نافذة البرنامج (متصفح عادي) لا تبقى بيضاء للأبد:
-    // بعد 4 ثوانٍ اعرض سبباً واضحاً بدل البياض.
     setTimeout(() => reject(new Error('bridge-timeout')), 4000);
   }
 });
@@ -45,9 +43,19 @@ async function api(name, payload) {
   return res.data;
 }
 
-/* ===== تنسيق ===== */
-let CURRENCY = 'ر.س';
+/* ===== تنسيق وصلاحيات ===== */
+let CURRENCY = 'ج.م';
 let SETTINGS = {};
+let CURRENT_USER = null;
+
+function hasPerm(key, u) {
+  const target = u || CURRENT_USER;
+  if (!target) return false;
+  if (target.role === 'admin') return true;
+  const p = target.permissions || {};
+  if (Array.isArray(key)) return key.some((k) => !!p[k]);
+  return !!p[key];
+}
 
 function fmt(cents) {
   return ((cents || 0) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -81,23 +89,23 @@ async function guard(fn) {
   try { return await fn(); } catch (e) { toast(e.message || String(e), 'error'); return null; }
 }
 
-/* ===== شريط التنقل الموحد (كل الصفحات الثمانية reachable) ===== */
+/* ===== شريط التنقل الموحد (يتكيف مع صلاحيات المستخدم) ===== */
 const NAV = [
-  { page: 'customers', href: 'customers.html', icon: 'people', label: 'إدارة العملاء', admin: true },
   { page: 'pos', href: 'pos.html', icon: 'point_of_sale', label: 'نقاط البيع' },
+  { page: 'customers', href: 'customers.html', icon: 'people', label: 'العملاء والمديونيات', perm: ['customers_view', 'customers_edit'] },
   { page: 'history', href: 'history.html', icon: 'receipt_long', label: 'سجل المبيعات' },
-  { page: 'receipt', href: 'receipt.html', icon: 'print', label: 'طباعة إيصال' },
-  { page: 'repair', href: 'repair.html', icon: 'build', label: 'الصيانة' },
-  { page: 'inventory', href: 'inventory.html', icon: 'inventory_2', label: 'المخزون', admin: true },
-  { page: 'buy_used', href: 'buy_used.html', icon: 'phonelink_setup', label: 'شراء أجهزة مستعملة', admin: true },
-  { page: 'reports', href: 'reports.html', icon: 'bar_chart', label: 'التقارير', admin: true },
+  { page: 'receipt', href: 'receipt.html', icon: 'print', label: 'الإيصال والإعدادات' },
+  { page: 'repair', href: 'repair.html', icon: 'build', label: 'الصيانة', perm: ['repair_view', 'repair_edit'] },
+  { page: 'inventory', href: 'inventory.html', icon: 'inventory_2', label: 'المخزون', perm: ['inventory_view', 'inventory_edit'] },
+  { page: 'buy_used', href: 'buy_used.html', icon: 'phonelink_setup', label: 'شراء أجهزة مستعملة', perm: 'used_manage' },
+  { page: 'reports', href: 'reports.html', icon: 'bar_chart', label: 'التقارير والموظفون', perm: ['reports_view', 'settings_manage'] },
   { page: 'index', href: 'index.html', icon: 'switch_account', label: 'تبديل المستخدم' },
 ];
 
 function renderSidebar(current, user) {
   const host = document.getElementById('shell');
   if (!host || host.querySelector('aside.tz-nav')) return;
-  const items = NAV.filter((x) => !x.admin || user.role === 'admin')
+  const items = NAV.filter((x) => !x.perm || hasPerm(x.perm, user))
     .map((x) => {
       const active = x.page === current;
       return `<a href="${x.href}" class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${active
@@ -131,7 +139,7 @@ function renderSidebar(current, user) {
         <div class="w-10 h-10 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold">${esc((user.name || '؟').slice(0, 1))}</div>
         <div class="flex-1 min-w-0">
           <p class="text-sm font-bold text-gray-900 dark:text-white truncate">${esc(user.name)}</p>
-          <p class="text-xs text-gray-500 truncate">${user.role === 'admin' ? 'مدير' : 'كاشير'}</p>
+          <p class="text-xs text-gray-500 truncate">${user.role === 'admin' ? 'مدير' : 'موظف / كاشير'}</p>
         </div>
         <button id="tz-logout" class="text-gray-400 hover:text-red-500" title="تسجيل الخروج">
           <span class="material-icons-round">logout</span></button>
@@ -139,7 +147,6 @@ function renderSidebar(current, user) {
     </div>`;
   host.prepend(aside);
   aside.querySelector('#tz-logout').addEventListener('click', async () => { await guard(() => api('logout')); location.href = 'index.html'; });
-  // زر قائمة للجوال: يفتح الشريط كدرج منزلق (overlay) ويغلق عند اختيار صفحة
   if (!document.getElementById('tz-menu')) {
     const btn = document.createElement('button');
     btn.id = 'tz-menu';
@@ -165,25 +172,32 @@ function renderSidebar(current, user) {
   }
 }
 
-/* ===== عنوان النافذة/التبويب من اسم المحل (يتغير في كل مكان عند تعديله) ===== */
+/* ===== عنوان النافذة/التبويب من اسم المحل ===== */
 function syncTitle(pageLabel) {
   const name = (SETTINGS.store_name || 'تك زون للإلكترونيات').trim() || 'تك زون للإلكترونيات';
   document.title = pageLabel ? `${pageLabel} - ${name}` : name;
 }
 
-/* ===== حارس الصفحة: جلسة + إعدادات + شريط جانبي ===== */
+/* ===== حارس الصفحة: جلسة + صلاحيات + إعدادات + شريط جانبي ===== */
 async function pageInit(current, opts) {
   let sess;
   try { sess = await api('session'); } catch (e) { toast('تعذر الاتصال بالبرنامج', 'error'); return null; }
   if (!sess || !sess.user) { location.href = 'index.html'; return null; }
   const user = sess.user;
-  if (opts && opts.admin && user.role !== 'admin') {
-    toast('هذه الصفحة للمدير فقط', 'warn');
-    location.href = 'pos.html';
-    return null;
+  CURRENT_USER = user;
+  if (opts) {
+    if (opts.perm && !hasPerm(opts.perm, user)) {
+      toast('ليست لديك صلاحية لدخول هذه الصفحة', 'warn');
+      location.href = 'pos.html';
+      return null;
+    } else if (opts.admin && !opts.perm && user.role !== 'admin') {
+      toast('هذه الصفحة للمدير فقط', 'warn');
+      location.href = 'pos.html';
+      return null;
+    }
   }
   try { SETTINGS = await api('settings'); } catch (e) { SETTINGS = {}; }
-  CURRENCY = SETTINGS.currency || 'ر.س';
+  CURRENCY = SETTINGS.currency || 'ج.م';
   const nav = NAV.find((x) => x.page === current);
   syncTitle(nav ? nav.label : '');
   document.body.dataset.role = user.role;

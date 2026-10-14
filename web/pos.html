@@ -66,32 +66,33 @@
 <div class="flex-1 overflow-y-auto p-4 space-y-4" id="cart"></div>
 <!-- Customer + Discount -->
 <div class="px-6 pt-3 space-y-2 relative">
-<input id="cust" class="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm" placeholder="اسم العميل (اختياري)" autocomplete="off"/>
-    <div id="cust-sug" class="absolute top-full left-0 right-0 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 hidden max-h-60 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700"></div>
+<input id="cust" class="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm" placeholder="اسم العميل (إلزامي للبيع الآجل)" autocomplete="off"/>
+<div id="cust-sug" class="absolute top-12 left-6 right-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 hidden max-h-60 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700"></div>
 <div class="flex gap-2">
 <input id="disc" type="number" min="0" step="0.01" class="w-1/2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm" placeholder="خصم (مبلغ)"/>
-<input id="phone" class="w-1/2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm" placeholder="هاتف العميل (اختياري)"/>
+<input id="phone" class="w-1/2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm" placeholder="هاتف العميل (010...)"/>
 </div>
+<input id="notes" class="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm" placeholder="ملاحظات الفاتورة (اختياري)"/>
 </div>
 <!-- Footer Calculations & Pay -->
 <div class="p-6 bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700 shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.05)] z-20">
 <div class="space-y-3 mb-6">
 <div class="flex justify-between text-slate-600 dark:text-slate-400 text-sm">
 <span>المجموع الفرعي</span>
-<span class="font-display font-medium text-slate-800 dark:text-slate-200" id="sub">0.00 ر.س</span>
+<span class="font-display font-medium text-slate-800 dark:text-slate-200" id="sub">0.00 ج.م</span>
 </div>
-<div class="flex justify-between text-slate-600 dark:text-slate-400 text-sm">
-<span>الضريبة (<span id="taxrate">15</span>%)</span>
-<span class="font-display font-medium text-slate-800 dark:text-slate-200" id="tax">0.00 ر.س</span>
+<div id="tax-row" class="flex justify-between text-slate-600 dark:text-slate-400 text-sm">
+<span>الضريبة (<span id="taxrate">14</span>%)</span>
+<span class="font-display font-medium text-slate-800 dark:text-slate-200" id="tax">0.00 ج.م</span>
 </div>
 <div class="flex justify-between text-slate-600 dark:text-slate-400 text-sm">
 <span>خصم</span>
-<span class="font-display font-medium text-green-600" id="discv">-0.00 ر.س</span>
+<span class="font-display font-medium text-green-600" id="discv">-0.00 ج.م</span>
 </div>
 <div class="h-px bg-dashed border-t border-dashed border-slate-200 dark:border-slate-700 my-2"></div>
 <div class="flex justify-between items-end">
 <span class="text-lg font-bold text-slate-900 dark:text-white">الإجمالي</span>
-<span class="font-display text-2xl font-bold text-primary"><span id="total">0.00</span> <span class="text-sm font-normal text-slate-500" id="cur">ر.س</span></span>
+<span class="font-display text-2xl font-bold text-primary"><span id="total">0.00</span> <span class="text-sm font-normal text-slate-500" id="cur">ج.م</span></span>
 </div>
 </div>
 <!-- Action Buttons -->
@@ -127,25 +128,49 @@
 </div>
 <!-- Pay Modal -->
 <div id="pay-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
-<div class="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+<div class="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-lg shadow-2xl max-h-[92vh] overflow-y-auto">
 <h3 class="text-lg font-bold mb-1">إتمام الدفع</h3>
-<p class="text-sm text-slate-500 mb-4">الإجمالي: <span id="pay-total" class="font-numeric font-bold text-primary">0.00</span></p>
+<p class="text-sm text-slate-500 mb-4">الإجمالي المطلوب: <span id="pay-total" class="font-numeric font-bold text-primary text-base">0.00</span></p>
 <div class="grid grid-cols-3 gap-2 mb-4" id="methods">
-<button data-m="cash" class="p-3 rounded-xl border-2 border-primary bg-primary/5 text-primary font-bold">نقدي</button>
-<button data-m="wallet" class="p-3 rounded-xl border border-slate-200 dark:border-slate-600 font-medium">محفظة</button>
-<button data-m="credit" class="p-3 rounded-xl border border-slate-200 dark:border-slate-600 font-medium">آجل</button>
+<button type="button" data-m="cash" class="p-3 rounded-xl border-2 border-primary bg-primary/5 text-primary font-bold">نقدي</button>
+<button type="button" data-m="wallet" class="p-3 rounded-xl border border-slate-200 dark:border-slate-600 font-medium">محفظة</button>
+<button type="button" data-m="credit" class="p-3 rounded-xl border border-slate-200 dark:border-slate-600 font-medium">آجل</button>
 </div>
-<div id="pay-lines" class="space-y-2 mb-3"></div>
+<!-- Customer box inside Pay Modal (إلزامي عند البيع الآجل) -->
+<div id="pay-cust-box" class="hidden p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 mb-3 space-y-2 relative">
+  <p class="text-xs font-bold text-blue-800 dark:text-blue-300 flex items-center gap-1"><span class="material-icons-outlined text-sm">person</span>بيانات العميل (إلزامية للبيع الآجل):</p>
+  <div class="grid grid-cols-2 gap-2">
+    <input id="pay-cust-name" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm" placeholder="اسم العميل *" autocomplete="off"/>
+    <input id="pay-cust-phone" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm font-numeric" placeholder="رقم الموبايل (010...)"/>
+  </div>
+  <div id="pay-cust-sug" class=" bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg hidden max-h-40 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700"></div>
+</div>
+<!-- Payment Lines -->
+<div id="pay-lines" class="space-y-3 mb-3"></div>
+<!-- Cash Change / Shortfall Feedback Box -->
+<div id="pay-status-box" class="p-3 rounded-xl bg-slate-50 dark:bg-slate-700/40 border border-slate-200 dark:border-slate-600 mb-4 space-y-2 text-sm">
+  <div id="change-row" class="flex items-center justify-between">
+    <span class="text-slate-600 dark:text-slate-300 font-medium">الباقي للعميل (الفكة):</span>
+    <span id="pay-change" class="font-numeric font-bold text-lg text-emerald-600">0.00</span>
+  </div>
+  <div id="shortfall-row" class="hidden pt-2 border-t border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300">
+    <div class="flex items-center justify-between mb-2">
+      <span class="font-bold text-xs">تحذير: المبلغ المدخل أقل من الإجمالي بمقدار:</span>
+      <span id="pay-shortfall" class="font-numeric font-bold text-red-600">0.00</span>
+    </div>
+    <button id="btn-convert-credit" type="button" class="w-full py-1.5 px-3 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-colors">تحويل المبلغ المتبقي إلى بيع آجل على العميل</button>
+  </div>
+</div>
 <div class="flex gap-2">
-<button id="pay-add" class="flex-1 py-2 rounded-xl border border-slate-200 dark:border-slate-600 text-sm">+ دفعة أخرى</button>
-<button id="pay-x" class="flex-1 py-2 rounded-xl border border-slate-200 dark:border-slate-600 text-sm">إلغاء</button>
-<button id="pay-ok" class="flex-1 py-2 rounded-xl bg-primary text-white font-bold">إتمام البيع</button>
+<button id="pay-add" type="button" class="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 text-sm font-medium">+ دفعة أخرى</button>
+<button id="pay-x" type="button" class="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 text-sm font-medium">إلغاء</button>
+<button id="pay-ok" type="button" class="flex-1 py-2.5 rounded-xl bg-primary text-white font-bold">إتمام البيع</button>
 </div>
 </div>
 </div>
 <script src="app.js"></script>
 <script>
-let user = null, PRODUCTS = [], CATS = [], CAT = null, CART = [], RATE = 15, lastSale = null;
+let user = null, PRODUCTS = [], CATS = [], CAT = null, CART = [], RATE = 14, TAX_ON = true, lastSale = null;
 let SHIFT = null;
 
 document.getElementById('today').textContent = new Date().toLocaleDateString('ar', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -221,8 +246,17 @@ async function search() {
 }
 
 async function addToCart(id) {
-  const p = PRODUCTS.find((x) => x.id === id);
-  if (!p) return;
+  let p = PRODUCTS.find((x) => x.id === id);
+  if (!p) {
+    p = await guard(() => api('product', { id }));
+    if (!p) return;
+  }
+  const e = CART.find((c) => c.product_id === id);
+  const currentQty = e ? e.qty : 0;
+  if (p.qty <= currentQty) {
+    toast(`لا توجد وحدات متاحة أكثر لـ ${p.name} (المتوفر ${p.qty})`, 'warn');
+    return;
+  }
   let serial_ids = [];
   if (p.tracked) {
     const serials = await guard(() => api('serials', { product_id: id }));
@@ -232,12 +266,12 @@ async function addToCart(id) {
     if (!free.length) { toast('لا توجد وحدات متاحة بهذا المنتج (سيريال)', 'warn'); return; }
     serial_ids = [free[0].id];
   }
-  const e = CART.find((c) => c.product_id === id);
   if (e) {
-    if (p.tracked && p.qty <= e.qty) { toast('لا توجد وحدات متاحة أكثر', 'warn'); return; }
     e.qty++;
     if (p.tracked) e.serial_ids.push(...serial_ids);
-  } else CART.push({ product_id: id, name: p.name, unit_price: p.qty !== undefined ? p.price : p.price, qty: 1, serial_ids });
+  } else {
+    CART.push({ product_id: id, name: p.name, unit_price: p.price, qty: 1, tracked: !!p.tracked, max_qty: p.qty, serial_ids });
+  }
   renderCart();
 }
 
@@ -247,6 +281,7 @@ function renderCart() {
   const el = document.getElementById('cart');
   const panel = document.getElementById('cart-panel');
   const fab = document.getElementById('cart-fab');
+  const canEditPrice = hasPerm('pos_price');
   if (fab) {
     fab.querySelector('span:last-child').textContent = cartQty();
     fab.classList.toggle('hidden', window.innerWidth >= 768);
@@ -264,7 +299,10 @@ function renderCart() {
       <div class="flex-1 flex flex-col justify-between">
         <div>
           <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm leading-tight mb-1">${esc(c.name)}</h4>
-          <p class="text-xs text-slate-500 dark:text-slate-400 font-display">${fmt(c.unit_price)} ${CURRENCY} / وحدة</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400 font-display flex items-center gap-2">
+            <span>${fmt(c.unit_price)} ${CURRENCY} / وحدة</span>
+            ${canEditPrice ? `<button data-price="${i}" class="text-primary hover:underline text-[11px]" title="تعديل سعر الوحدة">تعديل السعر</button>` : ''}
+          </p>
         </div>
         <div class="flex items-center justify-between mt-2">
           <div class="flex items-center bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-600 shadow-sm h-8">
@@ -276,21 +314,41 @@ function renderCart() {
         </div>
       </div>
     </div>`).join('');
-  el.querySelectorAll('[data-dec]').forEach((b) => b.addEventListener('click', () => { const c = CART[+b.dataset.dec]; c.qty--; if (c.qty <= 0) CART.splice(CART.indexOf(c), 1); renderCart(); }));
-  el.querySelectorAll('[data-inc]').forEach((b) => b.addEventListener('click', () => { CART[+b.dataset.inc].qty++; renderCart(); }));
+  el.querySelectorAll('[data-dec]').forEach((b) => b.addEventListener('click', () => {
+    const c = CART[+b.dataset.dec];
+    c.qty--;
+    if (c.serial_ids && c.serial_ids.length > c.qty) c.serial_ids.pop();
+    if (c.qty <= 0) CART.splice(CART.indexOf(c), 1);
+    renderCart();
+  }));
+  el.querySelectorAll('[data-inc]').forEach((b) => b.addEventListener('click', () => {
+    const c = CART[+b.dataset.inc];
+    addToCart(c.product_id);
+  }));
+  el.querySelectorAll('[data-price]').forEach((b) => b.addEventListener('click', () => {
+    const c = CART[+b.dataset.price];
+    const np = prompt('سعر الوحدة الجديد:', (c.unit_price / 100).toFixed(2));
+    if (np === null || np.trim() === '') return;
+    const val = toAmount(np);
+    if (val < 0) { toast('السعر غير صالح', 'warn'); return; }
+    c.unit_price = Math.round(val * 100);
+    renderCart();
+  }));
   totals();
 }
 
 function totals() {
   const sub = CART.reduce((a, c) => a + c.qty * c.unit_price, 0);
-  const disc = toAmount(document.getElementById('disc').value) * 100;
+  const disc = Math.round(toAmount(document.getElementById('disc').value) * 100);
   const taxable = Math.max(0, sub - disc);
-  const tax = Math.round(taxable * RATE / 100);
+  const effectiveRate = TAX_ON ? RATE : 0;
+  const tax = Math.round(taxable * effectiveRate / 100);
   const total = taxable + tax;
   document.getElementById('sub').textContent = fmt(sub) + ' ' + CURRENCY;
   document.getElementById('tax').textContent = fmt(tax) + ' ' + CURRENCY;
   document.getElementById('discv').textContent = '-' + fmt(disc) + ' ' + CURRENCY;
   document.getElementById('total').textContent = fmt(total);
+  document.getElementById('tax-row').classList.toggle('hidden', !TAX_ON);
   return { sub, disc, total };
 }
 document.getElementById('disc').addEventListener('input', totals);
@@ -302,31 +360,224 @@ document.getElementById('btn-print').addEventListener('click', () => {
 });
 document.getElementById('btn-disc').addEventListener('click', () => document.getElementById('disc').focus());
 
-function payLines(defaultTotal) {
-  const el = document.getElementById('pay-lines');
-  if (!el.children.length) el.innerHTML = `<div class="flex gap-2"><select class="flex-1 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-2 text-sm"><option value="cash">نقدي</option><option value="wallet">محفظة</option><option value="credit">آجل</option></select><input class="flex-1 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-2 text-sm font-numeric" placeholder="المبلغ" data-amt/></div>`;
-  return [...el.children].map((row) => ({ method: row.querySelector('select').value, amount: toAmount(row.querySelector('[data-amt]').value) }));
+function highlightMethodBtn(m) {
+  document.querySelectorAll('#methods button').forEach((b) => {
+    const active = b.dataset.m === m;
+    b.className = active
+      ? 'p-3 rounded-xl border-2 border-primary bg-primary/5 text-primary font-bold'
+      : 'p-3 rounded-xl border border-slate-200 dark:border-slate-600 font-medium';
+  });
 }
-document.getElementById('pay-add').addEventListener('click', () => { document.getElementById('pay-lines').insertAdjacentHTML('beforeend', `<div class="flex gap-2"><select class="flex-1 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-2 text-sm"><option value="cash">نقدي</option><option value="wallet">محفظة</option><option value="credit">آجل</option></select><input class="flex-1 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-2 text-sm font-numeric" placeholder="المبلغ" data-amt/></div>`); });
+
+function addPayLine(method = 'cash', amountStr = '', refStr = '') {
+  const el = document.getElementById('pay-lines');
+  const row = document.createElement('div');
+  row.className = 'p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/60 space-y-2';
+  row.innerHTML = `
+    <div class="flex gap-2 items-center">
+      <select class="w-1/3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-2 text-sm font-medium" data-method>
+        <option value="cash" ${method === 'cash' ? 'selected' : ''}>نقدي</option>
+        <option value="wallet" ${method === 'wallet' ? 'selected' : ''}>محفظة إلكترونية</option>
+        <option value="credit" ${method === 'credit' ? 'selected' : ''}>آجل (مديونية)</option>
+      </select>
+      <input type="number" min="0" step="0.01" class="flex-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm font-numeric font-bold" placeholder="المبلغ المدفوع" data-amt value="${amountStr}"/>
+      <button type="button" class="text-slate-400 hover:text-red-500 px-1" data-rm title="حذف الدفعة"><span class="material-icons-outlined text-base">close</span></button>
+    </div>
+    <div class="${method === 'wallet' ? '' : 'hidden'}" data-ref-wrap>
+      <input type="text" class="w-full bg-white dark:bg-slate-700 border border-blue-300 dark:border-blue-600 rounded-lg px-3 py-1.5 text-xs font-numeric" placeholder="رقم العملية المرجعية لتحويل المحفظة (من الرسالة النصية) *" data-ref value="${esc(refStr)}"/>
+    </div>`;
+  const sel = row.querySelector('[data-method]');
+  const refWrap = row.querySelector('[data-ref-wrap]');
+  sel.addEventListener('change', () => {
+    refWrap.classList.toggle('hidden', sel.value !== 'wallet');
+    updatePayModalState();
+  });
+  row.querySelector('[data-amt]').addEventListener('input', updatePayModalState);
+  row.querySelector('[data-rm]').addEventListener('click', () => {
+    if (el.children.length > 1) { row.remove(); updatePayModalState(); }
+  });
+  el.appendChild(row);
+  updatePayModalState();
+}
+
+function getRawPayRows() {
+  return [...document.getElementById('pay-lines').children].map((row) => ({
+    rowEl: row,
+    method: row.querySelector('[data-method]').value,
+    enteredAmount: toAmount(row.querySelector('[data-amt]').value),
+    ref_no: (row.querySelector('[data-ref]') ? row.querySelector('[data-ref]').value.trim() : ''),
+  }));
+}
+
+function convertShortfallToCredit() {
+  const { total } = totals();
+  const rows = getRawPayRows();
+  const totalUnits = total / 100;
+  const enteredSum = rows.reduce((a, r) => a + r.enteredAmount, 0);
+  const diff = +(totalUnits - enteredSum).toFixed(2);
+  if (diff <= 0) return;
+
+  // لو كان السطر الوحيد نقدي ومبلغه 0، حوّله مباشرة إلى آجل بكامل المبلغ
+  if (rows.length === 1 && rows[0].method === 'cash' && rows[0].enteredAmount <= 0) {
+    rows[0].rowEl.querySelector('[data-method]').value = 'credit';
+    rows[0].rowEl.querySelector('[data-amt]').value = totalUnits.toFixed(2);
+    highlightMethodBtn('credit');
+  } else {
+    // أبقِ المبلغ النقدي المدفوع كما هو وأضف سطراً آجلاً بالمتبقي
+    const existingCredit = rows.find((r) => r.method === 'credit');
+    if (existingCredit) {
+      existingCredit.rowEl.querySelector('[data-amt]').value = (existingCredit.enteredAmount + diff).toFixed(2);
+    } else {
+      addPayLine('credit', diff.toFixed(2));
+    }
+  }
+  updatePayModalState();
+  const custNameInput = document.getElementById('pay-cust-name');
+  if (!custNameInput.value.trim()) {
+    toast('يرجى اختيار أو كتابة اسم العميل لإتمام البيع الآجل', 'warn');
+    custNameInput.focus();
+  }
+}
+
+document.getElementById('btn-convert-credit').addEventListener('click', convertShortfallToCredit);
+
+function updatePayModalState() {
+  const { total } = totals();
+  const totalUnits = total / 100;
+  const rows = getRawPayRows();
+  const hasCredit = rows.some((r) => r.method === 'credit');
+
+  // إظهار صندوق العميل داخل نافذة الدفع إذا وُجد دفع آجل
+  document.getElementById('pay-cust-box').classList.toggle('hidden', !hasCredit);
+
+  // حساب مجموع ما أدخله الكاشير
+  const enteredSumCents = rows.reduce((a, r) => a + Math.round(r.enteredAmount * 100), 0);
+  const diffCents = enteredSumCents - total;
+
+  const changeEl = document.getElementById('pay-change');
+  const shortfallRow = document.getElementById('shortfall-row');
+  const shortfallEl = document.getElementById('pay-shortfall');
+
+  if (diffCents > 0 && rows.some((r) => r.method === 'cash')) {
+    // أدخل الكاشير مبلغاً نقدياً أكبر من الإجمالي -> يظهر الباقي للعميل
+    changeEl.textContent = fmt(diffCents) + ' ' + CURRENCY;
+    shortfallRow.classList.add('hidden');
+  } else if (diffCents < 0) {
+    changeEl.textContent = '0.00 ' + CURRENCY;
+    shortfallRow.classList.remove('hidden');
+    shortfallEl.textContent = fmt(-diffCents) + ' ' + CURRENCY;
+  } else {
+    changeEl.textContent = '0.00 ' + CURRENCY;
+    shortfallRow.classList.add('hidden');
+  }
+}
+
+document.querySelectorAll('#methods button').forEach((b) => b.addEventListener('click', () => {
+  const m = b.dataset.m;
+  highlightMethodBtn(m);
+  const firstRow = document.getElementById('pay-lines').firstElementChild;
+  if (firstRow) {
+    const sel = firstRow.querySelector('[data-method]');
+    sel.value = m;
+    firstRow.querySelector('[data-ref-wrap]').classList.toggle('hidden', m !== 'wallet');
+    updatePayModalState();
+  }
+}));
+
+document.getElementById('pay-add').addEventListener('click', () => {
+  const { total } = totals();
+  const currentSumCents = getRawPayRows().reduce((a, r) => a + Math.round(r.enteredAmount * 100), 0);
+  const rem = Math.max(0, total - currentSumCents);
+  addPayLine('wallet', rem > 0 ? (rem / 100).toFixed(2) : '');
+});
+
 document.getElementById('btn-pay').addEventListener('click', () => {
   if (!SHIFT) { toast('افتح وردية أولاً', 'warn'); return; }
   if (!CART.length) { toast('السلة فارغة', 'warn'); return; }
   const { total } = totals();
   document.getElementById('pay-total').textContent = fmt(total) + ' ' + CURRENCY;
+  document.getElementById('pay-cust-name').value = document.getElementById('cust').value;
+  document.getElementById('pay-cust-phone').value = document.getElementById('phone').value;
   document.getElementById('pay-lines').innerHTML = '';
-  payLines();
+  highlightMethodBtn('cash');
+  addPayLine('cash', (total / 100).toFixed(2));
   const m = document.getElementById('pay-modal'); m.classList.remove('hidden'); m.classList.add('flex');
 });
+
 document.getElementById('pay-x').addEventListener('click', () => { const m = document.getElementById('pay-modal'); m.classList.add('hidden'); m.classList.remove('flex'); });
+
 document.getElementById('pay-ok').addEventListener('click', async () => {
   const { total } = totals();
-  const pays = payLines().map((p) => ({ ...p, received: p.amount }));
+  let rows = getRawPayRows();
+  let enteredSumCents = rows.reduce((a, r) => a + Math.round(r.enteredAmount * 100), 0);
+
+  // لو كتب قيمة أقل وهو مختار نقدي: يظهر تحذير ويسأل هل تود البيع آجل؟
+  if (enteredSumCents < total && rows.some((r) => r.method === 'cash')) {
+    const remStr = fmt(total - enteredSumCents) + ' ' + CURRENCY;
+    const ask = confirm(`تحذير: المبلغ المدخل أقل من إجمالي الفاتورة بمقدار (${remStr}).\n\nهل تود تحويل المبلغ المتبقي إلى بيع آجل (مديونية على العميل)؟`);
+    if (!ask) return;
+    convertShortfallToCredit();
+    rows = getRawPayRows();
+    enteredSumCents = rows.reduce((a, r) => a + Math.round(r.enteredAmount * 100), 0);
+  }
+
+  // مزامنة اسم وهاتف العميل بين نافذة الدفع والسلة
+  const modalCustName = document.getElementById('pay-cust-name').value.trim();
+  const modalCustPhone = document.getElementById('pay-cust-phone').value.trim();
+  if (modalCustName) document.getElementById('cust').value = modalCustName;
+  if (modalCustPhone) document.getElementById('phone').value = modalCustPhone;
+
+  const custName = document.getElementById('cust').value.trim();
+  const custPhone = document.getElementById('phone').value.trim();
+
+  // إجبار الكاشير على اختيار/كتابة عميل عند البيع الآجل
+  const hasCredit = rows.some((r) => r.method === 'credit' && r.enteredAmount > 0);
+  if (hasCredit && !custName) {
+    document.getElementById('pay-cust-box').classList.remove('hidden');
+    document.getElementById('pay-cust-name').focus();
+    toast('يجب اختيار أو كتابة اسم العميل لإتمام البيع الآجل', 'error');
+    return;
+  }
+
+  // التحقق من الرقم المرجعي للمحفظة
+  for (const r of rows) {
+    if (r.method === 'wallet' && r.enteredAmount > 0 && !r.ref_no) {
+      toast('يرجى كتابة رقم العملية المرجعية لتحويل المحفظة', 'error');
+      const refInput = r.rowEl.querySelector('[data-ref]');
+      if (refInput) refInput.focus();
+      return;
+    }
+  }
+
+  // تجهيز الدفعات وإرسال الفائض النقدي كمبلغ مستلم (received) ليحسب الباقي
+  let excessCents = Math.max(0, enteredSumCents - total);
+  const pays = [];
+  for (const r of rows) {
+    let amtCents = Math.round(r.enteredAmount * 100);
+    if (amtCents <= 0) continue;
+    let recCents = amtCents;
+    if (r.method === 'cash' && excessCents > 0) {
+      const deduct = Math.min(amtCents, excessCents);
+      amtCents -= deduct;
+      excessCents -= deduct;
+    }
+    if (amtCents > 0) {
+      pays.push({
+        method: r.method,
+        amount: +(amtCents / 100).toFixed(2),
+        received: +(recCents / 100).toFixed(2),
+        ref_no: r.ref_no || null,
+      });
+    }
+  }
+
   const res = await guard(() => api('sale_create', {
-    items: CART.map((c) => ({ product_id: c.product_id, qty: c.qty, serial_ids: c.serial_ids })),
+    items: CART.map((c) => ({ product_id: c.product_id, qty: c.qty, unit_price: (c.unit_price / 100), serial_ids: c.serial_ids })),
     discount: toAmount(document.getElementById('disc').value),
     payments: pays,
-    customer_name: document.getElementById('cust').value || null,
-    customer_phone: document.getElementById('phone').value || null,
+    customer_name: custName || null,
+    customer_phone: custPhone || null,
+    notes: document.getElementById('notes').value || null,
   }));
   if (!res) return;
   toast('تم البيع — فاتورة ' + res.invoice_no);
@@ -336,51 +587,53 @@ document.getElementById('pay-ok').addEventListener('click', async () => {
   location.href = 'receipt.html?id=' + res.sale_id;
 });
 
-  // Autocomplete for Customers
-  const custInput = document.getElementById('cust');
-  const custSug = document.getElementById('cust-sug');
-
-  custInput.addEventListener('input', async () => {
-    const q = custInput.value.trim();
-    if (q.length < 2) { custSug.classList.add('hidden'); return; }
-    
-    const res = await guard(() => api('customers_search', { q }));
-    if (!res || !res.length) { custSug.classList.add('hidden'); return; }
-    
-    custSug.innerHTML = res.map(c => `
-      <div class="p-3 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer flex justify-between items-center text-sm transition-colors" onclick="selectCustomer('${esc(c.name)}', '${esc(c.phone || '')}')">
-        <span class="font-medium text-slate-800 dark:text-white">${esc(c.name)}</span>
-        <span class="text-xs text-slate-500 dark:text-slate-400">${esc(c.phone || 'بدون هاتف')}</span>
-      </div>
-    `).join('');
-    custSug.classList.remove('hidden');
-  });
-
-  window.selectCustomer = (name, phone) => {
-    document.getElementById('cust').value = name;
-    document.getElementById('phone').value = phone;
-    document.getElementById('cust-sug').classList.add('hidden');
-  };
-
-  document.addEventListener('click', (e) => {
-    if (!custInput.contains(e.target) && !custSug.contains(e.target)) {
-      custSug.classList.add('hidden');
-    }
-  });
+  // Autocomplete for Customers (في السلة وفي نافذة الدفع)
+  function bindCustomerAutocomplete(inputId, phoneId, sugId) {
+    const inp = document.getElementById(inputId);
+    const ph = document.getElementById(phoneId);
+    const sug = document.getElementById(sugId);
+    inp.addEventListener('input', async () => {
+      const q = inp.value.trim();
+      if (q.length < 1) { sug.classList.add('hidden'); return; }
+      const res = await guard(() => api('customers_search', { q }));
+      if (!res || !res.length) { sug.classList.add('hidden'); return; }
+      sug.innerHTML = res.map(c => `
+        <div class="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer flex justify-between items-center text-sm transition-colors" data-cname="${esc(c.name)}" data-cphone="${esc(c.phone || '')}">
+          <span class="font-medium text-slate-800 dark:text-white">${esc(c.name)}</span>
+          <span class="text-xs text-slate-500 dark:text-slate-400 font-num">${esc(c.phone || 'بدون هاتف')}${c.debt > 0 ? ` · مديونية: ${fmt(c.debt)}` : ''}</span>
+        </div>
+      `).join('');
+      sug.querySelectorAll('[data-cname]').forEach((el) => el.addEventListener('click', () => {
+        inp.value = el.dataset.cname;
+        ph.value = el.dataset.cphone;
+        document.getElementById('cust').value = el.dataset.cname;
+        document.getElementById('phone').value = el.dataset.cphone;
+        document.getElementById('pay-cust-name').value = el.dataset.cname;
+        document.getElementById('pay-cust-phone').value = el.dataset.cphone;
+        sug.classList.add('hidden');
+      }));
+      sug.classList.remove('hidden');
+    });
+    document.addEventListener('click', (e) => {
+      if (!inp.contains(e.target) && !sug.contains(e.target)) sug.classList.add('hidden');
+    });
+  }
+  bindCustomerAutocomplete('cust', 'phone', 'cust-sug');
+  bindCustomerAutocomplete('pay-cust-name', 'pay-cust-phone', 'pay-cust-sug');
 
   (async () => {
   user = await pageInit('pos');
   if (!user) return;
   document.getElementById('user-name').textContent = user.name;
-  document.getElementById('user-role').textContent = user.role === 'admin' ? 'مدير' : 'كاشير';
+  document.getElementById('user-role').textContent = user.role === 'admin' ? 'مدير' : 'موظف / كاشير';
   document.getElementById('user-initial').textContent = (user.name || '؟').slice(0, 1);
   document.getElementById('cur').textContent = CURRENCY;
-  RATE = +((SETTINGS.tax_rate || '15'));
+  TAX_ON = SETTINGS.tax_enabled !== '0';
+  RATE = +((SETTINGS.tax_rate || '14'));
   document.getElementById('taxrate').textContent = RATE;
   await refreshShift();
   await search();
   renderCart();
-  // سلوك الجوال: زر السلة يفتح/يغلق اللوحة، وتُغلق بعد الدفع
   const fab = document.getElementById('cart-fab'), panel = document.getElementById('cart-panel');
   fab.classList.replace('hidden', 'flex');
   const syncFab = () => fab.classList.toggle('hidden', window.innerWidth >= 768);

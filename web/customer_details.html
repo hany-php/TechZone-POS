@@ -2,43 +2,88 @@
 <html dir="rtl" lang="ar"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>تفاصيل العميل - تك زون للإلكترونيات</title>
+<title>كشف حساب العميل - تك زون للإلكترونيات</title>
 <link href="app.css" rel="stylesheet"/>
 <script>if(localStorage.getItem('tz-theme')==='dark')document.documentElement.classList.add('dark');</script>
 </head>
-<body id="shell" class="bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-200 h-screen overflow-hidden flex flex-col">
+<body id="shell" class="bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-200 h-screen overflow-hidden flex flex-col md:flex-row">
 <main class="flex-1 overflow-y-auto p-6 md:p-8">
   <div class="max-w-6xl mx-auto">
-    <div class="flex justify-between items-center mb-8">
-      <button id="back-btn" class="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2">
-        <span class="material-icons-outlined">arrow_back</span>
-        عودة إلى قائمة العملاء
-      </button>
-      <h1 id="cust-name" class="text-3xl font-bold text-slate-900 dark:text-white">...</h1>
-    </div>
-
-    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 mb-8">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="flex flex-wrap justify-between items-center gap-4 mb-6">
+      <div class="flex items-center gap-3">
+        <button id="back-btn" class="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2 text-sm font-medium">
+          <span class="material-icons-outlined text-base">arrow_back</span>
+          عودة للعملاء
+        </button>
         <div>
-          <p class="text-sm text-slate-500 dark:text-slate-400 mb-1">الاسم</p>
-          <p id="info-name" class="text-lg font-medium text-slate-800 dark:text-white">...</p>
+          <h1 id="cust-name" class="text-2xl font-bold text-slate-900 dark:text-white">...</h1>
+          <p class="text-xs text-slate-500"><span id="info-phone" class="font-num"></span> · تاريخ التسجيل: <span id="info-date" class="font-num"></span></p>
         </div>
-        <div>
-          <p class="text-sm text-slate-500 dark:text-slate-400 mb-1">رقم الهاتف</p>
-          <p id="info-phone" class="text-lg font-medium text-slate-800 dark:text-white">...</p>
-        </div>
-        <div>
-          <p class="text-sm text-slate-500 dark:text-slate-400 mb-1">تاريخ التسجيل</p>
-          <p id="info-date" class="text-lg font-medium text-slate-800 dark:text-white">...</p>
-        </div>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="window.print()" class="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 text-sm font-medium flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-700">
+          <span class="material-icons-outlined text-base">print</span>
+          طباعة كشف الحساب
+        </button>
+        <button id="btn-voucher" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-lg shadow-emerald-600/20 flex items-center gap-2 text-sm">
+          <span class="material-icons-outlined text-base">payments</span>
+          إصدار سند قبض (تسديد دفعة آجلة)
+        </button>
       </div>
     </div>
 
-    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm mb-8">
+    <!-- Debt & Financial Summary Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm">
+        <p class="text-xs text-slate-500 mb-1">إجمالي المشتريات الصافية</p>
+        <h3 id="sum-purchases" class="text-2xl font-bold font-num text-slate-900 dark:text-white">0.00</h3>
+      </div>
+      <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm">
+        <p class="text-xs text-slate-500 mb-1">إجمالي المسجل آجل (عليه)</p>
+        <h3 id="sum-credit" class="text-2xl font-bold font-num text-amber-600">0.00</h3>
+      </div>
+      <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm">
+        <p class="text-xs text-slate-500 mb-1">إجمالي المسدد (سندات قبض)</p>
+        <h3 id="sum-paid" class="text-2xl font-bold font-num text-emerald-600">0.00</h3>
+      </div>
+      <div class="bg-white dark:bg-slate-800 rounded-2xl border-2 border-red-200 dark:border-red-900/40 p-5 shadow-sm">
+        <p class="text-xs text-red-600 dark:text-red-400 font-bold mb-1">الرصيد المتبقي (المديونية الحالية)</p>
+        <h3 id="sum-debt" class="text-2xl font-bold font-num text-red-600 dark:text-red-400">0.00</h3>
+      </div>
+    </div>
+
+    <!-- Statement of Account & Receipt Vouchers (كشف حساب المديونية وسندات القبض) -->
+    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm mb-8 overflow-hidden">
+      <div class="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
+        <h2 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="material-icons-outlined text-primary">fact_check</span>
+          كشف حساب المديونية وسندات القبض (<span id="ledger-count">0</span>)
+        </h2>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-right border-collapse">
+          <thead>
+            <tr class="bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">
+              <th class="px-6 py-4 font-semibold">المرجع</th>
+              <th class="px-6 py-4 font-semibold">التاريخ</th>
+              <th class="px-6 py-4 font-semibold">البيان / طريقة الدفع</th>
+              <th class="px-6 py-4 font-semibold">مدين (عليه)</th>
+              <th class="px-6 py-4 font-semibold">دائن (سداد)</th>
+              <th class="px-6 py-4 font-semibold">الرصيد بعد العملية</th>
+              <th class="px-6 py-4 font-semibold text-center">إجراء</th>
+            </tr>
+          </thead>
+          <tbody id="ledger-list" class="divide-y divide-slate-100 dark:divide-slate-700"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- All Invoices Table -->
+    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm mb-8 overflow-hidden">
       <div class="p-6 border-b border-slate-100 dark:border-slate-700">
         <h2 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-          <span class="material-icons-outlined">receipt_long</span>
-          الفواتير (<span id="sales-count">0</span>)
+          <span class="material-icons-outlined text-primary">receipt_long</span>
+          جميع فواتير العميل (<span id="sales-count">0</span>)
         </h2>
       </div>
       <div class="overflow-x-auto">
@@ -48,6 +93,8 @@
               <th class="px-6 py-4 font-semibold">رقم الفاتورة</th>
               <th class="px-6 py-4 font-semibold">التاريخ</th>
               <th class="px-6 py-4 font-semibold">الإجمالي</th>
+              <th class="px-6 py-4 font-semibold">المدفوع نقدي/محفظة</th>
+              <th class="px-6 py-4 font-semibold">المسجل آجل</th>
               <th class="px-6 py-4 font-semibold">الحالة</th>
               <th class="px-6 py-4 font-semibold text-center">الإيصال</th>
             </tr>
@@ -57,11 +104,12 @@
       </div>
     </div>
 
-    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+    <!-- Repairs Table -->
+    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
       <div class="p-6 border-b border-slate-100 dark:border-slate-700">
         <h2 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-          <span class="material-icons-outlined">build</span>
-          صيانة (<span id="repairs-count">0</span>)
+          <span class="material-icons-outlined text-primary">build</span>
+          تذاكر الصيانة (<span id="repairs-count">0</span>)
         </h2>
       </div>
       <div class="overflow-x-auto">
@@ -69,14 +117,49 @@
           <thead>
             <tr class="bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">
               <th class="px-6 py-4 font-semibold">المرجع</th>
+              <th class="px-6 py-4 font-semibold">الجهاز والمشكلة</th>
               <th class="px-6 py-4 font-semibold">التاريخ</th>
               <th class="px-6 py-4 font-semibold">الحالة</th>
               <th class="px-6 py-4 font-semibold">التكلفة</th>
+              <th class="px-6 py-4 font-semibold text-center">التذكرة</th>
             </tr>
           </thead>
           <tbody id="repairs-list" class="divide-y divide-slate-100 dark:divide-slate-700"></tbody>
         </table>
       </div>
+    </div>
+  </div>
+
+  <!-- Modal: Issue Receipt Voucher (سند قبض تسديد دفعة آجلة) -->
+  <div id="voucher-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+      <h3 class="text-xl font-bold mb-1">إصدار سند قبض (تسديد مديونية)</h3>
+      <p class="text-xs text-slate-500 mb-4">إجمالي المديونية المستحقة حالياً: <span id="v-max-debt" class="font-bold font-num text-red-600">0.00</span></p>
+      <form id="voucher-form" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">المبلغ المسدد *</label>
+          <input id="v-amount" type="number" min="0.01" step="0.01" required class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 font-num font-bold text-lg outline-none focus:ring-2 focus:ring-primary" placeholder="0.00"/>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">طريقة الدفع *</label>
+          <select id="v-method" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary">
+            <option value="cash">نقدي (كاش)</option>
+            <option value="wallet">محفظة إلكترونية (فودافون كاش / إنستا باي)</option>
+          </select>
+        </div>
+        <div id="v-ref-wrap" class="hidden">
+          <label class="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">رقم العملية المرجعية للتحويل *</label>
+          <input id="v-ref" class="w-full bg-slate-50 dark:bg-slate-700 border border-blue-300 dark:border-blue-600 rounded-xl px-4 py-2.5 text-sm font-num" placeholder="رقم رسالة التحويل المرجعي"/>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">ملاحظات البيان (اختياري)</label>
+          <input id="v-notes" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm" placeholder="مثال: دفعة من الحساب الآجل"/>
+        </div>
+        <div class="flex gap-3 pt-2">
+          <button type="button" id="v-cancel" class="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 font-semibold">إلغاء</button>
+          <button type="submit" class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-lg shadow-emerald-600/20">حفظ السند</button>
+        </div>
+      </form>
     </div>
   </div>
 </main>
@@ -100,52 +183,139 @@ function repairStatusColor(s) {
 }
 
 (async () => {
-  const user = await pageInit('customer_details');
+  const user = await pageInit('customers', { perm: ['customers_view', 'customers_edit'] });
   if (!user) return;
+
+  const canEdit = hasPerm('customers_edit');
+  const canDelete = hasPerm('customers_delete');
+  if (!canEdit) document.getElementById('btn-voucher').classList.add('hidden');
 
   const params = new URLSearchParams(window.location.search);
   const cid = params.get('id');
   if (!cid) { location.href = 'customers.html'; return; }
 
   document.getElementById('back-btn').addEventListener('click', () => {
-    history.back();
+    location.href = 'customers.html';
   });
 
-  const res = await guard(() => api('customer_history', { id: cid }));
-  if (!res) return;
+  let currentDebt = 0;
 
-  const all = await guard(() => api('customers_list', { limit: 1000 }));
-  const c = all.rows.find(x => x.id == cid);
-  if (!c) { toast('العميل غير موجود', 'error'); return; }
+  async function loadDetails() {
+    const res = await guard(() => api('customer_history', { id: cid }));
+    if (!res || !res.customer) return;
 
-  document.title = 'تفاصيل العميل: ' + c.name;
-  document.getElementById('cust-name').textContent = c.name;
-  document.getElementById('info-name').textContent = c.name;
-  document.getElementById('info-phone').textContent = c.phone || '—';
-  document.getElementById('info-date').textContent = c.created_at ? c.created_at.slice(0, 10) : '—';
+    const c = res.customer;
+    currentDebt = c.debt || 0;
+    syncTitle('كشف حساب العميل: ' + c.name);
+    document.getElementById('cust-name').textContent = c.name;
+    document.getElementById('info-phone').textContent = c.phone || 'بدون هاتف';
+    document.getElementById('info-date').textContent = c.created_at ? c.created_at.slice(0, 10) : '—';
 
-  const sales = res.sales || [];
-  document.getElementById('sales-count').textContent = sales.length;
-  const salesList = document.getElementById('sales-list');
-  salesList.innerHTML = sales.length ? sales.map(s => `
-    <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-      <td class="px-6 py-4 font-medium text-slate-800 dark:text-white">${esc(s.invoice_no)}</td>
-      <td class="px-6 py-4 text-slate-600 dark:text-slate-400 text-sm">${fmtDT(s.created_at)}</td>
-      <td class="px-6 py-4 font-medium text-primary font-num">${money(s.total)}</td>
-      <td class="px-6 py-4"><span class="px-2 py-1 rounded text-xs font-medium ${statusColor(s.status)}">${statusLabel(s.status)}</span></td>
-      <td class="px-6 py-4 text-center"><a href="receipt.html?id=${s.id}" class="inline-flex items-center gap-1 text-sm text-slate-600 dark:text-slate-400 hover:text-primary transition-colors" title="عرض الإيصال"><span class="material-icons-outlined text-sm">visibility</span></a></td>
-    </tr>`).join('') : '<tr><td colspan="5" class="px-6 py-12 text-center text-slate-400">لا توجد فواتير لهذا العميل</td></tr>';
+    document.getElementById('sum-purchases').textContent = money(c.total_purchases || 0);
+    document.getElementById('sum-credit').textContent = money(c.credit_total || 0);
+    document.getElementById('sum-paid').textContent = money(c.paid_total || 0);
+    document.getElementById('sum-debt').textContent = money(currentDebt);
 
-  const repairs = res.repairs || [];
-  document.getElementById('repairs-count').textContent = repairs.length;
-  const repairsList = document.getElementById('repairs-list');
-  repairsList.innerHTML = repairs.length ? repairs.map(r => `
-    <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-      <td class="px-6 py-4 font-medium text-slate-800 dark:text-white">${esc(r.ref)}</td>
-      <td class="px-6 py-4 text-slate-600 dark:text-slate-400 text-sm">${fmtDT(r.created_at)}</td>
-      <td class="px-6 py-4"><span class="px-2 py-1 rounded text-xs font-medium ${repairStatusColor(r.status)}">${repairStatusLabel(r.status)}</span></td>
-      <td class="px-6 py-4 font-medium text-slate-800 dark:text-white font-num">${money(r.cost)}</td>
-    </tr>`).join('') : '<tr><td colspan="4" class="px-6 py-12 text-center text-slate-400">لا توجد عمليات صيانة لهذا العميل</td></tr>';
+    const ledger = res.ledger || [];
+    document.getElementById('ledger-count').textContent = ledger.length;
+    document.getElementById('ledger-list').innerHTML = ledger.length ? ledger.map((ev) => {
+      const isSale = ev.kind === 'credit_sale';
+      return `
+      <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+        <td class="px-6 py-4 font-num font-bold ${isSale ? 'text-amber-600' : 'text-emerald-600'}">${esc(ev.ref)}</td>
+        <td class="px-6 py-4 text-sm font-num text-slate-500">${fmtDT(ev.created_at)}</td>
+        <td class="px-6 py-4 text-sm">
+          <span class="font-medium">${esc(ev.notes)}</span>
+          ${ev.ref_no ? `<span class="text-xs px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-900/30 text-blue-600 font-num mr-1">مرجع المحفظة: ${esc(ev.ref_no)}</span>` : ''}
+        </td>
+        <td class="px-6 py-4 font-num font-bold text-amber-600">${ev.debit ? money(ev.debit) : '—'}</td>
+        <td class="px-6 py-4 font-num font-bold text-emerald-600">${ev.credit ? money(ev.credit) : '—'}</td>
+        <td class="px-6 py-4 font-num font-bold text-slate-900 dark:text-white">${money(ev.balance_after)}</td>
+        <td class="px-6 py-4 text-center">
+          ${isSale
+            ? `<a href="receipt.html?id=${ev.sale_id}" class="text-xs text-primary hover:underline">عرض الفاتورة</a>`
+            : (canDelete ? `<button data-del-v="${ev.id}" class="text-xs text-red-500 hover:underline">حذف السند</button>` : '—')}
+        </td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="7" class="px-6 py-10 text-center text-slate-400">لا توجد معاملات آجلة أو سندات قبض مسجلة لهذا العميل</td></tr>';
+
+    document.querySelectorAll('[data-del-v]').forEach((b) => b.addEventListener('click', async () => {
+      if (!confirm('حذف سند القبض؟ سيعود المبلغ إلى مديونية العميل.')) return;
+      if (await guard(() => api('customer_payment_delete', { id: +b.dataset.delV }))) {
+        toast('تم حذف سند القبض');
+        loadDetails();
+      }
+    }));
+
+    const sales = res.sales || [];
+    document.getElementById('sales-count').textContent = sales.length;
+    document.getElementById('sales-list').innerHTML = sales.length ? sales.map(s => `
+      <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+        <td class="px-6 py-4 font-medium text-slate-800 dark:text-white font-num">${esc(s.invoice_no)}</td>
+        <td class="px-6 py-4 text-slate-600 dark:text-slate-400 text-sm font-num">${fmtDT(s.created_at)}</td>
+        <td class="px-6 py-4 font-medium text-primary font-num">${money(s.total)}</td>
+        <td class="px-6 py-4 text-emerald-600 font-num">${money((s.cash_amt || 0) + (s.wallet_amt || 0))}</td>
+        <td class="px-6 py-4 font-bold ${s.net_credit > 0 ? 'text-red-600' : 'text-slate-400'} font-num">${money(s.net_credit || 0)}</td>
+        <td class="px-6 py-4"><span class="px-2 py-1 rounded text-xs font-medium ${statusColor(s.status)}">${statusLabel(s.status)}</span></td>
+        <td class="px-6 py-4 text-center"><a href="receipt.html?id=${s.id}" class="inline-flex items-center gap-1 text-sm text-slate-600 dark:text-slate-400 hover:text-primary transition-colors" title="عرض الإيصال"><span class="material-icons-outlined text-sm">visibility</span></a></td>
+      </tr>`).join('') : '<tr><td colspan="7" class="px-6 py-10 text-center text-slate-400">لا توجد فواتير لهذا العميل</td></tr>';
+
+    const repairs = res.repairs || [];
+    document.getElementById('repairs-count').textContent = repairs.length;
+    document.getElementById('repairs-list').innerHTML = repairs.length ? repairs.map(r => `
+      <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+        <td class="px-6 py-4 font-medium text-slate-800 dark:text-white font-num">${esc(r.ref)}</td>
+        <td class="px-6 py-4 text-slate-600 dark:text-slate-400 text-sm">${esc(r.device_type || '')}${r.problem ? ' — ' + esc(r.problem) : ''}</td>
+        <td class="px-6 py-4 text-slate-600 dark:text-slate-400 text-sm font-num">${fmtDT(r.created_at)}</td>
+        <td class="px-6 py-4"><span class="px-2 py-1 rounded text-xs font-medium ${repairStatusColor(r.status)}">${repairStatusLabel(r.status)}</span></td>
+        <td class="px-6 py-4 font-medium text-slate-800 dark:text-white font-num">${money(r.cost)}</td>
+        <td class="px-6 py-4 text-center"><a href="repair.html?id=${r.id}" class="inline-flex items-center gap-1 text-sm text-slate-600 dark:text-slate-400 hover:text-primary transition-colors" title="فتح التذكرة"><span class="material-icons-outlined text-sm">visibility</span></a></td>
+      </tr>`).join('') : '<tr><td colspan="6" class="px-6 py-10 text-center text-slate-400">لا توجد عمليات صيانة لهذا العميل</td></tr>';
+  }
+
+  const vModal = document.getElementById('voucher-modal');
+  const vMethod = document.getElementById('v-method');
+  const vRefWrap = document.getElementById('v-ref-wrap');
+
+  vMethod.addEventListener('change', () => {
+    vRefWrap.classList.toggle('hidden', vMethod.value !== 'wallet');
+  });
+
+  document.getElementById('btn-voucher').addEventListener('click', () => {
+    if (currentDebt <= 0) {
+      toast('لا توجد مديونية مستحقة على هذا العميل حالياً', 'warn');
+      return;
+    }
+    document.getElementById('v-max-debt').textContent = money(currentDebt);
+    document.getElementById('v-amount').value = (currentDebt / 100).toFixed(2);
+    vMethod.value = 'cash';
+    vRefWrap.classList.add('hidden');
+    document.getElementById('v-ref').value = '';
+    document.getElementById('v-notes').value = '';
+    vModal.classList.replace('hidden', 'flex');
+  });
+
+  document.getElementById('v-cancel').addEventListener('click', () => {
+    vModal.classList.replace('flex', 'hidden');
+  });
+
+  document.getElementById('voucher-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const res = await guard(() => api('customer_payment_create', {
+      customer_id: +cid,
+      amount: toAmount(document.getElementById('v-amount').value),
+      method: vMethod.value,
+      ref_no: document.getElementById('v-ref').value || null,
+      notes: document.getElementById('v-notes').value || null,
+    }));
+    if (res) {
+      toast('تم إصدار سند القبض ' + res.ref);
+      vModal.classList.replace('flex', 'hidden');
+      loadDetails();
+    }
+  });
+
+  loadDetails();
 })();
 </script>
 </body></html>

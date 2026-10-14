@@ -51,6 +51,7 @@
 <tr>
 <th class="px-6 py-4 rounded-tr-lg">رقم الطلب</th>
 <th class="px-6 py-4">النوع</th>
+<th class="px-6 py-4">العميل</th>
 <th class="px-6 py-4">الوقت</th>
 <th class="px-6 py-4">الموظف</th>
 <th class="px-6 py-4">الحالة</th>
@@ -74,10 +75,24 @@
 </div>
 </div>
 </div>
+
+<!-- Return Modal -->
+<div id="ret-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+  <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-lg shadow-2xl">
+    <h3 class="text-lg font-bold mb-1" id="ret-title">استرجاع أصناف من الفاتورة</h3>
+    <p class="text-xs text-slate-500 mb-4">حدد الأصناف والكميات المراد استرجاعها للمخزون</p>
+    <div id="ret-items" class="space-y-2 max-h-60 overflow-y-auto mb-4 divide-y divide-slate-100 dark:divide-slate-700"></div>
+    <input id="ret-reason" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-sm mb-4" placeholder="سبب الإرجاع (اختياري)"/>
+    <div class="flex gap-2">
+      <button id="ret-x" type="button" class="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 font-medium">إلغاء</button>
+      <button id="ret-ok" type="button" class="flex-1 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold">تأكيد الاسترجاع</button>
+    </div>
+  </div>
+</div>
 </main>
 <script src="app.js"></script>
 <script>
-let user, KIND = '', PAGE = 0; const PER = 15;
+let user, KIND = '', PAGE = 0, RET_SALE_ID = null; const PER = 15;
 
 const REPAIR_AR = { received: ['استلام', 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 border-blue-200'],
   in_review: ['قيد الفحص', 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400 border-yellow-200'],
@@ -123,15 +138,16 @@ async function load() {
     q: document.getElementById('q').value || null, limit: PER, offset: PAGE * PER,
   }))) || { rows: [], total: 0 };
   document.getElementById('count').textContent = `عرض ${r.rows.length} من أصل ${n(r.total)} نتيجة`;
-  const isAdmin = user.role === 'admin';
+  const canReturn = hasPerm('sales_return');
   document.getElementById('rows').innerHTML = r.rows.length ? r.rows.map((x) => {
     const isSale = x.kind === 'sale';
     const no = isSale ? x.invoice_no : x.ref;
     return `
     <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors group">
-      <td class="px-6 py-4"><a class="font-num font-medium text-primary hover:underline" href="${isSale ? 'receipt.html?id=' + x.id : 'repair.html'}">${esc(no)}</a></td>
+      <td class="px-6 py-4"><a class="font-num font-medium text-primary hover:underline" href="${isSale ? 'receipt.html?id=' + x.id : 'repair.html?id=' + x.id}">${esc(no)}</a></td>
       <td class="px-6 py-4"><span class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300">
         <span class="w-1.5 h-1.5 rounded-full ${isSale ? 'bg-blue-500' : 'bg-purple-500'}"></span>${isSale ? 'مبيعات' : 'صيانة'}</span></td>
+      <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">${esc(x.customer_name || '—')}</td>
       <td class="px-6 py-4 text-sm font-num text-slate-500">${fmtDT(x.created_at)}</td>
       <td class="px-6 py-4 text-sm"><div class="flex items-center gap-2">
         <div class="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-[10px] text-blue-600 dark:text-blue-400 font-bold">${esc((x.user_name || '؟').slice(0, 1))}</div>
@@ -139,11 +155,11 @@ async function load() {
       <td class="px-6 py-4">${isSale ? badge(SALE_AR, x.status) : badge(REPAIR_AR, x.status)}</td>
       <td class="px-6 py-4 font-num font-bold text-slate-900 dark:text-white">${fmt(isSale ? x.total : x.cost)} ${CURRENCY}</td>
       <td class="px-6 py-4"><div class="flex items-center justify-end gap-2 transition-opacity">
-        ${isSale ? `<a class="p-1.5 rounded text-slate-400 hover:text-primary hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors" title="طباعة" href="receipt.html?id=${x.id}"><span class="material-icons-outlined text-lg">print</span></a>` : ''}
-        ${(isSale && isAdmin) ? `<button data-ret="${x.id}" class="p-1.5 rounded text-slate-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors" title="استرجاع"><span class="material-icons-outlined text-lg">replay</span></button>` : ''}
+        ${isSale ? `<a class="p-1.5 rounded text-slate-400 hover:text-primary hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors" title="طباعة" href="receipt.html?id=${x.id}"><span class="material-icons-outlined text-lg">print</span></a>` : `<a class="p-1.5 rounded text-slate-400 hover:text-primary hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors" title="فتح التذكرة" href="repair.html?id=${x.id}"><span class="material-icons-outlined text-lg">visibility</span></a>`}
+        ${(isSale && canReturn && x.status !== 'returned') ? `<button data-ret="${x.id}" class="p-1.5 rounded text-slate-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors" title="استرجاع"><span class="material-icons-outlined text-lg">replay</span></button>` : ''}
       </div></td>
     </tr>`;
-  }).join('') : '<tr><td colspan="7" class="px-6 py-12 text-center text-slate-400">لا توجد نتائج</td></tr>';
+  }).join('') : '<tr><td colspan="8" class="px-6 py-12 text-center text-slate-400">لا توجد نتائج</td></tr>';
   document.querySelectorAll('[data-ret]').forEach((b) => b.addEventListener('click', () => returnSale(+b.dataset.ret)));
 }
 
@@ -151,14 +167,52 @@ async function returnSale(id) {
   const s = await guard(() => api('sale', { id }));
   if (!s) return;
   if (s.status === 'returned') { toast('مرتجعة بالفعل', 'warn'); return; }
-  const items = s.items.map((it) => `<label class="flex items-center gap-2 text-sm py-1"><input type="checkbox" data-q="${it.id}" class="w-4 h-4 accent-blue-600"/> ${esc(it.name)} × ${it.qty}</label>`).join('');
-  const ok = confirm('إرجاع الأصناف المحددة؟ (اختر من السجل أدناه)\n\n' + s.items.map((it) => `${it.id}: ${it.name} × ${it.qty}`).join('\n'));
-  if (!ok) return;
-  const sel = [...document.querySelectorAll('[data-q]')].filter((x) => x.checked).map((x) => ({ sale_item_id: +x.dataset.q, qty: 1 }));
-  const payload = sel.length ? sel : s.items.map((it) => ({ sale_item_id: it.id, qty: 1 }));
-  const r = await guard(() => api('sale_return', { sale_id: id, items: payload, reason: 'مرتجع من السجل' }));
-  if (r) { toast('تم تسجيل المرتجع: ' + fmt(r.total) + ' ' + CURRENCY); stats(); load(); }
+  const avail = s.items.filter((it) => (it.remaining_qty == null ? it.qty : it.remaining_qty) > 0);
+  if (!avail.length) { toast('لا توجد أصناف متبقية قابلة للإرجاع', 'warn'); return; }
+  RET_SALE_ID = id;
+  document.getElementById('ret-title').textContent = `استرجاع فاتورة ${s.invoice_no}`;
+  document.getElementById('ret-reason').value = '';
+  document.getElementById('ret-items').innerHTML = avail.map((it) => {
+    const rem = it.remaining_qty == null ? it.qty : it.remaining_qty;
+    return `
+      <div class="flex items-center justify-between py-2.5 gap-3">
+        <label class="flex items-center gap-2 text-sm flex-1 cursor-pointer">
+          <input type="checkbox" checked data-ret-item="${it.id}" class="w-4 h-4 accent-orange-600"/>
+          <span class="font-medium">${esc(it.name)}</span>
+          <span class="text-xs text-slate-400 font-num">(${fmt(it.unit_price)} ${CURRENCY})</span>
+        </label>
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-slate-400">الكمية (من ${rem}):</span>
+          <input type="number" min="1" max="${rem}" value="${rem}" data-ret-qty="${it.id}" class="w-16 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 px-2 py-1 text-sm font-num text-center"/>
+        </div>
+      </div>`;
+  }).join('');
+  const m = document.getElementById('ret-modal');
+  m.classList.remove('hidden'); m.classList.add('flex');
 }
+
+document.getElementById('ret-x').addEventListener('click', () => {
+  const m = document.getElementById('ret-modal');
+  m.classList.add('hidden'); m.classList.remove('flex');
+});
+
+document.getElementById('ret-ok').addEventListener('click', async () => {
+  const checks = [...document.querySelectorAll('[data-ret-item]:checked')];
+  if (!checks.length) { toast('اختر صنفاً واحداً على الأقل للإرجاع', 'warn'); return; }
+  const payload = checks.map((ch) => {
+    const itemId = +ch.dataset.retItem;
+    const qtyEl = document.querySelector(`[data-ret-qty="${itemId}"]`);
+    return { sale_item_id: itemId, qty: +(qtyEl ? qtyEl.value : 1) };
+  });
+  const reason = document.getElementById('ret-reason').value.trim() || 'مرتجع من السجل';
+  const r = await guard(() => api('sale_return', { sale_id: RET_SALE_ID, items: payload, reason }));
+  if (r) {
+    toast('تم تسجيل المرتجع: ' + fmt(r.total) + ' ' + CURRENCY);
+    const m = document.getElementById('ret-modal');
+    m.classList.add('hidden'); m.classList.remove('flex');
+    stats(); load();
+  }
+});
 
 document.querySelectorAll('#tabs button').forEach((b) => b.addEventListener('click', () => {
   KIND = b.dataset.k; PAGE = 0;

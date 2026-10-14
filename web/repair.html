@@ -31,6 +31,8 @@
 </button>
 </div>
 </div>
+<!-- Parts section (يظهر عند فتح أو إنشاء تذكرة) -->
+<div id="parts-panel" class="hidden mb-8 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-primary/30 p-6"></div>
 <div id="list-panel" class="hidden mb-8 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6">
 <div class="flex gap-3 mb-4">
 <input id="q" class="flex-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" placeholder="بحث برقم التذكرة أو اسم العميل أو السيريال..."/>
@@ -50,26 +52,27 @@
 <!-- Main Form Section -->
 <div class="lg:col-span-2 space-y-6">
 <!-- Customer Info Card -->
-<div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+<div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-visible">
 <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
 <h3 class="font-bold text-lg text-slate-800 dark:text-slate-100 flex items-center gap-2">
 <span class="material-icons text-primary text-xl">person</span>
 بيانات العميل
 </h3>
-<span class="text-xs font-mono bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded">عميل جديد</span>
+<span class="text-xs font-mono bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded">عميل جديد / مسجل</span>
 </div>
 <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-<div class="space-y-2">
+<div class="space-y-2 relative">
 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300" for="f-cust">اسم العميل <span class="text-red-500">*</span></label>
 <div class="relative">
-<input class="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary/20 transition-all py-2.5 pr-10 pl-4 text-right" id="f-cust" placeholder="مثال: محمد أحمد" type="text"/>
+<input class="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary/20 transition-all py-2.5 pr-10 pl-4 text-right" id="f-cust" placeholder="مثال: محمد أحمد" type="text" autocomplete="off"/>
 <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400"><span class="material-icons text-lg">badge</span></div>
 </div>
+<div id="cust-sug" class="absolute top-full left-0 right-0 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 hidden max-h-48 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700"></div>
 </div>
 <div class="space-y-2">
 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300" for="f-phone">رقم الهاتف <span class="text-red-500">*</span></label>
 <div class="relative" dir="ltr">
-<input class="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary/20 transition-all py-2.5 pl-10 pr-4 text-right" id="f-phone" placeholder="05xxxxxxxx" type="tel"/>
+<input class="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary/20 transition-all py-2.5 pl-10 pr-4 text-right" id="f-phone" placeholder="010xxxxxxxx" type="tel"/>
 <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400"><span class="material-icons text-lg">phone</span></div>
 </div>
 </div>
@@ -146,7 +149,7 @@
 <div class="relative">
 <input class="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary/20 transition-all py-3 pr-10 pl-16 text-right font-mono font-medium text-lg" id="f-cost" placeholder="0.00" type="number" min="0" step="0.01"/>
 <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400"><span class="material-icons text-lg">payments</span></div>
-<div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-500 bg-slate-50 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 h-full rounded-l-lg px-3"><span class="text-sm font-bold" id="cur">ر.س</span></div>
+<div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-500 bg-slate-50 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 h-full rounded-l-lg px-3"><span class="text-sm font-bold" id="cur">ج.م</span></div>
 </div>
 </div>
 <div class="pt-4 border-t border-slate-100 dark:border-slate-800">
@@ -179,8 +182,6 @@
 </div>
 </div>
 </div>
-<!-- Parts section (يظهر بعد إنشاء تذكرة، للبحث في نفس الصفحة) -->
-<div id="parts-panel" class="hidden mt-8 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6"></div>
 </div>
 </main>
 <footer class="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 mt-auto py-6">
@@ -194,13 +195,36 @@
 <div class="fixed top-0 left-0 w-full h-96 bg-gradient-to-b from-primary/5 to-transparent -z-10 pointer-events-none"></div>
 <script src="app.js"></script>
 <script>
-let OPEN_ID = null, OPEN_REF = null;
+let OPEN_ID = null, OPEN_REF = null, AVAIL_PARTS = [];
 
 const STATUS_AR = { received: 'استلام', in_review: 'قيد الفحص', pending_approval: 'بانتظار الموافقة', repaired: 'تم الإصلاح', rejected: 'مرفوض', delivered: 'تم التسليم' };
 
 document.getElementById('btn-clear').addEventListener('click', () => ['f-cust', 'f-phone', 'f-addr', 'f-sn', 'f-prob', 'f-cost'].forEach((f) => document.getElementById(f).value = ''));
 document.getElementById('btn-list').addEventListener('click', () => document.getElementById('list-panel').classList.toggle('hidden'));
 document.getElementById('crumb-list').addEventListener('click', (e) => { e.preventDefault(); document.getElementById('list-panel').classList.toggle('hidden'); });
+
+const custInput = document.getElementById('f-cust');
+const custSug = document.getElementById('cust-sug');
+custInput.addEventListener('input', async () => {
+  const q = custInput.value.trim();
+  if (q.length < 1) { custSug.classList.add('hidden'); return; }
+  const res = await guard(() => api('customers_search', { q }));
+  if (!res || !res.length) { custSug.classList.add('hidden'); return; }
+  custSug.innerHTML = res.map((c) => `
+    <div class="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer flex justify-between items-center text-sm" onclick="selectRepairCust('${esc(c.name)}', '${esc(c.phone || '')}')">
+      <span class="font-medium">${esc(c.name)}</span>
+      <span class="text-xs text-slate-400 font-num">${esc(c.phone || '')}</span>
+    </div>`).join('');
+  custSug.classList.remove('hidden');
+});
+window.selectRepairCust = (name, phone) => {
+  document.getElementById('f-cust').value = name;
+  if (phone) document.getElementById('f-phone').value = phone;
+  custSug.classList.add('hidden');
+};
+document.addEventListener('click', (e) => {
+  if (!custInput.contains(e.target) && !custSug.contains(e.target)) custSug.classList.add('hidden');
+});
 
 document.getElementById('btn-save').addEventListener('click', async () => {
   const accs = [...document.querySelectorAll('#accs input:checked')].map((x) => x.value).join('، ');
@@ -214,37 +238,65 @@ document.getElementById('btn-save').addEventListener('click', async () => {
   if (r) {
     toast('تم إنشاء التذكرة ' + r.ref);
     OPEN_ID = r.id; OPEN_REF = r.ref;
-    showParts(r);
+    await showParts(r);
     loadList();
   }
 });
 
-function showParts(r) {
+async function showParts(r) {
   const p = document.getElementById('parts-panel');
+  const canAddParts = hasPerm('repair_edit');
   p.classList.remove('hidden');
-  p.innerHTML = `<h3 class="font-bold text-lg mb-2">التذكرة ${esc(r.ref || OPEN_REF)} — قطع الغيار والحالة</h3>
-  <div class="flex flex-wrap gap-2 mb-4" id="trans"></div>
-  <div class="flex gap-2 mb-4">
-    <input id="pp-id" type="number" class="flex-1 rounded-lg border px-3 py-2 font-num" placeholder="رقم المنتج (id)"/>
-    <input id="pp-qty" type="number" min="1" value="1" class="w-24 rounded-lg border px-3 py-2 font-num" placeholder="كمية"/>
-    <button id="pp-add" class="px-4 py-2 rounded-lg bg-primary text-white font-bold">+ إضافة قطعة</button>
+  if (!AVAIL_PARTS.length) {
+    AVAIL_PARTS = (await guard(() => api('products_search', { q: '', limit: 200 }))) || [];
+  }
+  const partOpts = AVAIL_PARTS.filter((x) => x.qty > 0).map((x) =>
+    `<option value="${x.id}">${esc(x.name)} (${esc(x.sku)}) — متوفر: ${x.qty}</option>`
+  ).join('');
+  p.innerHTML = `
+  <div class="flex items-center justify-between mb-3">
+    <h3 class="font-bold text-lg">التذكرة <span class="text-primary font-num">${esc(r.ref || OPEN_REF)}</span> — الحالة وقطع الغيار</h3>
+    <button id="pp-close" class="text-slate-400 hover:text-slate-600 text-sm">إخفاء</button>
   </div>
+  <div id="ticket-meta" class="text-xs text-slate-500 mb-3"></div>
+  <div class="flex flex-wrap gap-2 mb-4" id="trans"></div>
+  ${canAddParts ? `<div class="flex flex-col sm:flex-row gap-2 mb-4">
+    <select id="pp-id" class="flex-1 rounded-lg border px-3 py-2 text-sm bg-white dark:bg-slate-800">
+      <option value="">اختر قطعة غيار من المخزون...</option>
+      ${partOpts}
+    </select>
+    <input id="pp-qty" type="number" min="1" value="1" class="w-24 rounded-lg border px-3 py-2 font-num text-sm" placeholder="كمية"/>
+    <button id="pp-add" class="px-4 py-2 rounded-lg bg-primary text-white font-bold text-sm">+ إضافة قطعة</button>
+  </div>` : ''}
   <div class="text-sm text-slate-500" id="plist">تُحمَّل قطع الغيار عند فتح التذكرة...</div>`;
-  document.getElementById('pp-add').addEventListener('click', async () => {
-    const ok = await guard(() => api('repair_add_part', { repair_id: OPEN_ID, product_id: +document.getElementById('pp-id').value, qty: +document.getElementById('pp-qty').value || 1 }));
-    if (ok) { toast('تمت إضافة القطعة — التكلفة ' + fmt(ok.cost) + ' ' + CURRENCY); loadTicket(); }
-  });
-  loadTicket();
+  document.getElementById('pp-close').addEventListener('click', () => p.classList.add('hidden'));
+  if (canAddParts && document.getElementById('pp-add')) {
+    document.getElementById('pp-add').addEventListener('click', async () => {
+      const pid = +document.getElementById('pp-id').value;
+      if (!pid) { toast('اختر قطعة الغيار أولاً', 'warn'); return; }
+      const ok = await guard(() => api('repair_add_part', { repair_id: OPEN_ID, product_id: pid, qty: +document.getElementById('pp-qty').value || 1 }));
+      if (ok) {
+        toast('تمت إضافة القطعة — التكلفة ' + fmt(ok.cost) + ' ' + CURRENCY);
+        AVAIL_PARTS = (await guard(() => api('products_search', { q: '', limit: 200 }))) || [];
+        loadTicket();
+      }
+    });
+  }
+  await loadTicket();
 }
 
 async function loadTicket() {
   if (!OPEN_ID) return;
   const t = await guard(() => api('repair', { id: OPEN_ID }));
   if (!t) return;
+  const meta = document.getElementById('ticket-meta');
+  if (meta) {
+    meta.innerHTML = `العميل: <b>${esc(t.customer_name)}</b> (${esc(t.customer_phone)}) · الجهاز: <b>${esc(t.device_type)}</b> · المشكلة: ${esc(t.problem)} · الحالة الحالية: <b>${STATUS_AR[t.status] || t.status}</b>`;
+  }
   document.getElementById('plist').innerHTML = (t.parts.length ? t.parts.map((x) => `<div class="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800"><span>${esc(x.name)} × ${x.qty}</span><span class="font-num">${fmt(x.line_total)} ${CURRENCY}</span></div>`).join('') : 'لا قطع بعد.')
-    + `<div class="flex justify-between pt-2 font-bold"><span>التكلفة</span><span class="font-num">${fmt(t.cost)} ${CURRENCY}</span></div>`;
+    + `<div class="flex justify-between pt-2 font-bold"><span>إجمالي التكلفة</span><span class="font-num text-primary">${fmt(t.cost)} ${CURRENCY}</span></div>`;
   document.getElementById('trans').innerHTML = t.transitions.length
-    ? t.transitions.map((s) => `<button data-s="${s}" class="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm hover:bg-primary hover:text-white transition-colors">${STATUS_AR[s]}</button>`).join('')
+    ? '<span class="text-xs text-slate-400 self-center ml-2">تغيير الحالة إلى:</span>' + t.transitions.map((s) => `<button data-s="${s}" class="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm hover:bg-primary hover:text-white transition-colors font-medium">${STATUS_AR[s]}</button>`).join('')
     : `<span class="text-sm text-slate-400">حالة نهائية: ${STATUS_AR[t.status]}</span>`;
   document.querySelectorAll('#trans button').forEach((b) => b.addEventListener('click', async () => {
     const ok = await guard(() => api('repair_set_status', { id: OPEN_ID, status: b.dataset.s }));
@@ -265,7 +317,7 @@ async function loadList() {
   document.querySelectorAll('[data-open]').forEach((b) => b.addEventListener('click', async () => {
     OPEN_ID = +b.dataset.open;
     const t = await guard(() => api('repair', { id: OPEN_ID }));
-    if (t) { OPEN_REF = t.ref; showParts(t); }
+    if (t) { OPEN_REF = t.ref; await showParts(t); }
   }));
 }
 
@@ -273,9 +325,15 @@ document.getElementById('q').addEventListener('input', () => { clearTimeout(wind
 document.getElementById('fs').addEventListener('change', loadList);
 
 (async () => {
-  if (!(await pageInit('repair'))) return;
+  if (!(await pageInit('repair', { perm: ['repair_view', 'repair_edit'] }))) return;
   document.getElementById('cur').textContent = CURRENCY;
   await loadList();
+  const qid = new URLSearchParams(location.search).get('id');
+  if (qid) {
+    OPEN_ID = +qid;
+    const t = await guard(() => api('repair', { id: OPEN_ID }));
+    if (t) { OPEN_REF = t.ref; await showParts(t); }
+  }
 })();
 </script>
 </body></html>

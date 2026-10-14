@@ -1,6 +1,7 @@
 """Backend Api: كل دوال النظام + dispatcher واحد للواجهة (window.pywebview.api.call)."""
 import datetime
 import hmac
+import json
 import os
 import sqlite3
 import sys
@@ -9,7 +10,7 @@ from decimal import Decimal, ROUND_HALF_UP
 
 import db
 
-# حالة الجلسة (مستخدم واحد، نافذة واحدة) — الدور يُقرأ من هنا وليس من JS
+# حالة الجلسة (مستخدم واحد، نافذة واحدة) — الدور والصلاحيات تُقرأ من هنا وليس من JS
 _STATE = {"user": None}
 
 
@@ -54,6 +55,85 @@ REPAIR_FLOW = {
 }
 
 
+def _upsert_customer(conn, name, phone=None):
+    """إدراج أو استرجاع معرف العميل بأمان مع دعم الهاتف الفارغ."""
+    name = (name or "").strip()
+    if not name:
+        return None
+    phone = (phone or "").strip() or None
+    row = conn.execute(
+        "SELECT id, phone FROM customers WHERE name=? AND (phone=? OR (? IS NULL AND phone IS NULL) OR phone IS NULL) ORDER BY id LIMIT 1",
+        (name, phone, phone),
+    ).fetchone()
+    if row:
+        if phone and not row["phone"]:
+            try:
+                conn.execute("UPDATE customers SET phone=? WHERE id=?", (phone, row["id"]))
+            except sqlite3.IntegrityError:
+                pass
+        return row["id"]
+    cur = conn.execute(
+        "INSERT INTO customers(name, phone, created_at) VALUES(?,?,?)",
+        (name, phone, db.now()),
+    )
+    return cur.lastrowid
+
+
+def _customer_debt_summary(conn, cust_row) -> dict:
+    """حساب إجمالي المشتريات، إجمالي الآجل الصافي، إجمالي المسدد بسندات قبض، والمديونية المتبقية للعميل."""
+    cid = cust_row["id"]
+    cname = cust_row["name"]
+    cphone = cust_row["phone"]
+    sales = conn.execute(
+        """SELECT s.id, s.invoice_no, s.created_at, s.total, s.status,
+                  COALESCE((SELECT SUM(p.amount) FROM payments p WHERE p.sale_id=s.id AND p.method='credit'), 0) AS credit_amt,
+                  COALESCE((SELECT SUM(p.amount) FROM payments p WHERE p.sale_id=s.id AND p.method='cash'), 0) AS cash_amt,
+                  COALESCE((SELECT SUM(p.amount) FROM payments p WHERE p.sale_id=s.id AND p.method='wallet'), 0) AS wallet_amt,
+                  COALESCE((SELECT SUM(sr.total) FROM sale_returns sr WHERE sr.sale_id=s.id), 0) AS ret_amt
+           FROM sales s
+           WHERE s.customer_id=?
+              OR (s.customer_id IS NULL AND s.customer_name=?)
+              OR (? IS NOT NULL AND ? != '' AND s.customer_phone=?)
+           ORDER BY s.id DESC""",
+        (cid, cname, cphone, cphone, cphone),
+    ).fetchall()
+
+    total_purchases = 0
+    credit_total = 0
+    sales_out = []
+    for s in sales:
+        d = dict(s)
+        net_total = max(0, d["total"] - d["ret_amt"])
+        # المرتجعات تخفض أولاً من المديونية الآجلة إن وجدت على نفس الفاتورة
+        net_credit = max(0, d["credit_amt"] - d["ret_amt"])
+        d["net_total"] = net_total
+        d["net_credit"] = net_credit
+        total_purchases += net_total
+        credit_total += net_credit
+        sales_out.append(d)
+
+    vouchers = conn.execute(
+        """SELECT cp.*, u.name AS user_name, s.invoice_no
+           FROM customer_payments cp
+           LEFT JOIN users u ON u.id=cp.user_id
+           LEFT JOIN sales s ON s.id=cp.sale_id
+           WHERE cp.customer_id=?
+           ORDER BY cp.id DESC""",
+        (cid,),
+    ).fetchall()
+    vouchers_out = [dict(v) for v in vouchers]
+    paid_total = sum(v["amount"] for v in vouchers_out)
+    debt = max(0, credit_total - paid_total)
+    return {
+        "total_purchases": total_purchases,
+        "credit_total": credit_total,
+        "paid_total": paid_total,
+        "debt": debt,
+        "sales": sales_out,
+        "vouchers": vouchers_out,
+    }
+
+
 class Api:
     def __init__(self):
         db.connect()  # إنشاء المخطط + الـ seed عند الإقلاع
@@ -90,6 +170,22 @@ class Api:
             raise ApiError("يجب تسجيل الدخول أولاً")
         return u
 
+    def _has_perm(self, key: str) -> bool:
+        u = _STATE["user"]
+        if not u:
+            return False
+        if u["role"] == "admin":
+            return True
+        return bool((u.get("permissions") or {}).get(key, False))
+
+    def _perm(self, key: str):
+        u = self._user()
+        if u["role"] == "admin":
+            return u
+        if not (u.get("permissions") or {}).get(key, False):
+            raise ApiError("ممنوع: للمدير أو لمن يملك الصلاحية فقط")
+        return u
+
     def _admin(self):
         u = self._user()
         if u["role"] != "admin":
@@ -105,10 +201,89 @@ class Api:
             (user_id,),
         ).fetchone()
 
-    # ---------------------------------------------------------- جلسة
+    # ---------------------------------------------------------- جلسة ومستخدمون
     def users(self):
         with db.connect() as conn:
-            return [dict(r) for r in conn.execute("SELECT username, name, role FROM users ORDER BY id")]
+            rows = conn.execute("SELECT id, username, name, role, permissions, created_at FROM users ORDER BY id").fetchall()
+            out = []
+            for r in rows:
+                d = dict(r)
+                d["permissions"] = db.parse_user_perms(d["role"], d.get("permissions"))
+                out.append(d)
+            return out
+
+    def user_save(self, username, name, role="cashier", pin=None, permissions=None, id=None):
+        self._perm("settings_manage")
+        username = (username or "").strip()
+        name = (name or "").strip()
+        if not username or not name:
+            raise ApiError("اسم الدخول والاسم الكامل مطلوبان")
+        if role not in ("admin", "cashier"):
+            raise ApiError("دور المستخدم غير صالح")
+        if pin is not None and str(pin).strip() != "":
+            pin = str(pin).strip()
+            if len(pin) != 4 or not pin.isdigit():
+                raise ApiError("الرمز السري يجب أن يتكون من 4 أرقام")
+        else:
+            pin = None
+
+        perms_dict = dict(db.ALL_ADMIN_PERMS) if role == "admin" else dict(db.DEFAULT_CASHIER_PERMS)
+        if role != "admin" and isinstance(permissions, dict):
+            for k in perms_dict:
+                if k in permissions:
+                    perms_dict[k] = bool(permissions[k])
+        perms_json = json.dumps(perms_dict, ensure_ascii=False)
+
+        with db.connect() as conn:
+            try:
+                if id:
+                    uid = _int(id)
+                    if pin:
+                        salt = os.urandom(16)
+                        conn.execute(
+                            "UPDATE users SET username=?, name=?, role=?, pin_salt=?, pin_hash=?, permissions=? WHERE id=?",
+                            (username, name, role, salt, db.hash_pin(pin, salt), perms_json, uid),
+                        )
+                    else:
+                        conn.execute(
+                            "UPDATE users SET username=?, name=?, role=?, permissions=? WHERE id=?",
+                            (username, name, role, perms_json, uid),
+                        )
+                    if _STATE["user"] and _STATE["user"]["id"] == uid:
+                        _STATE["user"]["name"] = name
+                        _STATE["user"]["role"] = role
+                        _STATE["user"]["permissions"] = perms_dict
+                    return {"id": uid}
+                else:
+                    if not pin:
+                        raise ApiError("الرمز السري (4 أرقام) مطلوب للمستخدم الجديد")
+                    salt = os.urandom(16)
+                    cur = conn.execute(
+                        "INSERT INTO users(username, name, role, pin_salt, pin_hash, permissions, created_at) VALUES(?,?,?,?,?,?,?)",
+                        (username, name, role, salt, db.hash_pin(pin, salt), perms_json, db.now()),
+                    )
+                    return {"id": cur.lastrowid}
+            except sqlite3.IntegrityError:
+                raise ApiError("اسم الدخول مسجل مسبقاً")
+
+    def user_delete(self, id):
+        u = self._perm("settings_manage")
+        uid = _int(id)
+        if uid == u["id"]:
+            raise ApiError("لا يمكنك حذف حسابك الحالي أثناء الجلسة")
+        with db.connect() as conn:
+            target = conn.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+            if not target:
+                raise ApiError("المستخدم غير موجود")
+            if target["role"] == "admin":
+                admins = conn.execute("SELECT COUNT(*) c FROM users WHERE role='admin'").fetchone()["c"]
+                if admins <= 1:
+                    raise ApiError("لا يمكن حذف المدير الوحيد في النظام")
+            try:
+                conn.execute("DELETE FROM users WHERE id=?", (uid,))
+            except sqlite3.IntegrityError:
+                raise ApiError("لا يمكن حذف مستخدم مرتبط بعمليات بيع أو صيانة سابقة")
+            return True
 
     def login(self, username, pin):
         with db.connect() as conn:
@@ -119,10 +294,28 @@ class Api:
             expect = db.hash_pin(pin, row["pin_salt"])
             if not hmac.compare_digest(expect, row["pin_hash"]):
                 raise ApiError("اسم المستخدم أو الرمز السري غير صحيح")
-            _STATE["user"] = {"id": row["id"], "username": row["username"], "name": row["name"], "role": row["role"]}
+            perms = db.parse_user_perms(row["role"], row["permissions"] if "permissions" in row.keys() else None)
+            _STATE["user"] = {
+                "id": row["id"],
+                "username": row["username"],
+                "name": row["name"],
+                "role": row["role"],
+                "permissions": perms,
+            }
             return dict(_STATE["user"])
 
     def session(self):
+        if _STATE["user"]:
+            with db.connect() as conn:
+                row = conn.execute("SELECT id, username, name, role, permissions FROM users WHERE id=?", (_STATE["user"]["id"],)).fetchone()
+                if row:
+                    _STATE["user"] = {
+                        "id": row["id"],
+                        "username": row["username"],
+                        "name": row["name"],
+                        "role": row["role"],
+                        "permissions": db.parse_user_perms(row["role"], row["permissions"]),
+                    }
         return {"user": _STATE["user"]}
 
     def logout(self):
@@ -136,12 +329,12 @@ class Api:
             return self._settings(conn)
 
     def settings_save(self, **kv):
-        self._admin()
-        allowed = {"store_name", "store_address", "store_phone", "currency", "tax_rate",
+        self._perm("settings_manage")
+        allowed = {"store_name", "store_address", "store_phone", "currency", "tax_enabled", "tax_rate",
                    "store_email", "store_cr", "store_vat", "receipt_thanks", "receipt_footer",
                    "receipt_logo", "receipt_show_logo", "receipt_show_barcode",
                    "receipt_show_tax", "receipt_show_payments"}
-        show = {"receipt_show_logo", "receipt_show_barcode", "receipt_show_tax", "receipt_show_payments"}
+        show = {"tax_enabled", "receipt_show_logo", "receipt_show_barcode", "receipt_show_tax", "receipt_show_payments"}
         with db.connect() as conn:
             for k, v in kv.items():
                 if k not in allowed or v is None:
@@ -176,7 +369,7 @@ class Api:
             return [dict(r) for r in rows]
 
     def categories_save(self, name):
-        self._admin()
+        self._perm("inventory_edit")
         name = (name or "").strip()
         if not name:
             raise ApiError("اسم الفئة مطلوب")
@@ -188,7 +381,7 @@ class Api:
             return {"id": cur.lastrowid}
 
     def categories_delete(self, id):
-        self._admin()
+        self._perm("inventory_edit")
         with db.connect() as conn:
             n = conn.execute("SELECT COUNT(*) c FROM products WHERE category_id=? AND active=1", (id,)).fetchone()["c"]
             if n:
@@ -197,7 +390,7 @@ class Api:
             return True
 
     def categories_update(self, id, name):
-        self._admin()
+        self._perm("inventory_edit")
         name = (name or "").strip()
         if not name:
             raise ApiError("اسم الفئة مطلوب")
@@ -220,7 +413,8 @@ class Api:
         return d
 
     def products(self, q=None, category_id=None, stock=None, limit=200, offset=0):
-        u = self._user()
+        self._user()
+        show_cost = self._has_perm("cost_view")
         limit, offset = _int(limit, 200), _int(offset, 0)
         where, args = ["p.active=1"], []
         if q:
@@ -242,10 +436,11 @@ class Api:
                 f"SELECT p.*, c.name category {base_from} ORDER BY p.name LIMIT ? OFFSET ?",
                 args + [limit, offset],
             ).fetchall()
-            return {"rows": [self._product_row(r, u["role"] == "admin") for r in rows], "total": total}
+            return {"rows": [self._product_row(r, show_cost) for r in rows], "total": total}
 
     def product(self, id):
-        u = self._user()
+        self._user()
+        show_cost = self._has_perm("cost_view")
         with db.connect() as conn:
             r = conn.execute(
                 """SELECT p.*, c.name category FROM products p
@@ -253,11 +448,11 @@ class Api:
             ).fetchone()
             if not r or not r["active"]:
                 raise ApiError("المنتج غير موجود")
-            return self._product_row(r, u["role"] == "admin")
+            return self._product_row(r, show_cost)
 
     def product_save(self, id=None, sku="", name="", category_id=None, price=0, cost=0,
                      min_qty=5, tracked=0, notes=None, serials=None):
-        self._admin()
+        self._perm("inventory_edit")
         name = (name or "").strip()
         sku = (sku or "").strip()
         if not name or not sku:
@@ -304,7 +499,7 @@ class Api:
             )
 
     def product_delete(self, id):
-        self._admin()
+        self._perm("inventory_edit")
         with db.connect() as conn:
             cur = conn.execute("UPDATE products SET active=0 WHERE id=?", (_int(id),))
             if not cur.rowcount:
@@ -337,7 +532,7 @@ class Api:
             return [dict(r) for r in rows]
 
     def product_adjust(self, id, qty_change, reason="تعديل يدوي"):
-        u = self._admin()
+        u = self._perm("inventory_edit")
         pid, delta = _int(id), _int(qty_change)
         if delta == 0:
             raise ApiError("تغيير الكمية صفري")
@@ -364,7 +559,7 @@ class Api:
             return [dict(r) for r in rows]
 
     def serial_add(self, product_id, serial):
-        self._admin()
+        self._perm("inventory_edit")
         serial = (serial or "").strip()
         if not serial:
             raise ApiError("الرقم التسلسلي مطلوب")
@@ -378,7 +573,7 @@ class Api:
                 raise ApiError("الرقم التسلسلي مسجل مسبقاً")
             return True
 
-    # ---------------------------------------------------------- عملاء
+    # ---------------------------------------------------------- عملاء ومديونيات وسندات قبض
     def customers_search(self, q=""):
         self._user()
         q = (q or "").strip()
@@ -387,62 +582,193 @@ class Api:
                 "SELECT * FROM customers WHERE name LIKE ? OR phone LIKE ? ORDER BY name LIMIT 20",
                 (f"%{q}%", f"%{q}%"),
             ).fetchall()
-            return [dict(r) for r in rows]
+            out = []
+            for r in rows:
+                d = dict(r)
+                summary = _customer_debt_summary(conn, r)
+                d["credit_total"] = summary["credit_total"]
+                d["paid_total"] = summary["paid_total"]
+                d["debt"] = summary["debt"]
+                out.append(d)
+            return out
+
+    def customer(self, id):
+        self._user()
+        with db.connect() as conn:
+            r = conn.execute("SELECT * FROM customers WHERE id=?", (_int(id),)).fetchone()
+            if not r:
+                raise ApiError("العميل غير موجود")
+            d = dict(r)
+            summary = _customer_debt_summary(conn, r)
+            d["credit_total"] = summary["credit_total"]
+            d["paid_total"] = summary["paid_total"]
+            d["debt"] = summary["debt"]
+            return d
 
     def customers_save(self, name, phone=None, id=None):
-        self._admin()
+        self._perm("customers_edit")
         name = (name or "").strip()
+        phone = (phone or "").strip() or None
         if not name:
             raise ApiError("اسم العميل مطلوب")
         with db.connect() as conn:
-            if id:
-                conn.execute("UPDATE customers SET name=?, phone=? WHERE id=?", (name, phone, _int(id)))
-                return {"id": _int(id)}
-            else:
-                cur = conn.execute(
-                    "INSERT INTO customers(name, phone, created_at) VALUES(?,?,?)",
-                    (name, phone, db.now()),
-                )
-                return {"id": cur.lastrowid}
+            try:
+                if id:
+                    cid = _int(id)
+                    cur = conn.execute("UPDATE customers SET name=?, phone=? WHERE id=?", (name, phone, cid))
+                    if not cur.rowcount:
+                        raise ApiError("العميل غير موجود")
+                    return {"id": cid}
+                else:
+                    dup = conn.execute(
+                        "SELECT id FROM customers WHERE name=? AND COALESCE(phone,'')=COALESCE(?, '')",
+                        (name, phone),
+                    ).fetchone()
+                    if dup:
+                        raise ApiError("العميل مسجل مسبقاً بنفس الاسم ورقم الهاتف")
+                    cur = conn.execute(
+                        "INSERT INTO customers(name, phone, created_at) VALUES(?,?,?)",
+                        (name, phone, db.now()),
+                    )
+                    return {"id": cur.lastrowid}
+            except sqlite3.IntegrityError:
+                raise ApiError("العميل مسجل مسبقاً بنفس الاسم ورقم الهاتف")
 
     def customers_delete(self, id):
-        self._admin()
-        with db.connect() as conn:
-            conn.execute("DELETE FROM customers WHERE id=?", (_int(id),))
-            return True
-
-    def customers_list(self, limit=100, offset=0):
-        self._admin()
-        limit, offset = _int(limit, 100), _int(offset, 0)
-        with db.connect() as conn:
-            total = conn.execute("SELECT COUNT(*) c FROM customers").fetchone()["c"]
-            rows = conn.execute("SELECT * FROM customers ORDER BY name LIMIT ? OFFSET ?", (limit, offset)).fetchall()
-            return {"rows": [dict(r) for r in rows], "total": total}
-
-    def customer_history(self, id):
-        self._user()
+        self._perm("customers_delete")
         cid = _int(id)
         with db.connect() as conn:
-            sales = conn.execute(
-                """SELECT s.id, s.invoice_no, s.created_at, s.total, s.status
-                   FROM sales s
-                   WHERE s.customer_id=?
-                      OR (s.customer_id IS NULL AND s.customer_name IN (SELECT name FROM customers WHERE id=?))
-                   ORDER BY s.id DESC""",
-                (cid, cid),
-            ).fetchall()
+            conn.execute("UPDATE sales SET customer_id=NULL WHERE customer_id=?", (cid,))
+            conn.execute("DELETE FROM customers WHERE id=?", (cid,))
+            return True
+
+    def customers_list(self, limit=100, offset=0, debt_only=False):
+        self._perm("customers_view")
+        limit, offset = _int(limit, 100), _int(offset, 0)
+        with db.connect() as conn:
+            all_rows = conn.execute("SELECT * FROM customers ORDER BY name").fetchall()
+            enriched = []
+            for r in all_rows:
+                d = dict(r)
+                summary = _customer_debt_summary(conn, r)
+                d["total_purchases"] = summary["total_purchases"]
+                d["credit_total"] = summary["credit_total"]
+                d["paid_total"] = summary["paid_total"]
+                d["debt"] = summary["debt"]
+                if debt_only and d["debt"] <= 0:
+                    continue
+                enriched.append(d)
+            total = len(enriched)
+            return {"rows": enriched[offset:offset + limit], "total": total}
+
+    def customer_history(self, id):
+        self._perm("customers_view")
+        cid = _int(id)
+        with db.connect() as conn:
+            cust = conn.execute("SELECT * FROM customers WHERE id=?", (cid,)).fetchone()
+            if not cust:
+                raise ApiError("العميل غير موجود")
+            cname = cust["name"]
+            cphone = cust["phone"]
+            summary = _customer_debt_summary(conn, cust)
+            cust_dict = dict(cust)
+            cust_dict["total_purchases"] = summary["total_purchases"]
+            cust_dict["credit_total"] = summary["credit_total"]
+            cust_dict["paid_total"] = summary["paid_total"]
+            cust_dict["debt"] = summary["debt"]
+
+            events = []
+            for s in summary["sales"]:
+                if s["net_credit"] > 0:
+                    events.append({
+                        "kind": "credit_sale",
+                        "ref": s["invoice_no"],
+                        "sale_id": s["id"],
+                        "created_at": s["created_at"],
+                        "debit": s["net_credit"],
+                        "credit": 0,
+                        "method": "credit",
+                        "ref_no": None,
+                        "notes": f"فاتورة آجلة ({s['invoice_no']})",
+                    })
+            for v in summary["vouchers"]:
+                events.append({
+                    "kind": "voucher",
+                    "id": v["id"],
+                    "ref": v["ref"],
+                    "sale_id": v["sale_id"],
+                    "created_at": v["created_at"],
+                    "debit": 0,
+                    "credit": v["amount"],
+                    "method": v["method"],
+                    "ref_no": v["ref_no"],
+                    "notes": v["notes"] or ("سداد نقدي" if v["method"] == "cash" else "سداد محفظة"),
+                    "user_name": v["user_name"],
+                })
+            events.sort(key=lambda x: (x["created_at"], 0 if x["kind"] == "credit_sale" else 1))
+            running = 0
+            for ev in events:
+                running = max(0, running + ev["debit"] - ev["credit"])
+                ev["balance_after"] = running
+            events.reverse()
+
             repairs = conn.execute(
-                """SELECT r.id, r.ref, r.created_at, r.status, r.cost
+                """SELECT r.id, r.ref, r.created_at, r.device_type, r.problem, r.status, r.cost
                    FROM repairs r
-                   WHERE r.customer_name IN (SELECT name FROM customers WHERE id=?)
+                   WHERE r.customer_name=?
+                      OR (? IS NOT NULL AND ? != '' AND r.customer_phone=?)
                    ORDER BY r.id DESC""",
-                (cid,),
+                (cname, cphone, cphone, cphone),
             ).fetchall()
             return {
-                "sales": [dict(r) for r in sales],
+                "customer": cust_dict,
+                "sales": summary["sales"],
+                "vouchers": summary["vouchers"],
+                "ledger": events,
                 "repairs": [dict(r) for r in repairs],
             }
 
+    def customer_payment_create(self, customer_id, amount, method="cash", ref_no=None, sale_id=None, notes=None):
+        u = self._perm("customers_edit")
+        cid = _int(customer_id)
+        amt = _money(amount)
+        if amt <= 0:
+            raise ApiError("مبلغ السداد يجب أن يكون أكبر من صفر")
+        if method not in ("cash", "wallet"):
+            raise ApiError("طريقة السداد غير صالحة (نقدي أو محفظة)")
+        ref_no = (ref_no or "").strip() or None
+        if method == "wallet" and not ref_no:
+            raise ApiError("يرجى إدخال رقم العملية المرجعية لتحويل المحفظة")
+        with db.connect() as conn:
+            cust = conn.execute("SELECT * FROM customers WHERE id=?", (cid,)).fetchone()
+            if not cust:
+                raise ApiError("العميل غير موجود")
+            summary = _customer_debt_summary(conn, cust)
+            if summary["debt"] <= 0:
+                raise ApiError("لا توجد مديونية مستحقة على هذا العميل")
+            if amt > summary["debt"]:
+                raise ApiError(f"مبلغ السداد ({_fmt_money(amt)}) أكبر من إجمالي المديونية المتبقية ({_fmt_money(summary['debt'])})")
+            s = self._open_shift(conn, u["id"])
+            shift_id = s["id"] if s else None
+            ts = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+            cnt = conn.execute("SELECT COUNT(*) c FROM customer_payments").fetchone()["c"] + 1
+            ref = f"RCV-{ts}-{cnt:03d}"
+            cur = conn.execute(
+                """INSERT INTO customer_payments(ref, customer_id, sale_id, user_id, shift_id, created_at, amount, method, ref_no, notes)
+                   VALUES(?,?,?,?,?,?,?,?,?,?)""",
+                (ref, cid, _int(sale_id) if sale_id else None, u["id"], shift_id, db.now(), amt, method, ref_no, (notes or "").strip() or None),
+            )
+            return {"id": cur.lastrowid, "ref": ref, "remaining_debt": summary["debt"] - amt}
+
+    def customer_payment_delete(self, id):
+        self._perm("customers_delete")
+        with db.connect() as conn:
+            cur = conn.execute("DELETE FROM customer_payments WHERE id=?", (_int(id),))
+            if not cur.rowcount:
+                raise ApiError("سند القبض غير موجود")
+            return True
+
+    # ---------------------------------------------------------- ورديات
     def shift(self):
         u = self._user()
         with db.connect() as conn:
@@ -479,13 +805,18 @@ class Api:
             s = self._open_shift(conn, u["id"])
             if not s:
                 raise ApiError("لا توجد وردية مفتوحة")
-            cash = conn.execute(
+            cash_sales = conn.execute(
                 """SELECT COALESCE(SUM(amount),0) c FROM payments
                    JOIN sales ON sales.id=payments.sale_id
                    WHERE sales.shift_id=? AND payments.method='cash'""",
                 (s["id"],),
             ).fetchone()["c"]
-            expected = s["opening_cash"] + cash
+            cash_vouchers = conn.execute(
+                """SELECT COALESCE(SUM(amount),0) c FROM customer_payments
+                   WHERE shift_id=? AND method='cash'""",
+                (s["id"],),
+            ).fetchone()["c"]
+            expected = s["opening_cash"] + cash_sales + cash_vouchers
             counted = _money(counted_cash)
             conn.execute(
                 "UPDATE shifts SET closed_at=?, counted_cash=?, expected_cash=?, diff=? WHERE id=?",
@@ -494,7 +825,7 @@ class Api:
             return dict(conn.execute("SELECT * FROM shifts WHERE id=?", (s["id"],)).fetchone())
 
     def shifts(self):
-        self._admin()
+        self._perm("reports_view")
         with db.connect() as conn:
             rows = conn.execute(
                 """SELECT s.*, u.name user_name,
@@ -506,28 +837,27 @@ class Api:
 
     # ---------------------------------------------------------- مبيعات
     def sale_create(self, items, discount=0, payments=None, customer_name=None, customer_phone=None, notes=None):
-        u = self._user()
+        u = self._perm("pos_sell")
+        can_edit_price = self._has_perm("pos_price")
         items = items or []
         if not items:
             raise ApiError("السلة فارغة")
         payments = payments or []
+        customer_name = (customer_name or "").strip() or None
+        customer_phone = (customer_phone or "").strip() or None
         with db.connect() as conn:
             s = self._open_shift(conn, u["id"])
             if not s:
                 raise ApiError("لا يمكن البيع بدون وردية مفتوحة — افتح وردية أولاً")
-            rate = int(Decimal(self._settings(conn).get("tax_rate", "15") or 0))
+            st = self._settings(conn)
+            tax_enabled = st.get("tax_enabled", "1") != "0"
+            rate = int(Decimal(st.get("tax_rate", "14") or 0)) if tax_enabled else 0
 
-            # تسجيل العميل في جدول العملاء
-            customer_id = None
-            if customer_name:
-                customer_name = customer_name.strip()
-                # إضافة العميل أو تحديث الهاتف إذا كان موجوداً
-                cur = conn.execute(
-                    "INSERT INTO customers(name, phone, created_at) VALUES(?,?,?) "
-                    "ON CONFLICT(name, phone) DO UPDATE SET phone=excluded.phone",
-                    (customer_name, customer_phone, db.now()),
-                )
-                customer_id = cur.lastrowid or conn.execute("SELECT id FROM customers WHERE name=? AND phone=?", (customer_name, customer_phone)).fetchone()["id"]
+            has_credit = any((p.get("method") == "credit" and _money(p.get("amount"), 0) > 0) for p in payments)
+            if has_credit and not customer_name:
+                raise ApiError("لا يمكن البيع الآجل بدون اختيار أو إدخال اسم العميل")
+
+            customer_id = _upsert_customer(conn, customer_name, customer_phone) if customer_name else None
 
             lines = []
             for it in items:
@@ -540,8 +870,8 @@ class Api:
                     raise ApiError("منتج غير موجود في السلة")
                 up = it.get("unit_price")
                 unit = p["price"]
-                if up is not None and u["role"] == "admin":
-                    unit = _money(up)  # الكاشير لا يعدّل السعر
+                if up is not None and can_edit_price:
+                    unit = _money(up)
                 if p["tracked"]:
                     serial_ids = it.get("serial_ids") or []
                     if len(serial_ids) != qty:
@@ -552,7 +882,6 @@ class Api:
                     ).fetchall()
                     if len(srows) != qty or any(r["status"] != "in_stock" for r in srows):
                         raise ApiError("أحد الأرقام التسلسلية غير متاح")
-                    # سطر لكل سيريال (qty=1) ليبقى السيريال مرتبطاً بالبيع
                     for r in srows:
                         lines.append((p, 1, unit, [r["id"]]))
                 else:
@@ -575,12 +904,19 @@ class Api:
                 if method not in ("cash", "wallet", "credit"):
                     raise ApiError("طريقة دفع غير معروفة (نقدي/محفظة/آجل)")
                 amount = _money(pay.get("amount"))
-                received = _money(pay.get("received", amount))
+                raw_rec = pay.get("received")
+                received = _money(raw_rec) if raw_rec not in (None, "") else amount
+                ref_no = (pay.get("ref_no") or "").strip() or None
                 if amount <= 0:
                     raise ApiError("مبلغ دفع غير صالح")
+                if len(payments) == 1 and method == "cash" and amount > total:
+                    received = max(received, amount)
+                    amount = total
                 if method == "cash" and received < amount:
                     raise ApiError("المبلغ المستلم أقل من مبلغ الدفع النقدي")
-                pays.append((method, amount, received, max(0, received - amount)))
+                if method == "wallet" and not ref_no:
+                    raise ApiError("يرجى إدخال رقم العملية المرجعية لتحويل المحفظة")
+                pays.append((method, amount, received, max(0, received - amount), ref_no))
                 got += amount
             if got != total:
                 raise ApiError(f"مجموع الدفعات ({_fmt_money(got)}) لا يساوي الإجمالي ({_fmt_money(total)})")
@@ -615,10 +951,10 @@ class Api:
                        VALUES(?,?,?,?,?,?,?)""",
                     (db.now(), u["id"], p["id"], -qty, after, "sale", invoice),
                 )
-            for method, amount, received, change in pays:
+            for method, amount, received, change, ref_no in pays:
                 conn.execute(
-                    "INSERT INTO payments(sale_id, method, amount, received, change) VALUES(?,?,?,?,?)",
-                    (sale_id, method, amount, received, change),
+                    "INSERT INTO payments(sale_id, method, amount, received, change, ref_no) VALUES(?,?,?,?,?,?)",
+                    (sale_id, method, amount, received, change, ref_no),
                 )
             return {"sale_id": sale_id, "invoice_no": invoice}
 
@@ -631,7 +967,16 @@ class Api:
             ).fetchone()
             if not r:
                 raise ApiError("الفاتورة غير موجودة")
-            items = [dict(x) for x in conn.execute("SELECT * FROM sale_items WHERE sale_id=?", (r["id"],))]
+            items = []
+            for x in conn.execute("SELECT * FROM sale_items WHERE sale_id=?", (r["id"],)):
+                it = dict(x)
+                returned_qty = conn.execute(
+                    "SELECT COALESCE(SUM(qty),0) q FROM sale_return_items WHERE sale_item_id=?",
+                    (it["id"],),
+                ).fetchone()["q"]
+                it["returned_qty"] = returned_qty
+                it["remaining_qty"] = max(0, it["qty"] - returned_qty)
+                items.append(it)
             pays = [dict(x) for x in conn.execute("SELECT * FROM payments WHERE sale_id=?", (r["id"],))]
             d = dict(r)
             d["items"] = items
@@ -643,7 +988,12 @@ class Api:
         d = self.sale(id)
         with db.connect() as conn:
             st = self._settings(conn)
-        name, cur = st.get("store_name", "تك زون للإلكترونيات"), st.get("currency", "ر.س")
+        name, cur = st.get("store_name", "تك زون للإلكترونيات"), st.get("currency", "ج.م")
+        tax_enabled = st.get("tax_enabled", "1") != "0"
+        show_tax = tax_enabled and (st.get("receipt_show_tax", "1") != "0")
+        show_pays = st.get("receipt_show_payments", "1") != "0"
+        thanks = st.get("receipt_thanks") or "شكراً لزيارتكم"
+        footer = st.get("receipt_footer") or "يرجى الاحتفاظ بالإيصال للاستبدال"
         W = 80
         L = []
         sep = lambda ch: ch * W
@@ -654,8 +1004,16 @@ class Api:
 
         L.append(sep("="))
         L.append(center(name))
-        L.append(center(st.get("store_address", "")))
-        L.append(center(f"هاتف: {st.get('store_phone', '')}"))
+        if st.get("store_address"):
+            L.append(center(st.get("store_address", "")))
+        if st.get("store_phone"):
+            L.append(center(f"هاتف: {st.get('store_phone', '')}"))
+        if st.get("store_email"):
+            L.append(center(st.get("store_email", "")))
+        if st.get("store_cr"):
+            L.append(center(f"سجل تجاري: {st.get('store_cr', '')}"))
+        if st.get("store_vat"):
+            L.append(center(f"الرقم الضريبي: {st.get('store_vat', '')}"))
         L.append(sep("="))
         dt = datetime.datetime.strptime(d["created_at"], "%Y-%m-%d %H:%M:%S")
         L.append(f"فاتورة: {d['invoice_no']}".ljust(40) + f"التاريخ: {dt:%d/%m/%Y}".rjust(40))
@@ -672,24 +1030,28 @@ class Api:
         L.append(f"{'المجموع الفرعي':<40}{_fmt_money(d['subtotal']):>20}")
         if d["discount"]:
             L.append(f"{'الخصم':<40}{('-' + _fmt_money(d['discount'])):>20}")
-        L.append(f"{'ضريبة القيمة المضافة':<40}{_fmt_money(d['tax']):>20}")
+        if show_tax and d["tax"]:
+            L.append(f"{'ضريبة القيمة المضافة':<40}{_fmt_money(d['tax']):>20}")
         L.append(sep("="))
         L.append(f"{'الإجمالي':<40}{(_fmt_money(d['total']) + ' ' + cur):>20}")
-        method_ar = {"cash": "نقدي", "wallet": "محفظة", "credit": "آجل"}
-        for p in d["payments"]:
-            extra = f" (المستلم: {_fmt_money(p['received'])})" if p["received"] > p["amount"] else ""
-            L.append(f"الدفع: {method_ar.get(p['method'], p['method'])} {_fmt_money(p['amount'])}{extra}")
-        change = sum(p["change"] for p in d["payments"])
-        if change:
-            L.append(f"المتبقي (تغيير): {_fmt_money(change)}")
+        if show_pays:
+            method_ar = {"cash": "نقدي", "wallet": "محفظة", "credit": "آجل"}
+            for p in d["payments"]:
+                extra = f" (المستلم: {_fmt_money(p['received'])})" if p["received"] > p["amount"] else ""
+                ref_part = f" [مرجع: {p['ref_no']}]" if p.get("ref_no") else ""
+                L.append(f"الدفع: {method_ar.get(p['method'], p['method'])} {_fmt_money(p['amount'])}{extra}{ref_part}")
+            change = sum(p["change"] for p in d["payments"])
+            if change:
+                L.append(f"المتبقي (الباقي): {_fmt_money(change)}")
         L.append(sep("="))
-        L.append(center("شكراً لزيارتكم"))
-        L.append(center("يرجى الاحتفاظ بالإيصال للاستبدال"))
+        L.append(center(thanks))
+        L.append(center(footer))
         L.append(sep("="))
         return "\n".join(line[:W] for line in L)
 
     def sales(self, date=None, kind=None, q=None, limit=100, offset=0):
         u = self._user()
+        see_all = self._has_perm("sales_all")
         limit, offset = _int(limit, 100), _int(offset, 0)
         with db.connect() as conn:
             out, tot = [], 0
@@ -702,7 +1064,7 @@ class Api:
                 if q:
                     where.append("(s.invoice_no LIKE ? OR s.customer_name LIKE ?)")
                     args += [f"%{q}%", f"%{q}%"]
-                if u["role"] != "admin":
+                if not see_all:
                     where.append("s.user_id=?")
                     args.append(u["id"])
                 base = f"""SELECT s.id, s.invoice_no, s.created_at, u.name user_name,
@@ -751,7 +1113,7 @@ class Api:
                     "repairs": {"count": rp["n"], "active": rp["active"] or 0}}
 
     def sale_return(self, sale_id, items, reason=None):
-        u = self._admin()
+        u = self._perm("sales_return")
         items = items or []
         if not items:
             raise ApiError("اختر أصنافاً للإرجاع")
@@ -783,7 +1145,6 @@ class Api:
                        VALUES(?,?,?,?,?,?,?)""",
                     (db.now(), u["id"], si["product_id"], qty, after, "return", s["invoice_no"]),
                 )
-                # ponytail: مبلغ الإرجاع دون الضريبة (بأسعار الأصناف)؛ ترقية: توزيع الضريبة على الأصناف
                 amount = si["unit_price"] * qty
                 total += amount
                 done.append((item_id, qty, amount))
@@ -812,7 +1173,7 @@ class Api:
     def used_create(self, seller_name, model, serial=None, seller_phone=None, seller_id_no=None,
                     device_type=None, brand=None, condition=None, notes=None, buy_price=0,
                     storage=None, resale_price=None, to_inventory=True):
-        u = self._admin()
+        u = self._perm("used_manage")
         seller_name = (seller_name or "").strip()
         model = (model or "").strip()
         if not seller_name or not model:
@@ -829,7 +1190,7 @@ class Api:
                     raise ApiError("السيريال مطلوب لإضافة الجهاز للمخزون")
                 if conn.execute("SELECT 1 FROM serials WHERE serial=?", (serial,)).fetchone():
                     raise ApiError("هذا الرقم التسلسلي مسجل مسبقاً في المخزون")
-                cat_map = {"لابتوب": "لابتوبات", "اكسسوارات": "إكسسوارات", "اكسسوارت": "إكسسوارات"}
+                cat_map = {"لابتوب": "لابتوبات", "اكسسوارات": "إكسسوارات", "اكسسوارت": "إكسسوارات", "جهاز لوحي": "أجهزة لوحية"}
                 cat_id = None
                 if device_type:
                     row = conn.execute("SELECT id FROM categories WHERE name=?", (cat_map.get(device_type, device_type),)).fetchone()
@@ -838,7 +1199,7 @@ class Api:
                 cur = conn.execute(
                     """INSERT INTO products(sku, name, category_id, price, cost, qty, min_qty, tracked, notes, created_at)
                        VALUES(?,?,?,?,?,?,?,?,?,?)""",
-                    (f"USED-{ref}", name, cat_id, _money(resale_price, 0), buy, 1, 1, 0,
+                    (f"USED-{ref}", name, cat_id, _money(resale_price, 0), buy, 1, 1, 1,
                      f"مستعمل — {condition or 'بدون بيان'}" if condition else "مستعمل", db.now()),
                 )
                 product_id = cur.lastrowid
@@ -893,13 +1254,14 @@ class Api:
     # ---------------------------------------------------------- صيانة
     def repair_create(self, customer_name, customer_phone, device_type, problem, address=None,
                       serial=None, accessories=None, notes=None, priority=0, cost=0):
-        u = self._user()
+        u = self._perm("repair_view")
         for f, v in (("customer_name", customer_name), ("customer_phone", customer_phone),
                      ("device_type", device_type), ("problem", problem)):
             if not (v or "").strip():
                 raise ApiError("حقل مطلوب: " + f)
         ref = "RPR-" + datetime.datetime.now().strftime("%Y%m%d%H%M%S")
         with db.connect() as conn:
+            _upsert_customer(conn, customer_name.strip(), customer_phone.strip())
             cur = conn.execute(
                 """INSERT INTO repairs(ref, user_id, created_at, updated_at, customer_name, customer_phone, address,
                     device_type, serial, problem, accessories, notes, status, priority, cost)
@@ -945,7 +1307,7 @@ class Api:
             return d
 
     def repair_set_status(self, id, status):
-        self._user()
+        self._perm("repair_view")
         if status not in REPAIR_FLOW:
             raise ApiError("حالة غير معروفة")
         with db.connect() as conn:
@@ -958,7 +1320,7 @@ class Api:
             return {"status": status}
 
     def repair_add_part(self, repair_id, product_id, qty=1):
-        self._user()
+        self._perm("repair_edit")
         rid, pid, q = _int(repair_id), _int(product_id), _int(qty, 1)
         if q <= 0:
             raise ApiError("كمية غير صالحة")
@@ -1013,8 +1375,11 @@ class Api:
         ).fetchone()
         pays = {r["method"]: r["t"] for r in conn.execute(
             f"""SELECT p.method, COALESCE(SUM(p.amount),0) t FROM payments p
-                JOIN sales s ON s.id=p.sale_id WHERE s.{where}""", args,
+                JOIN sales s ON s.id=p.sale_id WHERE s.{where} GROUP BY p.method""", args,
         ).fetchall()}
+        vouchers = conn.execute(
+            f"SELECT COUNT(*) n, COALESCE(SUM(amount),0) tot FROM customer_payments WHERE {where}", args
+        ).fetchone()
         rp = conn.execute(
             f"""SELECT COUNT(*) n, COALESCE(SUM(CASE WHEN status='delivered' THEN 1 ELSE 0 END),0) done,
                        COALESCE(SUM(CASE WHEN status='delivered' THEN cost ELSE 0 END),0) rev
@@ -1022,27 +1387,28 @@ class Api:
             args,
         ).fetchone()
         return {
-            "sales": {"count": s["n"], "subtotal": s["sub"], "discount": s["dis"], "tax": s["tax"], "total": s["tot"]},
+            "sales": {"count": s["n"], "subtotal": s["sub"], "discount": s["dis"], "tax": s["tax"], "total": s["tot"], "net": max(0, s["tot"] - ret["tot"])},
             "returns": {"count": ret["n"], "total": ret["tot"]},
             "payments": pays,
+            "vouchers": {"count": vouchers["n"], "total": vouchers["tot"]},
             "repairs": {"count": rp["n"], "delivered": rp["done"], "revenue": rp["rev"]},
         }
 
     def report_daily(self, date=None):
-        self._admin()
+        self._perm("reports_view")
         d = date or datetime.datetime.now().strftime("%Y-%m-%d")
         with db.connect() as conn:
             where, args = self._range(conn, date=d)
             return self._period_stats(conn, where, args)
 
     def report_monthly(self, year, month):
-        self._admin()
+        self._perm("reports_view")
         with db.connect() as conn:
             where, args = self._range(conn, month={"year": year, "month": month})
             return self._period_stats(conn, where, args)
 
     def report_top(self, date_from=None, date_to=None, limit=10):
-        self._admin()
+        self._perm("reports_view")
         limit = _int(limit, 10)
         where, args = ["1=1"], []
         if date_from:
@@ -1053,15 +1419,17 @@ class Api:
             args.append(f"{date_to} 23:59:59")
         with db.connect() as conn:
             rows = conn.execute(
-                f"""SELECT p.name, p.sku, SUM(i.qty) qty, SUM(i.line_total) total
+                f"""SELECT p.name, p.sku,
+                           SUM(i.qty - COALESCE((SELECT SUM(ri.qty) FROM sale_return_items ri WHERE ri.sale_item_id=i.id), 0)) qty,
+                           SUM(i.line_total - COALESCE((SELECT SUM(ri.amount) FROM sale_return_items ri WHERE ri.sale_item_id=i.id), 0)) total
                     FROM sale_items i JOIN sales s ON s.id=i.sale_id JOIN products p ON p.id=i.product_id
-                    WHERE {' AND '.join(where)} GROUP BY p.id ORDER BY qty DESC LIMIT ?""",
+                    WHERE {' AND '.join(where)} GROUP BY p.id HAVING qty > 0 ORDER BY qty DESC LIMIT ?""",
                 args + [limit],
             ).fetchall()
             return [dict(r) for r in rows]
 
     def report_profit(self, date_from=None, date_to=None):
-        self._admin()
+        self._perm("reports_view")
         where, args = ["1=1"], []
         if date_from:
             where.append("s.created_at >= ?")
@@ -1071,7 +1439,13 @@ class Api:
             args.append(f"{date_to} 23:59:59")
         with db.connect() as conn:
             goods = conn.execute(
-                f"""SELECT COALESCE(SUM(i.line_total - p.cost * i.qty),0) profit, COALESCE(SUM(i.line_total),0) revenue
+                f"""SELECT COALESCE(SUM(
+                        (i.line_total - COALESCE((SELECT SUM(ri.amount) FROM sale_return_items ri WHERE ri.sale_item_id=i.id), 0))
+                        - p.cost * (i.qty - COALESCE((SELECT SUM(ri.qty) FROM sale_return_items ri WHERE ri.sale_item_id=i.id), 0))
+                    ),0) profit,
+                    COALESCE(SUM(
+                        i.line_total - COALESCE((SELECT SUM(ri.amount) FROM sale_return_items ri WHERE ri.sale_item_id=i.id), 0)
+                    ),0) revenue
                     FROM sale_items i JOIN sales s ON s.id=i.sale_id JOIN products p ON p.id=i.product_id
                     WHERE {' AND '.join(where)}""",
                 args,
@@ -1086,7 +1460,7 @@ class Api:
             rep = conn.execute(
                 f"""SELECT COALESCE(SUM(CASE WHEN r.status='delivered' THEN r.cost ELSE 0 END),0) rev,
                            COALESCE((SELECT SUM(lp.line_total) FROM repair_parts lp
-                                     JOIN repairs r2 ON r2.id=lp.repair_id WHERE r2.status='delivered' AND {rep_where}),0) parts
+                                     JOIN repairs r2 ON r2.id=lp.repair_id WHERE r2.status='delivered' AND {rep_where.replace('r.', 'r2.')}),0) parts
                     FROM repairs r WHERE {rep_where}""",
                 rep_args * 2,
             ).fetchone()
@@ -1109,7 +1483,7 @@ class Api:
             return [dict(r) for r in rows]
 
     def report_movements(self, limit=100):
-        self._admin()
+        self._perm("reports_view")
         limit = _int(limit, 100)
         with db.connect() as conn:
             rows = conn.execute(
@@ -1123,7 +1497,7 @@ class Api:
             return [dict(r) for r in rows]
 
     def stock_stats(self):
-        u = self._user()
+        self._user()
         with db.connect() as conn:
             n = conn.execute("SELECT COUNT(*) c FROM products WHERE active=1").fetchone()["c"]
             val = conn.execute("SELECT COALESCE(SUM(qty*price),0) v FROM products WHERE active=1").fetchone()["v"]

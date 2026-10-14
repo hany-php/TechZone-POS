@@ -1,11 +1,32 @@
 """SQLite schema, connection, initial seed. All money = INTEGER minor units (1/100)."""
 import datetime
 import hashlib
+import json
 import os
 import pathlib
 import shutil
 import sqlite3
 import sys
+
+DEFAULT_CASHIER_PERMS = {
+    "pos_sell": True,
+    "pos_price": False,
+    "sales_return": False,
+    "sales_all": False,
+    "inventory_view": False,
+    "inventory_edit": False,
+    "cost_view": False,
+    "customers_view": True,
+    "customers_edit": True,
+    "customers_delete": False,
+    "repair_view": True,
+    "repair_edit": True,
+    "used_manage": False,
+    "reports_view": False,
+    "settings_manage": False,
+}
+
+ALL_ADMIN_PERMS = {k: True for k in DEFAULT_CASHIER_PERMS}
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
@@ -15,6 +36,7 @@ CREATE TABLE IF NOT EXISTS users (
   role TEXT NOT NULL DEFAULT 'cashier' CHECK (role IN ('admin','cashier')),
   pin_salt BLOB NOT NULL,
   pin_hash BLOB NOT NULL,
+  permissions TEXT,
   created_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS categories (
@@ -52,6 +74,13 @@ CREATE TABLE IF NOT EXISTS shifts (
   expected_cash INTEGER,
   diff INTEGER
 );
+CREATE TABLE IF NOT EXISTS customers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  phone TEXT,
+  created_at TEXT NOT NULL,
+  UNIQUE(name, phone)
+);
 CREATE TABLE IF NOT EXISTS sales (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   invoice_no TEXT NOT NULL UNIQUE,
@@ -84,7 +113,21 @@ CREATE TABLE IF NOT EXISTS payments (
   method TEXT NOT NULL CHECK (method IN ('cash','wallet','credit')),
   amount INTEGER NOT NULL,
   received INTEGER NOT NULL DEFAULT 0,
-  change INTEGER NOT NULL DEFAULT 0
+  change INTEGER NOT NULL DEFAULT 0,
+  ref_no TEXT
+);
+CREATE TABLE IF NOT EXISTS customer_payments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ref TEXT NOT NULL UNIQUE,
+  customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  sale_id INTEGER REFERENCES sales(id) ON DELETE SET NULL,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  shift_id INTEGER REFERENCES shifts(id),
+  created_at TEXT NOT NULL,
+  amount INTEGER NOT NULL,
+  method TEXT NOT NULL DEFAULT 'cash' CHECK (method IN ('cash','wallet')),
+  ref_no TEXT,
+  notes TEXT
 );
 CREATE TABLE IF NOT EXISTS sale_returns (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -162,15 +205,10 @@ CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT
 );
-CREATE TABLE IF NOT EXISTS customers (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL,
-  phone TEXT,
-  created_at TEXT NOT NULL,
-  UNIQUE(name, phone)
-);
 
 CREATE INDEX IF NOT EXISTS idx_sales_created ON sales(created_at);
+CREATE INDEX IF NOT EXISTS idx_sales_customer ON sales(customer_id);
+CREATE INDEX IF NOT EXISTS idx_cust_payments_cust ON customer_payments(customer_id);
 CREATE INDEX IF NOT EXISTS idx_movements_product ON stock_movements(product_id);
 CREATE INDEX IF NOT EXISTS idx_serials_serial ON serials(serial);
 """
@@ -221,61 +259,90 @@ def now() -> str:
 
 
 def hash_pin(pin: str, salt: bytes) -> bytes:
-    # ponytail: PBKDF2-SHA256 @200k بدل argon2id (لا مكتبة خارجية مسموحة)؛ ترقية: argon2-cffi
     return hashlib.pbkdf2_hmac("sha256", pin.encode("utf-8"), salt, 200_000)
 
 
+def parse_user_perms(role: str, raw_perms: str | None) -> dict:
+    if role == "admin":
+        return dict(ALL_ADMIN_PERMS)
+    base = dict(DEFAULT_CASHIER_PERMS)
+    if raw_perms:
+        try:
+            loaded = json.loads(raw_perms)
+            if isinstance(loaded, dict):
+                for k in base:
+                    if k in loaded:
+                        base[k] = bool(loaded[k])
+        except Exception:
+            pass
+    return base
+
+
 def connect() -> sqlite3.Connection:
-    _migrate_once()  # نسخ القاعدة القديمة لمرة واحدة إن لزم (لا أثر مع SHOP_DB الموجود)
+    _migrate_once()
     conn = sqlite3.connect(db_path(), timeout=10)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys=ON")
     conn.execute("PRAGMA journal_mode=WAL")
     init_db(conn)
-    _ensure_customer_id_column(conn)
+    _ensure_schema_columns(conn)
     _migrate_customers(conn)
     return conn
 
 
-def _ensure_customer_id_column(conn):
-    """Ensure the customer_id column exists in the sales table."""
+def _ensure_schema_columns(conn: sqlite3.Connection):
+    """ترقية الجداول القديمة بإضافة الأعمدة الجديدة دون فقدان البيانات."""
     try:
-        # Check if column exists
-        columns = conn.execute("PRAGMA table_info(sales)").fetchall()
-        if not any(col["name"] == "customer_id" for col in columns):
+        sales_cols = {c["name"] for c in conn.execute("PRAGMA table_info(sales)").fetchall()}
+        if "customer_id" not in sales_cols:
             conn.execute("ALTER TABLE sales ADD COLUMN customer_id INTEGER REFERENCES customers(id)")
-            conn.commit()
+
+        pay_cols = {c["name"] for c in conn.execute("PRAGMA table_info(payments)").fetchall()}
+        if "ref_no" not in pay_cols:
+            conn.execute("ALTER TABLE payments ADD COLUMN ref_no TEXT")
+
+        user_cols = {c["name"] for c in conn.execute("PRAGMA table_info(users)").fetchall()}
+        if "permissions" not in user_cols:
+            conn.execute("ALTER TABLE users ADD COLUMN permissions TEXT")
+
+        # ضمان وجود مفتاح tax_enabled في الإعدادات
+        te = conn.execute("SELECT value FROM settings WHERE key='tax_enabled'").fetchone()
+        if not te:
+            conn.execute("INSERT OR IGNORE INTO settings(key, value) VALUES('tax_enabled', '1')")
+        conn.commit()
     except Exception as e:
-        print(f"Column ensure error: {e}")
+        print(f"Schema upgrade error: {e}")
 
 
 def _migrate_customers(conn):
     """ترحيل العملاء من جدول المبيعات إلى جدول العملاء المنفصل."""
     try:
-        # 1. Ensure customers table exists
-        conn.execute("CREATE TABLE IF NOT EXISTS customers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, phone TEXT, created_at TEXT NOT NULL, UNIQUE(name, phone))")
-        
-        # 2. Migrate unique customers from sales to customers table
-        count = conn.execute("SELECT COUNT(*) c FROM customers").fetchone()["c"]
-        if count == 0:
-            customers = conn.execute(
-                "SELECT DISTINCT customer_name, customer_phone FROM sales WHERE customer_name IS NOT NULL"
-            ).fetchall()
-            for c in customers:
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS customers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, phone TEXT, created_at TEXT NOT NULL, UNIQUE(name, phone))"
+        )
+        t = now()
+        customers = conn.execute(
+            "SELECT DISTINCT TRIM(customer_name) AS cname, NULLIF(TRIM(customer_phone), '') AS cphone "
+            "FROM sales WHERE customer_name IS NOT NULL AND TRIM(customer_name) != ''"
+        ).fetchall()
+        for c in customers:
+            cname, cphone = c["cname"], c["cphone"]
+            existing = conn.execute(
+                "SELECT id FROM customers WHERE name=? AND COALESCE(phone,'')=COALESCE(?, '')",
+                (cname, cphone),
+            ).fetchone()
+            if not existing:
                 conn.execute(
                     "INSERT OR IGNORE INTO customers(name, phone, created_at) VALUES(?,?,?)",
-                    (c["customer_name"], c["customer_phone"], db.now()),
+                    (cname, cphone, t),
                 )
-            conn.commit()
-        
-        # 3. Link existing sales to customers via name and phone
         conn.execute(
             """UPDATE sales SET customer_id = (
-               SELECT id FROM customers 
-               WHERE customers.name = sales.customer_name 
-               AND (customers.phone = sales.customer_phone OR customers.phone IS NULL)
+               SELECT id FROM customers
+               WHERE customers.name = TRIM(sales.customer_name)
+                 AND COALESCE(customers.phone, '') = COALESCE(NULLIF(TRIM(sales.customer_phone), ''), '')
                LIMIT 1
-            ) WHERE customer_id IS NULL AND customer_name IS NOT NULL"""
+            ) WHERE customer_id IS NULL AND customer_name IS NOT NULL AND TRIM(customer_name) != ''"""
         )
         conn.commit()
     except Exception as e:
@@ -295,18 +362,20 @@ def _seed(conn: sqlite3.Connection) -> None:
     t = now()
     defaults = {
         "store_name": "تك زون للإلكترونيات",
-        "store_address": "شارع الملك فهد، الرياض",
-        "store_phone": "0500000000",
-        "currency": "ر.س",
-        "tax_rate": "15",
+        "store_address": "شارع جامعة الدول العربية، الجيزة، مصر",
+        "store_phone": "01000000000",
+        "currency": "ج.م",
+        "tax_enabled": "1",
+        "tax_rate": "14",
     }
     conn.executemany("INSERT INTO settings(key, value) VALUES(?, ?)", list(defaults.items()))
 
     for username, name, role, pin in (("admin", "المدير", "admin", "1234"), ("cashier", "أحمد محمد", "cashier", "1111")):
         salt = os.urandom(16)
+        perms_json = json.dumps(ALL_ADMIN_PERMS if role == "admin" else DEFAULT_CASHIER_PERMS, ensure_ascii=False)
         conn.execute(
-            "INSERT INTO users(username, name, role, pin_salt, pin_hash, created_at) VALUES(?,?,?,?,?,?)",
-            (username, name, role, salt, hash_pin(pin, salt), t),
+            "INSERT INTO users(username, name, role, pin_salt, pin_hash, permissions, created_at) VALUES(?,?,?,?,?,?,?)",
+            (username, name, role, salt, hash_pin(pin, salt), perms_json, t),
         )
 
     cats = ["أجهزة كمبيوتر", "لابتوبات", "إكسسوارات", "شبكات", "كاميرات", "صيانة", "أجهزة لوحية", "صوتيات", "تخزين"]

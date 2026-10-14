@@ -31,7 +31,7 @@
 <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm mb-6 p-4">
 <div class="flex flex-col md:flex-row gap-3 md:items-center justify-between mb-3">
 <h3 class="font-bold text-slate-800 dark:text-white flex items-center gap-2"><span class="material-icons-outlined text-primary">category</span>الفئات</h3>
-<div class="flex gap-2">
+<div id="cat-add-box" class="flex gap-2">
 <input id="nc-name" class="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm" placeholder="اسم فئة جديدة"/>
 <button id="nc-add" class="px-4 py-2 rounded-lg bg-primary text-white text-sm font-bold">+ إضافة</button>
 </div>
@@ -98,7 +98,7 @@
 <input id="f-cost" type="number" min="0" step="0.01" class="rounded-lg border px-3 py-2 text-sm font-num" placeholder="سعر الشراء (التكلفة)"/>
 <input id="f-min" type="number" min="0" class="rounded-lg border px-3 py-2 text-sm font-num" placeholder="حد التنبيه"/>
 <label class="flex items-center gap-2 text-sm"><input id="f-tracked" type="checkbox" class="w-4 h-4 accent-blue-600"/> متتبّع بالسيريال</label>
-<input id="f-serials" class="col-span-2 rounded-lg border px-3 py-2 text-sm font-num" placeholder="سيريالات (افصل بفاصلة) — للجديد فقط"/>
+<input id="f-serials" class="col-span-2 rounded-lg border px-3 py-2 text-sm font-num" placeholder="سيريالات جديدة (افصل بفاصلة)"/>
 <textarea id="f-notes" class="col-span-2 rounded-lg border px-3 py-2 text-sm" rows="2" placeholder="ملاحظات"></textarea>
 <div class="col-span-2 flex gap-2 mt-2">
 <button id="m-save" class="flex-1 py-2.5 rounded-xl bg-primary text-white font-bold">حفظ</button>
@@ -109,7 +109,7 @@
 </div>
 <!-- Adjust / Serials Modal -->
 <div id="modal2" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
-<div class="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+<div class="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-md shadow-2xl max-h-[85vh] overflow-y-auto">
 <h3 class="text-lg font-bold mb-4" id="m2-title"></h3>
 <div id="m2-body"></div>
 <div class="flex gap-2 mt-4">
@@ -121,6 +121,7 @@
 <script src="app.js"></script>
 <script>
 let PAGE = 0; const PER = 12; let EDIT = null; let M2_MODE = null, M2_ID = null;
+let CAN_EDIT = false;
 
 async function loadCats() {
   const cats = (await guard(() => api('categories'))) || [];
@@ -130,8 +131,8 @@ async function loadCats() {
   document.getElementById('cat-list').innerHTML = cats.length ? cats.map((x) => `
     <span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm">
       <span class="font-medium">${esc(x.name)}</span><span class="text-xs text-slate-400 font-num">(${x.n})</span>
-      <button data-cedit="${x.id}" data-cname="${esc(x.name)}" class="text-slate-400 hover:text-primary" title="تعديل"><span class="material-icons-outlined text-[16px]">edit</span></button>
-      <button data-cdel="${x.id}" class="text-slate-400 hover:text-red-500" title="حذف"><span class="material-icons-outlined text-[16px]">delete</span></button>
+      ${CAN_EDIT ? `<button data-cedit="${x.id}" data-cname="${esc(x.name)}" class="text-slate-400 hover:text-primary" title="تعديل"><span class="material-icons-outlined text-[16px]">edit</span></button>
+      <button data-cdel="${x.id}" class="text-slate-400 hover:text-red-500" title="حذف"><span class="material-icons-outlined text-[16px]">delete</span></button>` : ''}
     </span>`).join('') : '<span class="text-sm text-slate-400">لا فئات بعد</span>';
   document.querySelectorAll('[data-cedit]').forEach((b) => b.addEventListener('click', async () => {
     const nn = prompt('اسم الفئة الجديد:', b.dataset.cname);
@@ -197,9 +198,10 @@ async function load() {
       <td class="px-6 py-4 whitespace-nowrap text-sm font-num font-bold ${p.stock_state !== 'in' ? 'text-red-600 dark:text-red-400' : 'text-slate-600 dark:text-slate-300'}">${n(p.qty)}</td>
       <td class="px-6 py-4 whitespace-nowrap">${stockBadge(p)}</td>
       <td class="px-6 py-4 whitespace-nowrap text-sm"><div class="flex gap-2">
-        <button data-edit="${p.id}" class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-500 hover:text-primary transition-colors" title="تعديل"><span class="material-icons-outlined text-[18px]">edit</span></button>
-        <button data-adj="${p.id}" class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-500 hover:text-primary transition-colors" title="تعديل يدوي للكمية"><span class="material-icons-outlined text-[18px]">inventory</span></button>
-        <button data-del="${p.id}" class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-500 hover:text-red-500 transition-colors" title="حذف"><span class="material-icons-outlined text-[18px]">delete</span></button>
+        ${CAN_EDIT ? `<button data-edit="${p.id}" class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-500 hover:text-primary transition-colors" title="تعديل"><span class="material-icons-outlined text-[18px]">edit</span></button>
+        <button data-adj="${p.id}" class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-500 hover:text-primary transition-colors" title="تعديل يدوي للكمية"><span class="material-icons-outlined text-[18px]">inventory</span></button>` : ''}
+        <button data-sn="${p.id}" class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-500 hover:text-primary transition-colors" title="الأرقام التسلسلية"><span class="material-icons-outlined text-[18px]">qr_code</span></button>
+        ${CAN_EDIT ? `<button data-del="${p.id}" class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-500 hover:text-red-500 transition-colors" title="حذف"><span class="material-icons-outlined text-[18px]">delete</span></button>` : ''}
       </div></td>
     </tr>`).join('');
   document.querySelectorAll('[data-edit]').forEach((b) => b.addEventListener('click', () => openEdit(+b.dataset.edit)));
@@ -208,6 +210,7 @@ async function load() {
     if (await guard(() => api('product_delete', { id: +b.dataset.del }))) { toast('تم الحذف'); stats(); load(); }
   }));
   document.querySelectorAll('[data-adj]').forEach((b) => b.addEventListener('click', () => openAdjust(+b.dataset.adj)));
+  document.querySelectorAll('[data-sn]').forEach((b) => b.addEventListener('click', () => openSerials(+b.dataset.sn)));
 }
 
 function openModal(m) { m.classList.remove('hidden'); m.classList.add('flex'); }
@@ -234,6 +237,7 @@ document.getElementById('btn-new').addEventListener('click', () => {
   EDIT = null;
   document.getElementById('m-title').textContent = 'إضافة منتج جديد';
   ['f-name', 'f-sku', 'f-price', 'f-cost', 'f-min', 'f-serials', 'f-notes'].forEach((f) => document.getElementById(f).value = '');
+  document.getElementById('f-tracked').checked = false;
   openModal(document.getElementById('modal'));
 });
 document.getElementById('m-x').addEventListener('click', () => closeModal(document.getElementById('modal')));
@@ -252,22 +256,51 @@ document.getElementById('m-save').addEventListener('click', async () => {
 function openAdjust(id) {
   M2_MODE = 'adj'; M2_ID = id;
   document.getElementById('m2-title').textContent = 'تعديل يدوي للكمية';
-  document.getElementById('m2-body').innerHTML = `<input id="m2-qty" type="number" class="w-full rounded-lg border px-3 py-2 font-num" placeholder="زيادة (+) أو نقص (-) — مثال: 5 أو -3"/>`;
+  document.getElementById('m2-body').innerHTML = `
+    <input id="m2-qty" type="number" class="w-full rounded-lg border px-3 py-2 font-num mb-2" placeholder="زيادة (+) أو نقص (-) — مثال: 5 أو -3"/>
+    <input id="m2-reason" class="w-full rounded-lg border px-3 py-2 text-sm" placeholder="سبب التعديل (اختياري)"/>`;
   openModal(document.getElementById('modal2'));
 }
-document.getElementById('btn-serials').addEventListener('click', () => {
-  M2_MODE = 'serial'; M2_ID = null;
-  document.getElementById('m2-title').textContent = 'الأرقام التسلسلية لمنتج';
-  document.getElementById('m2-body').innerHTML = `<input id="m2-pid" type="number" class="w-full rounded-lg border px-3 py-2 mb-2 font-num" placeholder="رقم المنتج (id)"/>
-    <input id="m2-sn" class="w-full rounded-lg border px-3 py-2 font-num" placeholder="رقم تسلسلي جديد"/>`;
+
+async function openSerials(defaultPid = null) {
+  M2_MODE = 'serial'; M2_ID = defaultPid;
+  const all = (await guard(() => api('products', { limit: 500 }))) || { rows: [] };
+  const opts = all.rows.map((p) => `<option value="${p.id}" ${p.id === defaultPid ? 'selected' : ''}>${esc(p.name)} (${esc(p.sku)})</option>`).join('');
+  document.getElementById('m2-title').textContent = 'الأرقام التسلسلية للمنتج';
+  document.getElementById('m2-body').innerHTML = `
+    <select id="m2-pid" class="w-full rounded-lg border px-3 py-2 mb-3 text-sm">${opts}</select>
+    ${CAN_EDIT ? `<input id="m2-sn" class="w-full rounded-lg border px-3 py-2 font-num mb-3 text-sm" placeholder="إضافة رقم تسلسلي جديد..."/>` : ''}
+    <div id="m2-sn-list" class="max-h-48 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 text-xs border border-slate-100 dark:border-slate-800 rounded-lg p-2"></div>`;
   openModal(document.getElementById('modal2'));
-});
+  const sel = document.getElementById('m2-pid');
+  const renderSnList = async () => {
+    const pid = +sel.value;
+    if (!pid) return;
+    const list = (await guard(() => api('serials', { product_id: pid }))) || [];
+    const stMap = { in_stock: ['متاح', 'text-emerald-600'], sold: ['مباع', 'text-slate-400'], in_repair: ['في الصيانة', 'text-amber-600'] };
+    document.getElementById('m2-sn-list').innerHTML = list.length
+      ? list.map((s) => `<div class="flex justify-between py-1.5 px-1"><span class="font-num font-bold">${esc(s.serial)}</span><span class="${(stMap[s.status] || ['', ''])[1]}">${(stMap[s.status] || [s.status])[0]}</span></div>`).join('')
+      : '<div class="text-center text-slate-400 py-4">لا توجد أرقام تسلسلية مسجلة لهذا المنتج</div>';
+  };
+  sel.addEventListener('change', renderSnList);
+  await renderSnList();
+}
+
+document.getElementById('btn-serials').addEventListener('click', () => openSerials(null));
 document.getElementById('m2-x').addEventListener('click', () => closeModal(document.getElementById('modal2')));
 document.getElementById('m2-ok').addEventListener('click', async () => {
+  if (!CAN_EDIT) { closeModal(document.getElementById('modal2')); return; }
   let ok = false;
-  if (M2_MODE === 'adj') ok = await guard(() => api('product_adjust', { id: M2_ID, qty_change: +(document.getElementById('m2-qty').value || 0) }));
-  else ok = await guard(() => api('serial_add', { product_id: +(document.getElementById('m2-pid').value || 0), serial: document.getElementById('m2-sn').value }));
-  if (ok) { toast('تم'); closeModal(document.getElementById('modal2')); stats(); load(); }
+  if (M2_MODE === 'adj') {
+    const reason = (document.getElementById('m2-reason') && document.getElementById('m2-reason').value.trim()) || 'تعديل يدوي';
+    ok = await guard(() => api('product_adjust', { id: M2_ID, qty_change: +(document.getElementById('m2-qty').value || 0), reason }));
+  } else {
+    const snEl = document.getElementById('m2-sn');
+    const sn = snEl ? snEl.value.trim() : '';
+    if (!sn) { closeModal(document.getElementById('modal2')); return; }
+    ok = await guard(() => api('serial_add', { product_id: +(document.getElementById('m2-pid').value || 0), serial: sn }));
+  }
+  if (ok) { toast('تم التحديث بنجاح'); closeModal(document.getElementById('modal2')); stats(); load(); }
 });
 
 document.getElementById('prev').addEventListener('click', () => { if (PAGE > 0) { PAGE--; load(); } });
@@ -277,7 +310,15 @@ document.getElementById('cat').addEventListener('change', () => { PAGE = 0; load
 document.getElementById('stock').addEventListener('change', () => { PAGE = 0; load(); });
 
 (async () => {
-  if (!(await pageInit('inventory', { admin: true }))) return;
+  if (!(await pageInit('inventory', { perm: ['inventory_view', 'inventory_edit'] }))) return;
+  CAN_EDIT = hasPerm('inventory_edit');
+  if (!CAN_EDIT) {
+    document.getElementById('btn-new').classList.add('hidden');
+    document.getElementById('cat-add-box').classList.add('hidden');
+  }
+  if (!hasPerm('cost_view')) {
+    document.getElementById('f-cost').classList.add('hidden');
+  }
   await loadCats(); await stats(); await load();
 })();
 </script>
