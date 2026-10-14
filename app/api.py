@@ -214,11 +214,15 @@ def _win32_auto_paste_into_whatsapp(pdf_abs: str, was_already_open: bool = False
 
 
 def _jpeg_to_pdf_bytes(jpeg_bytes: bytes, img_w: int, img_h: int) -> bytes:
-    """تحويل صورة الفاتورة (JPEG) إلى ملف PDF 1.4 قياسي يعمل على جميع الأجهزة بدون مكتبات خارجية."""
+    """تحويل صورة الفاتورة (JPEG) إلى ملف PDF 1.4 قياسي (يدعم A4 للفواتير الرسمية وعروض الأسعار أو 80mm لإيصال الكاشير)."""
     img_w = max(1, int(img_w or 720))
     img_h = max(1, int(img_h or 1000))
-    pdf_w = 226.77  # 80mm thermal width in points
-    pdf_h = round(pdf_w * (img_h / img_w), 2)
+    if img_w >= 900:
+        pdf_w = 595.0  # Standard A4 width in points
+        pdf_h = round(pdf_w * (img_h / img_w), 2)
+    else:
+        pdf_w = 226.77  # 80mm thermal width in points
+        pdf_h = round(pdf_w * (img_h / img_w), 2)
 
     objs = []
     objs.append(b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n")
@@ -603,7 +607,8 @@ class Api:
                    "pos_card_size", "os_default_wallpaper", "os_default_custom_bg", "os_default_accent", "os_default_layout",
                    "store_email", "store_cr", "store_vat", "receipt_thanks", "receipt_footer",
                    "receipt_logo", "receipt_show_logo", "receipt_show_barcode",
-                   "receipt_show_tax", "receipt_show_payments"}
+                   "receipt_show_tax", "receipt_show_payments",
+                   "template_a4_config", "template_pos_config"}
         show = {"tax_enabled", "receipt_show_logo", "receipt_show_barcode", "receipt_show_tax", "receipt_show_payments"}
         with db.connect() as conn:
             for k, v in kv.items():
@@ -631,6 +636,66 @@ class Api:
                     (k, s),
                 )
             return self._settings(conn)
+
+    def _load_templates(self, conn):
+        st = self._settings(conn)
+        a4 = dict(db.DEFAULT_A4_TEMPLATE)
+        pos = dict(db.DEFAULT_POS_TEMPLATE)
+        if st.get("template_a4_config"):
+            try:
+                loaded_a4 = json.loads(st["template_a4_config"])
+                if isinstance(loaded_a4, dict):
+                    a4.update(loaded_a4)
+            except Exception:
+                pass
+        if st.get("template_pos_config"):
+            try:
+                loaded_pos = json.loads(st["template_pos_config"])
+                if isinstance(loaded_pos, dict):
+                    pos.update(loaded_pos)
+            except Exception:
+                pass
+        return {"a4": a4, "pos": pos}
+
+    def templates_get(self):
+        """جلب إعدادات قوالب الفواتير (قالب A4 للمبيعات وعروض الأسعار + قالب إيصال الكاشير الحراري 80mm/58mm)."""
+        self._user()
+        with db.connect() as conn:
+            return self._load_templates(conn)
+
+    def templates_save(self, a4=None, pos=None, reset_a4=False, reset_pos=False):
+        """حفظ تخصيص قوالب الفواتير (شكل الفاتورة A4، الألوان، الشعار، البيانات، وقالب الكاشير الحراري)."""
+        self._perm("settings_manage")
+        with db.connect() as conn:
+            cur = self._load_templates(conn)
+            new_a4 = dict(db.DEFAULT_A4_TEMPLATE) if reset_a4 else cur["a4"]
+            new_pos = dict(db.DEFAULT_POS_TEMPLATE) if reset_pos else cur["pos"]
+            if isinstance(a4, dict) and not reset_a4:
+                logo = a4.get("company_logo")
+                if logo is not None and logo != "":
+                    logo_s = str(logo).strip()
+                    if not logo_s.startswith("data:image/"):
+                        raise ApiError("صيغة شعار القالب غير صالحة")
+                    if len(logo_s.encode("utf-8")) > 500 * 1024:
+                        raise ApiError("حجم شعار القالب كبير جداً (الحد الأقصى 500KB)")
+                for k in db.DEFAULT_A4_TEMPLATE:
+                    if k in a4:
+                        new_a4[k] = a4[k]
+            if isinstance(pos, dict) and not reset_pos:
+                for k in db.DEFAULT_POS_TEMPLATE:
+                    if k in pos:
+                        new_pos[k] = pos[k]
+            conn.execute(
+                "INSERT INTO settings(key, value) VALUES('template_a4_config', ?) "
+                "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                (json.dumps(new_a4, ensure_ascii=False),),
+            )
+            conn.execute(
+                "INSERT INTO settings(key, value) VALUES('template_pos_config', ?) "
+                "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                (json.dumps(new_pos, ensure_ascii=False),),
+            )
+            return {"a4": new_a4, "pos": new_pos}
 
     # ---------------------------------------------------------- فئات
     def categories(self):
@@ -1351,7 +1416,7 @@ class Api:
                 raise ApiError("الفاتورة غير موجودة")
             items = []
             for x in conn.execute(
-                """SELECT si.*, p.image, p.price AS catalog_price, p.tracked
+                """SELECT si.*, COALESCE(NULLIF(si.sku, ''), p.sku, '') AS sku, p.image, p.price AS catalog_price, p.tracked
                    FROM sale_items si LEFT JOIN products p ON p.id=si.product_id
                    WHERE si.sale_id=?""",
                 (r["id"],),
@@ -1377,6 +1442,13 @@ class Api:
             d["items"] = items
             d["payments"] = pays
             d["returns_log"] = returns_log
+            direct_paid = sum(p["amount"] for p in pays if p["method"] in ("cash", "wallet"))
+            voucher_paid = conn.execute(
+                "SELECT COALESCE(SUM(amount),0) v FROM customer_payments WHERE sale_id=?",
+                (r["id"],),
+            ).fetchone()["v"]
+            d["paid_amount"] = min(d["total"], direct_paid + voucher_paid)
+            d["due_amount"] = max(0, d["total"] - d["paid_amount"])
             return d
 
     def sale_discount(self, sale_id, discount=0):
@@ -1855,6 +1927,519 @@ class Api:
                 ("returned" if not remaining else "partial_return", u["id"], u["name"], now_ts, full_log, s["id"]),
             )
             return {"return_id": cur.lastrowid, "total": total}
+
+    # ---------------------------------------------------------- قسم المبيعات وعروض الأسعار والفواتير الرسمية A4
+    def _ensure_custom_item_product(self, conn) -> int:
+        """عنصر خدمي/مخصص غير نشط في الكتالوج لربط البنود الحرة في فواتير المبيعات دون التأثير على المخزون."""
+        row = conn.execute("SELECT id FROM products WHERE sku='__CUSTOM_ITEM__'").fetchone()
+        if row:
+            return row["id"]
+        cur = conn.execute(
+            """INSERT INTO products(sku, name, price, cost, qty, min_qty, tracked, active, created_at)
+               VALUES('__CUSTOM_ITEM__', 'بند مبيعات مخصص', 0, 0, 0, 0, 0, 0, ?)""",
+            (db.now(),),
+        )
+        return cur.lastrowid
+
+    def _convert_quote_to_sale_in_tx(self, conn, u, q_row, q_items, paid_amount=None, payment_method=None, payment_date=None):
+        """تحويل عرض سعر أو مسودة فاتورة A4 إلى فاتورة مبيعات معتمدة في جدول sales مع خصم المخزون وتسجيل الدفعة والآجل."""
+        s_shift = self._open_shift(conn, u["id"])
+        shift_id = s_shift["id"] if s_shift else None
+
+        total = q_row["total"]
+        paid = _money(paid_amount) if paid_amount is not None else q_row["paid_amount"]
+        paid = max(0, min(total, paid))
+        due = max(0, total - paid)
+        method = (payment_method or q_row["payment_method"] or "cash").strip()
+        if method not in ("cash", "wallet"):
+            method = "cash"
+        pay_dt = (payment_date or q_row["payment_date"] or q_row["doc_date"] or db.now()[:10]).strip()
+
+        cname = (q_row["customer_name"] or "").strip() or None
+        cphone = (q_row["customer_phone"] or "").strip() or None
+        if due > 0 and not cname:
+            raise ApiError("يرجى إدخال اسم العميل عند وجود مبلغ متبقٍ (مستحق آجل) على الفاتورة")
+
+        customer_id = _upsert_customer(conn, cname, cphone) if cname else None
+        custom_pid = self._ensure_custom_item_product(conn)
+
+        # التحقق من توفر المخزون للأصناف المرتبطة بالكتالوج أولاً
+        for it in q_items:
+            pid = it["product_id"]
+            if pid and pid != custom_pid:
+                p = conn.execute("SELECT * FROM products WHERE id=? AND active=1", (pid,)).fetchone()
+                if p and p["qty"] < it["qty"]:
+                    raise ApiError(f"المخزون غير كافٍ للصنف «{p['name']}» (المتوفر: {p['qty']}، المطلوب: {it['qty']})")
+
+        tpl_a4 = self._load_templates(conn)["a4"]
+        inv_prefix = (tpl_a4.get("invoice_prefix") or "الفات/2026/").strip()
+
+        cur = conn.execute(
+            """INSERT INTO sales(invoice_no, shift_id, user_id, customer_id, created_at, customer_name, customer_phone,
+                                 subtotal, discount, tax, total, notes, doc_type, invoice_date, due_date, source_ref, signal_ref, quote_id)
+               VALUES('TMP-INV',?,?,?,?,?,?,?,?,?,?,?,'b2b',?,?,?,?,?)""",
+            (
+                shift_id,
+                u["id"],
+                customer_id,
+                db.now(),
+                cname,
+                cphone,
+                q_row["subtotal"],
+                q_row["discount"],
+                q_row["tax"],
+                total,
+                q_row["notes"],
+                q_row["doc_date"] or db.now()[:10],
+                q_row["due_date"] or q_row["doc_date"] or db.now()[:10],
+                q_row["source_ref"],
+                q_row["signal_ref"],
+                q_row["id"],
+            ),
+        )
+        sale_id = cur.lastrowid
+        invoice_no = f"{inv_prefix}{sale_id:05d}"
+        # التأكد من عدم تكرار رقم الفاتورة
+        if conn.execute("SELECT 1 FROM sales WHERE invoice_no=? AND id!=?", (invoice_no, sale_id)).fetchone():
+            invoice_no = f"{inv_prefix}{sale_id:05d}-{q_row['id']}"
+        conn.execute("UPDATE sales SET invoice_no=? WHERE id=?", (invoice_no, sale_id))
+
+        for it in q_items:
+            pid = it["product_id"] if it["product_id"] else custom_pid
+            conn.execute(
+                """INSERT INTO sale_items(sale_id, product_id, name, qty, unit_price, line_total, sku, tax_label, tax_rate)
+                   VALUES(?,?,?,?,?,?,?,?,?)""",
+                (
+                    sale_id,
+                    pid,
+                    it["name"],
+                    it["qty"],
+                    it["unit_price"],
+                    it["line_total"],
+                    it["sku"] or "",
+                    it["tax_label"] or "",
+                    it["tax_rate"] or 0,
+                ),
+            )
+            if pid != custom_pid:
+                p = conn.execute("SELECT id, qty FROM products WHERE id=?", (pid,)).fetchone()
+                if p:
+                    conn.execute("UPDATE products SET qty=qty-? WHERE id=?", (it["qty"], pid))
+                    after = conn.execute("SELECT qty FROM products WHERE id=?", (pid,)).fetchone()[0]
+                    conn.execute(
+                        """INSERT INTO stock_movements(created_at, user_id, product_id, qty_change, qty_after, reason, ref)
+                           VALUES(?,?,?,?,?,?,?)""",
+                        (db.now(), u["id"], pid, -it["qty"], after, "sale", invoice_no),
+                    )
+
+        # تسجيل الدفعات (المدفوع نقدي/محفظة + المتبقي آجل على حساب العميل)
+        if total == 0:
+            conn.execute(
+                "INSERT INTO payments(sale_id, method, amount, received, change, ref_no) VALUES(?,?,0,0,0,?)",
+                (sale_id, method, pay_dt),
+            )
+        else:
+            if paid > 0:
+                conn.execute(
+                    "INSERT INTO payments(sale_id, method, amount, received, change, ref_no) VALUES(?,?,?,?,0,?)",
+                    (sale_id, method, paid, paid, pay_dt),
+                )
+            if due > 0:
+                conn.execute(
+                    "INSERT INTO payments(sale_id, method, amount, received, change, ref_no) VALUES(?,?,?,?,0,?)",
+                    (sale_id, "credit", due, 0, None),
+                )
+
+        conn.execute(
+            """UPDATE quotations
+               SET status='converted', doc_type='invoice', converted_sale_id=?, paid_amount=?, payment_method=?, payment_date=?, quote_no=?
+               WHERE id=?""",
+            (sale_id, paid, method, pay_dt, invoice_no, q_row["id"]),
+        )
+        return sale_id, invoice_no
+
+    def quotation_save(
+        self,
+        id=None,
+        doc_type="quote",
+        customer_name=None,
+        customer_phone=None,
+        doc_date=None,
+        due_date=None,
+        source_ref=None,
+        signal_ref=None,
+        items=None,
+        discount=0,
+        paid_amount=0,
+        payment_method="cash",
+        payment_date=None,
+        notes=None,
+        auto_convert=False,
+    ):
+        """إنشاء أو تعديل عرض سعر (quote) أو إصدار فاتورة مبيعات A4 مباشرة (invoice)."""
+        u = self._perm("pos_sell")
+        doc_type = "invoice" if doc_type == "invoice" else "quote"
+        items = items or []
+        if not items:
+            raise ApiError("يرجى إضافة بند واحد على الأقل في الجدول")
+        cname = (customer_name or "").strip() or None
+        cphone = (customer_phone or "").strip() or None
+        today_s = datetime.datetime.now().strftime("%Y-%m-%d")
+        doc_date = (doc_date or "").strip() or today_s
+        due_date = (due_date or "").strip() or doc_date
+        payment_date = (payment_date or "").strip() or doc_date
+        method = (payment_method or "cash").strip()
+        if method not in ("cash", "wallet"):
+            method = "cash"
+
+        with db.connect() as conn:
+            tpl_a4 = self._load_templates(conn)["a4"]
+            default_tax_lbl = tpl_a4.get("default_tax_label", "Zero Rated 0%")
+            src_prefix = (tpl_a4.get("source_prefix") or "تقنية - Technology/").strip()
+            quote_prefix = (tpl_a4.get("quote_prefix") or "ع.س/2026/").strip()
+            inv_prefix = (tpl_a4.get("invoice_prefix") or "الفات/2026/").strip()
+
+            customer_id = _upsert_customer(conn, cname, cphone) if cname else None
+
+            parsed_items = []
+            subtotal = 0
+            total_tax = 0
+            for raw_it in items:
+                pid = _int(raw_it.get("product_id"), 0) or None
+                sku = (raw_it.get("sku") or "").strip()
+                name = (raw_it.get("name") or "").strip()
+                if pid:
+                    p = conn.execute("SELECT sku, name, price FROM products WHERE id=?", (pid,)).fetchone()
+                    if p:
+                        if not sku:
+                            sku = p["sku"]
+                        if not name:
+                            name = p["name"]
+                if not name:
+                    raise ApiError("اسم/وصف الصنف مطلوب لكل بند في الفاتورة")
+                qty = _int(raw_it.get("qty"), 1)
+                if qty <= 0:
+                    raise ApiError(f"الكمية للبند «{name}» يجب أن تكون 1 أو أكثر")
+                unit_price = _money(raw_it.get("unit_price"), 0)
+                if unit_price < 0:
+                    raise ApiError("سعر الوحدة لا يمكن أن يكون سالباً")
+                tax_rate = _int(raw_it.get("tax_rate"), 0)
+                if tax_rate < 0 or tax_rate > 100:
+                    tax_rate = 0
+                tax_label = raw_it.get("tax_label")
+                if tax_label is None:
+                    tax_label = f"{tax_rate}%" if tax_rate > 0 else default_tax_lbl
+                else:
+                    tax_label = str(tax_label).strip()
+                line_total = qty * unit_price
+                line_tax = int((Decimal(line_total) * Decimal(tax_rate) / 100).to_integral_value(rounding=ROUND_HALF_UP))
+                subtotal += line_total
+                total_tax += line_tax
+                parsed_items.append({
+                    "product_id": pid,
+                    "sku": sku,
+                    "name": name,
+                    "qty": qty,
+                    "unit_price": unit_price,
+                    "tax_label": tax_label,
+                    "tax_rate": tax_rate,
+                    "line_total": line_total,
+                })
+
+            disc = _money(discount, 0)
+            if disc < 0 or disc > subtotal:
+                raise ApiError("قيمة الخصم غير صالحة (يجب ألا تتجاوز المجموع الفرعي)")
+            total = max(0, subtotal - disc + total_tax)
+            paid = _money(paid_amount, 0)
+            if paid < 0:
+                paid = 0
+            if paid > total:
+                paid = total
+
+            if id:
+                qid = _int(id)
+                existing = conn.execute("SELECT * FROM quotations WHERE id=?", (qid,)).fetchone()
+                if not existing:
+                    raise ApiError("المستند غير موجود")
+                if existing["status"] == "converted":
+                    raise ApiError("تم تحويل هذا المستند إلى فاتورة مبيعات معتمدة ولا يمكن تعديله كعرض سعر")
+                src_val = (source_ref or "").strip() or existing["source_ref"] or f"{src_prefix}{qid:04d}"
+                sig_val = (signal_ref or "").strip() or existing["signal_ref"] or src_val
+                conn.execute(
+                    """UPDATE quotations
+                       SET doc_type=?, customer_id=?, customer_name=?, customer_phone=?,
+                           doc_date=?, due_date=?, source_ref=?, signal_ref=?,
+                           subtotal=?, discount=?, tax=?, total=?, paid_amount=?, payment_method=?, payment_date=?, notes=?
+                       WHERE id=?""",
+                    (
+                        doc_type, customer_id, cname, cphone,
+                        doc_date, due_date, src_val, sig_val,
+                        subtotal, disc, total_tax, total, paid, method, payment_date,
+                        (notes or "").strip() or None, qid,
+                    ),
+                )
+                conn.execute("DELETE FROM quotation_items WHERE quote_id=?", (qid,))
+            else:
+                cur = conn.execute(
+                    """INSERT INTO quotations(quote_no, doc_type, user_id, customer_id, customer_name, customer_phone,
+                                              created_at, doc_date, due_date, source_ref, signal_ref,
+                                              subtotal, discount, tax, total, paid_amount, payment_method, payment_date, status, notes)
+                       VALUES('TMP-Q',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'draft',?)""",
+                    (
+                        doc_type, u["id"], customer_id, cname, cphone,
+                        db.now(), doc_date, due_date, "", "",
+                        subtotal, disc, total_tax, total, paid, method, payment_date,
+                        (notes or "").strip() or None,
+                    ),
+                )
+                qid = cur.lastrowid
+                q_no = f"{inv_prefix if doc_type == 'invoice' else quote_prefix}{qid:05d}"
+                if conn.execute("SELECT 1 FROM quotations WHERE quote_no=? AND id!=?", (q_no, qid)).fetchone():
+                    q_no = f"{q_no}-{qid}"
+                src_val = (source_ref or "").strip() or f"{src_prefix}{qid:04d}"
+                sig_val = (signal_ref or "").strip() or src_val
+                conn.execute(
+                    "UPDATE quotations SET quote_no=?, source_ref=?, signal_ref=? WHERE id=?",
+                    (q_no, src_val, sig_val, qid),
+                )
+
+            for it in parsed_items:
+                conn.execute(
+                    """INSERT INTO quotation_items(quote_id, product_id, sku, name, qty, unit_price, tax_label, tax_rate, line_total)
+                       VALUES(?,?,?,?,?,?,?,?,?)""",
+                    (
+                        qid, it["product_id"], it["sku"], it["name"],
+                        it["qty"], it["unit_price"], it["tax_label"], it["tax_rate"], it["line_total"],
+                    ),
+                )
+
+            if doc_type == "invoice" or auto_convert:
+                q_row = conn.execute("SELECT * FROM quotations WHERE id=?", (qid,)).fetchone()
+                q_items = conn.execute("SELECT * FROM quotation_items WHERE quote_id=?", (qid,)).fetchall()
+                self._convert_quote_to_sale_in_tx(conn, u, q_row, q_items, paid, method, payment_date)
+
+        return self.quotation(qid)
+
+    def quotation_convert_to_sale(self, id, paid_amount=None, payment_method="cash", payment_date=None):
+        """تحويل عرض سعر قائم إلى فاتورة مبيعات رسمية معتمدة مع خصم المخزون وتسجيل الدفعة والمديونية."""
+        u = self._perm("pos_sell")
+        qid = _int(id)
+        with db.connect() as conn:
+            q_row = conn.execute("SELECT * FROM quotations WHERE id=?", (qid,)).fetchone()
+            if not q_row:
+                raise ApiError("عرض السعر غير موجود")
+            if q_row["status"] == "converted" and q_row["converted_sale_id"]:
+                raise ApiError("تم تحويل عرض السعر هذا مسبقاً إلى فاتورة مبيعات")
+            q_items = conn.execute("SELECT * FROM quotation_items WHERE quote_id=?", (qid,)).fetchall()
+            if not q_items:
+                raise ApiError("عرض السعر لا يحتوي على أصناف")
+            self._convert_quote_to_sale_in_tx(conn, u, q_row, q_items, paid_amount, payment_method, payment_date)
+        return self.quotation(qid)
+
+    def quotation(self, id):
+        """جلب بيانات عرض سعر أو فاتورة مبيعات A4 بالتفصيل."""
+        self._user()
+        qid = _int(id)
+        with db.connect() as conn:
+            r = conn.execute(
+                """SELECT q.*, u.name AS user_name
+                   FROM quotations q JOIN users u ON u.id=q.user_id
+                   WHERE q.id=?""",
+                (qid,),
+            ).fetchone()
+            if not r:
+                raise ApiError("المستند غير موجود")
+            d = dict(r)
+            d["items"] = [
+                dict(x) for x in conn.execute("SELECT * FROM quotation_items WHERE quote_id=? ORDER BY id", (qid,)).fetchall()
+            ]
+            if d.get("converted_sale_id"):
+                s = conn.execute("SELECT id, invoice_no, status, total FROM sales WHERE id=?", (d["converted_sale_id"],)).fetchone()
+                if s:
+                    direct_paid = conn.execute(
+                        "SELECT COALESCE(SUM(amount),0) p FROM payments WHERE sale_id=? AND method IN ('cash','wallet')",
+                        (s["id"],),
+                    ).fetchone()["p"]
+                    voucher_paid = conn.execute(
+                        "SELECT COALESCE(SUM(amount),0) v FROM customer_payments WHERE sale_id=?",
+                        (s["id"],),
+                    ).fetchone()["v"]
+                    d["paid_amount"] = min(d["total"], direct_paid + voucher_paid)
+                    d["sale_invoice_no"] = s["invoice_no"]
+            d["due_amount"] = max(0, d["total"] - (d.get("paid_amount") or 0))
+            return d
+
+    def quotations(self, doc_type=None, status=None, q=None, limit=100, offset=0):
+        """قائمة عروض الأسعار وفواتير المبيعات الرسمية A4 مع إحصائيات شاملة."""
+        self._user()
+        limit, offset = _int(limit, 100), _int(offset, 0)
+        where, args = ["1=1"], []
+        if doc_type in ("quote", "invoice"):
+            where.append("q.doc_type=?")
+            args.append(doc_type)
+        if status:
+            where.append("q.status=?")
+            args.append(status)
+        if q:
+            where.append("(q.quote_no LIKE ? OR q.customer_name LIKE ? OR q.customer_phone LIKE ? OR q.source_ref LIKE ?)")
+            args += [f"%{q}%"] * 4
+        with db.connect() as conn:
+            total = conn.execute(
+                f"SELECT COUNT(*) FROM quotations q WHERE {' AND '.join(where)}", args
+            ).fetchone()[0]
+            rows = conn.execute(
+                f"""SELECT q.*, u.name AS user_name
+                    FROM quotations q JOIN users u ON u.id=q.user_id
+                    WHERE {' AND '.join(where)}
+                    ORDER BY q.id DESC LIMIT ? OFFSET ?""",
+                args + [limit, offset],
+            ).fetchall()
+            out = []
+            for r in rows:
+                d = dict(r)
+                if d.get("converted_sale_id"):
+                    direct_paid = conn.execute(
+                        "SELECT COALESCE(SUM(amount),0) p FROM payments WHERE sale_id=? AND method IN ('cash','wallet')",
+                        (d["converted_sale_id"],),
+                    ).fetchone()["p"]
+                    voucher_paid = conn.execute(
+                        "SELECT COALESCE(SUM(amount),0) v FROM customer_payments WHERE sale_id=?",
+                        (d["converted_sale_id"],),
+                    ).fetchone()["v"]
+                    d["paid_amount"] = min(d["total"], direct_paid + voucher_paid)
+                d["due_amount"] = max(0, d["total"] - (d.get("paid_amount") or 0))
+                out.append(d)
+
+            stats_quotes = conn.execute(
+                "SELECT COUNT(*) n, COALESCE(SUM(total),0) t FROM quotations WHERE doc_type='quote' AND status!='converted'"
+            ).fetchone()
+            stats_invs = conn.execute(
+                "SELECT COUNT(*) n, COALESCE(SUM(total),0) t, COALESCE(SUM(paid_amount),0) p FROM quotations WHERE doc_type='invoice' OR status='converted'"
+            ).fetchone()
+            return {
+                "rows": out,
+                "total": total,
+                "summary": {
+                    "quotes_count": stats_quotes["n"],
+                    "quotes_total": stats_quotes["t"],
+                    "invoices_count": stats_invs["n"],
+                    "invoices_total": stats_invs["t"],
+                    "invoices_paid": stats_invs["p"],
+                    "invoices_due": max(0, stats_invs["t"] - stats_invs["p"]),
+                },
+            }
+
+    def quotation_delete(self, id):
+        """حذف عرض سعر غير محول إلى فاتورة مبيعات."""
+        self._perm("pos_sell")
+        qid = _int(id)
+        with db.connect() as conn:
+            r = conn.execute("SELECT status, converted_sale_id FROM quotations WHERE id=?", (qid,)).fetchone()
+            if not r:
+                raise ApiError("عرض السعر غير موجود")
+            if r["status"] == "converted" or r["converted_sale_id"]:
+                raise ApiError("لا يمكن حذف فاتورة مبيعات معتمدة؛ استخدم شاشة المرتجعات عند الحاجة")
+            conn.execute("DELETE FROM quotations WHERE id=?", (qid,))
+            return True
+
+    def whatsapp_send_quote(self, quote_id, phone=None, pdf_image=None, img_w=1240, img_h=1754):
+        """إنشاء ملف PDF A4 لعرض السعر أو فاتورة المبيعات ونسخه للحافظة وفتح واتساب مع الإرفاق التلقائي السريع."""
+        import base64
+        import urllib.parse
+        import webbrowser
+
+        d = self.quotation(quote_id)
+        with db.connect() as conn:
+            st = self._settings(conn)
+            tpl_a4 = self._load_templates(conn)["a4"]
+
+        raw_phone = (phone or d.get("customer_phone") or "").strip()
+        digits = "".join(ch for ch in raw_phone if ch.isdigit())
+        if not digits:
+            raise ApiError("يرجى إدخال رقم موبايل العميل (مثال: 010xxxxxxxx) لإرسال ملف الـ PDF عبر واتساب")
+        if digits.startswith("00"):
+            digits = digits[2:]
+        elif digits.startswith("01") and len(digits) == 11:
+            digits = "2" + digits
+        elif not digits.startswith("20") and len(digits) == 10:
+            digits = "20" + digits
+
+        store_name = (tpl_a4.get("company_title") or st.get("store_name") or "تك زون للإلكترونيات").strip()
+        cur = (tpl_a4.get("currency_symbol") or st.get("currency") or "LE").strip()
+        is_inv = d["doc_type"] == "invoice" or d["status"] == "converted"
+        doc_label = "فاتورة مبيعات" if is_inv else "عرض سعر"
+        cust_part = f" أ/ {d['customer_name']}" if d.get("customer_name") else ""
+
+        msg_lines = [
+            f"مرحباً{cust_part}،",
+            f"لديك {doc_label} من *{store_name}*",
+            f"الرقم: *{d['quote_no']}*",
+            f"التاريخ: {d.get('doc_date') or d['created_at'][:10]}",
+            f"الإجمالي: *{cur} {_fmt_money(d['total'])}*",
+        ]
+        if is_inv and d.get("due_amount", 0) > 0:
+            msg_lines.append(f"المدفوع: {cur} {_fmt_money(d['paid_amount'])} | المتبقي المستحق: *{cur} {_fmt_money(d['due_amount'])}*")
+        msg_lines.append(f"مرفق ملف الـ PDF ({doc_label}).")
+        msg_text = "\n".join(msg_lines)
+        encoded_text = urllib.parse.quote(msg_text)
+
+        jpeg_bytes = _FALLBACK_JPEG
+        if pdf_image and isinstance(pdf_image, str) and "," in pdf_image:
+            try:
+                b64_part = pdf_image.split(",", 1)[1]
+                decoded = base64.b64decode(b64_part)
+                if decoded.startswith(b"\xff\xd8"):
+                    jpeg_bytes = decoded
+            except Exception:
+                pass
+
+        pdf_bytes = _jpeg_to_pdf_bytes(jpeg_bytes, _int(img_w, 1240), _int(img_h, 1754))
+        receipts_dir = pathlib.Path(db.db_path()).resolve().parent / "receipts"
+        receipts_dir.mkdir(parents=True, exist_ok=True)
+        safe_name = "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in d["quote_no"])
+        pdf_file = receipts_dir / f"{safe_name}.pdf"
+        pdf_file.write_bytes(pdf_bytes)
+
+        pdf_abs = str(pdf_file.resolve())
+        wa_proto = f"whatsapp://send?phone={digits}&text={encoded_text}"
+        wa_web = f"https://web.whatsapp.com/send?phone={digits}&text={encoded_text}"
+        opened = False
+
+        if os.name == "nt":
+            import threading
+            was_already_open = _find_whatsapp_hwnd() is not None
+            _win32_copy_pdf_to_clipboard(pdf_abs)
+            try:
+                os.startfile(wa_proto)
+                opened = True
+            except OSError:
+                try:
+                    webbrowser.open(wa_web)
+                    opened = True
+                except Exception:
+                    opened = False
+            if opened:
+                threading.Thread(
+                    target=_win32_auto_paste_into_whatsapp,
+                    args=(pdf_abs, was_already_open),
+                    daemon=True,
+                ).start()
+
+        if not opened:
+            try:
+                webbrowser.open(wa_web)
+                opened = True
+            except Exception:
+                pass
+
+        return {
+            "phone": digits,
+            "store_name": store_name,
+            "message": msg_text,
+            "pdf_file": pdf_abs,
+            "pdf_name": pdf_file.name,
+            "opened": opened,
+        }
 
     # ---------------------------------------------------------- شراء مستعمل
     def used_create(self, seller_name, model, serial=None, seller_phone=None, seller_id_no=None,

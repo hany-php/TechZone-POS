@@ -505,7 +505,7 @@
 
   #os-print-stage { display: none; }
   @media print {
-    html, body { background: #fff !important; height: auto !important; overflow: visible !important; }
+    html, body { background: #fff !important; height: auto !important; overflow: visible !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     body > *:not(#os-print-stage) { display: none !important; }
     #os-print-stage {
       display: block !important;
@@ -517,6 +517,19 @@
       color: #000 !important;
       font-family: monospace, sans-serif !important;
       font-size: 12px !important;
+    }
+    #os-print-stage[data-print-mode="58mm"] {
+      width: 58mm !important;
+      max-width: 58mm !important;
+      padding: 2mm !important;
+      font-size: 11px !important;
+    }
+    #os-print-stage[data-print-mode="a4"] {
+      width: 210mm !important;
+      max-width: 210mm !important;
+      padding: 0 !important;
+      font-family: "IBM Plex Sans Arabic", "Cairo", sans-serif !important;
+      font-size: 13px !important;
     }
   }
 </style>
@@ -704,6 +717,7 @@
 <!-- قائمة كليك يمين على سطح المكتب -->
 <div id="os-ctx-menu" class="hidden">
   <button class="ctx-item" onclick="TZOS.openApp('pos'); TZOS.hideCtx();"><span class="material-icons-round text-base text-blue-400">point_of_sale</span><span>فتح نقاط البيع (الكاشير)</span></button>
+  <button class="ctx-item" onclick="TZOS.openApp('sales_quotes'); TZOS.hideCtx();"><span class="material-icons-round text-base text-sky-400">description</span><span>المبيعات وعروض الأسعار وقوالب الفواتير</span></button>
   <button class="ctx-item" onclick="TZOS.openApp('customers'); TZOS.hideCtx();"><span class="material-icons-round text-base text-purple-400">groups</span><span>العملاء والمديونيات</span></button>
   <button class="ctx-item" onclick="TZOS.openApp('inventory'); TZOS.hideCtx();"><span class="material-icons-round text-base text-emerald-400">inventory_2</span><span>إدارة المخزون والمنتجات</span></button>
   <div class="my-1 border-t border-white/10"></div>
@@ -797,6 +811,7 @@
 <script>
 const OS_APPS = [
   { id: 'pos', title: 'نقاط البيع (الكاشير)', url: 'pos.html', icon: 'point_of_sale', color: 'linear-gradient(135deg,#2563eb,#0ea5e9)' },
+  { id: 'sales_quotes', title: 'المبيعات وعروض الأسعار', url: 'sales_quotes.html', icon: 'description', color: 'linear-gradient(135deg,#0284c7,#6366f1)' },
   { id: 'customers', title: 'العملاء والمديونيات', url: 'customers.html', icon: 'groups', color: 'linear-gradient(135deg,#7c3aed,#a855f7)', perm: ['customers_view', 'customers_edit'] },
   { id: 'inventory', title: 'المخزون والمنتجات', url: 'inventory.html', icon: 'inventory_2', color: 'linear-gradient(135deg,#059669,#10b981)', perm: ['inventory_view', 'inventory_edit'] },
   { id: 'history', title: 'سجل المبيعات والمرتجعات', url: 'history.html', icon: 'receipt_long', color: 'linear-gradient(135deg,#ea580c,#f97316)' },
@@ -1475,8 +1490,9 @@ const TZOS = {
     } catch (e) {}
   },
 
-  printHtml(htmlContent) {
+  printHtml(htmlContent, mode = 'thermal') {
     const stage = document.getElementById('os-print-stage');
+    stage.dataset.printMode = mode || 'thermal';
     stage.innerHTML = htmlContent;
     setTimeout(() => window.print(), 90);
   },

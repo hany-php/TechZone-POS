@@ -197,6 +197,7 @@ async function guard(fn) {
 const NAV = [
   { page: 'desktop', href: 'desktop.html', icon: 'desktop_windows', label: 'سطح المكتب (النظام)' },
   { page: 'pos', href: 'pos.html', icon: 'point_of_sale', label: 'نقاط البيع' },
+  { page: 'sales_quotes', href: 'sales_quotes.html', icon: 'description', label: 'المبيعات وعروض الأسعار' },
   { page: 'customers', href: 'customers.html', icon: 'people', label: 'العملاء والمديونيات', perm: ['customers_view', 'customers_edit'] },
   { page: 'history', href: 'history.html', icon: 'receipt_long', label: 'سجل المبيعات' },
   { page: 'receipt', href: 'receipt.html', icon: 'print', label: 'الإيصال والإعدادات' },
@@ -555,6 +556,555 @@ async function sendInvoicePdfToWhatsapp(saleId, phoneOverride = '') {
   }));
   if (res) {
     toast(`تم تجهيز رسالة «لديك فاتورة من ${res.store_name || 'المتجر'}» ونسخ ملف (${res.pdf_name}) لإرفاقه في المحادثة`);
+  }
+  return res;
+}
+
+
+/* ===== محرك قوالب الفواتير (قالب شركة تقنية الموجي A4 + العصرى + الكلاسيكي + إيصال الكاشير الحراري) ===== */
+const AR_MONTHS = [
+  "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
+  "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"
+];
+
+function formatArabicDate(dateStr) {
+  if (!dateStr) return "";
+  const clean = String(dateStr).slice(0, 10);
+  const parts = clean.split("-");
+  if (parts.length !== 3) return dateStr;
+  const y = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  const d = parseInt(parts[2], 10);
+  if (!y || !m || !d || m < 1 || m > 12) return clean;
+  return `${d} ${AR_MONTHS[m - 1]}، ${y}`;
+}
+
+function normalizeDocForA4(rawDoc, a4Cfg = {}) {
+  const d = rawDoc || {};
+  const isQuote = d.doc_type === "quote" && d.status !== "converted";
+  const docNo = d.quote_no || d.invoice_no || "الفات/2026/00001";
+  const docDate = d.doc_date || d.invoice_date || (d.created_at ? d.created_at.slice(0, 10) : todayISO());
+  const dueDate = d.due_date || d.valid_until || docDate;
+  const srcPrefix = a4Cfg.source_prefix || "تقنية - Technology/";
+  const sourceRef = d.source_ref || `${srcPrefix}${String(d.id || 1).padStart(4, "0")}`;
+  const signalRef = d.signal_ref || sourceRef;
+  const items = (d.items || []).map((it) => {
+    const qty = it.remaining_qty != null ? it.remaining_qty : (it.qty || 1);
+    const unitPrice = it.unit_price != null ? it.unit_price : 0;
+    const lineTotal = it.line_total != null ? it.line_total : (qty * unitPrice);
+    return {
+      sku: it.sku || "",
+      name: it.name || "",
+      qty,
+      unit_price: unitPrice,
+      tax_label: it.tax_label != null ? it.tax_label : (a4Cfg.default_tax_label || "Zero Rated 0%"),
+      tax_rate: it.tax_rate || 0,
+      line_total: lineTotal,
+    };
+  });
+  const subtotal = d.subtotal != null ? d.subtotal : items.reduce((s, x) => s + x.line_total, 0);
+  const discount = d.discount || 0;
+  const tax = d.tax || 0;
+  const total = d.total != null ? d.total : Math.max(0, subtotal - discount + tax);
+  let paidAmount = d.paid_amount;
+  if (paidAmount == null) {
+    if (Array.isArray(d.payments)) {
+      paidAmount = d.payments.filter((p) => p.method === "cash" || p.method === "wallet").reduce((s, p) => s + (p.amount || 0), 0);
+    } else {
+      paidAmount = isQuote ? 0 : total;
+    }
+  }
+  const dueAmount = d.due_amount != null ? d.due_amount : Math.max(0, total - paidAmount);
+  const payMethodAr = d.payment_method === "wallet" ? "محفظة إلكترونية" : "نقدي";
+  const payDate = d.payment_date || docDate;
+  return {
+    isQuote,
+    docNo,
+    docDate,
+    dueDate,
+    sourceRef,
+    signalRef,
+    customerName: d.customer_name || "عميل نقدي",
+    customerPhone: d.customer_phone || "",
+    items,
+    subtotal,
+    discount,
+    tax,
+    total,
+    paidAmount,
+    dueAmount,
+    payMethodAr,
+    payDate,
+    notes: d.notes || "",
+  };
+}
+
+function buildA4InvoiceHtml(rawDoc, a4Cfg = {}) {
+  const cfg = Object.assign({
+    theme: "taqnia_wave",
+    primary_color: "#0e6ba8",
+    accent_color: "#9e2a5b",
+    company_title: "تقنية -Technology",
+    company_address: "خلف المطافي\nخلف مستشفى دار الشفاء\nطهطا - سوهاج - 1405\nمصر",
+    company_email: "hany_hassan2000@hotmail.com",
+    company_phone: "",
+    company_logo: "",
+    invoice_title_label: "الفاتورة",
+    quote_title_label: "عرض سعر",
+    currency_symbol: "LE",
+    default_tax_label: "Zero Rated 0%",
+    show_waves: true,
+    show_logo: true,
+    show_info_box: true,
+    show_sku_brackets: true,
+    show_tax_col: true,
+    show_payment_comm: true,
+    show_payments_detail: true,
+    show_footer_page: true,
+    custom_terms: "",
+  }, a4Cfg || {});
+
+  const info = normalizeDocForA4(rawDoc, cfg);
+  const cur = cfg.currency_symbol || "LE";
+  const fmtCur = (cents) => `${cur} ${fmt(cents)}`;
+  const primary = cfg.primary_color || "#0e6ba8";
+  const accent = cfg.accent_color || "#9e2a5b";
+  const pRgb = _hexToRgb(primary);
+  const aRgb = _hexToRgb(accent);
+  const addrLines = String(cfg.company_address || "").split(/\r?\n/).filter((x) => x.trim() !== "");
+  const titleText = `${info.isQuote ? (cfg.quote_title_label || "عرض سعر") : (cfg.invoice_title_label || "الفاتورة")} ${info.docNo}`;
+  const isClassic = cfg.theme === "classic_formal";
+  const isModern = cfg.theme === "modern_clean";
+  const showWaves = cfg.show_waves !== false && cfg.theme === "taqnia_wave";
+
+  const topWaveSvg = showWaves ? `
+    <svg viewBox="0 0 800 220" preserveAspectRatio="none" style="position:absolute;top:0;left:0;width:62%;height:175px;pointer-events:none;z-index:0">
+      <path d="M0,0 L800,0 C680,145 430,210 0,205 Z" fill="rgba(${pRgb.r},${pRgb.g},${pRgb.b},0.09)"></path>
+    </svg>` : (isModern ? `
+    <div style="position:absolute;top:0;left:0;right:0;height:10px;background:linear-gradient(90deg,${primary},${accent});z-index:0"></div>` : "");
+
+  const bottomWaveSvg = showWaves ? `
+    <svg viewBox="0 0 1000 180" preserveAspectRatio="none" style="position:absolute;bottom:0;left:0;width:85%;height:110px;pointer-events:none;z-index:0">
+      <path d="M0,180 L1000,180 C840,55 480,5 0,40 Z" fill="rgba(${aRgb.r},${aRgb.g},${aRgb.b},0.11)"></path>
+    </svg>` : "";
+
+  const logoHtml = (cfg.show_logo !== false && cfg.company_logo)
+    ? `<img src="${esc(cfg.company_logo)}" alt="شعار الشركة" style="max-width:210px;max-height:115px;object-fit:contain;display:block"/>`
+    : (cfg.show_logo !== false ? `<div style="padding:12px 20px;border-radius:14px;background:rgba(${pRgb.r},${pRgb.g},${pRgb.b},0.1);color:${primary};font-weight:800;font-size:20px">${esc(cfg.company_title)}</div>` : "");
+
+  const rowsHtml = info.items.map((it) => {
+    const skuPart = (cfg.show_sku_brackets !== false && it.sku) ? `[${esc(it.sku)}] ` : "";
+    const desc = `${skuPart}${esc(it.name)}`;
+    return `
+      <tr style="border-bottom:1px solid #e2e8f0">
+        <td style="padding:10px 14px;text-align:right;font-weight:500;color:#1e293b;border-left:1px solid #e2e8f0">${desc}</td>
+        <td style="padding:10px 10px;text-align:center;font-family:monospace,sans-serif;color:#334155;border-left:1px solid #e2e8f0">${Number(it.qty || 0).toFixed(2)}</td>
+        <td style="padding:10px 10px;text-align:center;font-family:monospace,sans-serif;color:#334155;border-left:1px solid #e2e8f0">${fmt(it.unit_price)}</td>
+        ${cfg.show_tax_col !== false ? `<td style="padding:10px 10px;text-align:center;font-size:12px;color:#475569;border-left:1px solid #e2e8f0">${esc(it.tax_label || "")}</td>` : ""}
+        <td style="padding:10px 14px;text-align:left;font-family:monospace,sans-serif;font-weight:700;color:#0f172a;direction:ltr">${esc(fmtCur(it.line_total))}</td>
+      </tr>
+    `;
+  }).join("");
+
+  return `
+    <div class="tz-a4-sheet" dir="rtl" style="position:relative;width:100%;max-width:794px;min-height:1122px;margin:0 auto;background:#ffffff;color:#0f172a;font-family:'IBM Plex Sans Arabic','Cairo',sans-serif;padding:34px 40px 86px 40px;box-sizing:border-box;overflow:hidden;${isClassic ? "border:2px solid #0f172a;" : "box-shadow:0 10px 35px rgba(15,23,42,0.10);"}">
+      ${topWaveSvg}
+      <!-- ترويسة الشركة والشعار -->
+      <div style="position:relative;z-index:2;display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:26px">
+        <!-- يمين: الشعار -->
+        <div style="order:1;min-width:160px;display:flex;justify-content:flex-start">
+          ${logoHtml}
+        </div>
+        <!-- يسار: اسم وعنوان الشركة كما في قالب تقنية -->
+        <div style="order:2;text-align:right;direction:rtl;font-size:13.5px;line-height:1.65;color:#1e293b;min-width:210px">
+          <div style="font-weight:800;font-size:15px;color:#0f172a">${esc(cfg.company_title)}</div>
+          ${addrLines.map((l) => `<div>${esc(l)}</div>`).join("")}
+          ${cfg.company_phone ? `<div style="font-family:monospace,sans-serif">هاتف: ${esc(cfg.company_phone)}</div>` : ""}
+        </div>
+      </div>
+
+      <!-- صف اسم العميل وعنوان الفاتورة -->
+      <div style="position:relative;z-index:2;display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:14px;gap:16px">
+        <div style="order:1;text-align:right">
+          <div style="font-size:17px;font-weight:700;color:#0f172a">${esc(info.customerName)}</div>
+          ${info.customerPhone ? `<div style="font-size:12.5px;color:#64748b;font-family:monospace,sans-serif">${esc(info.customerPhone)}</div>` : ""}
+        </div>
+        <div style="order:2;text-align:left">
+          <h1 style="margin:0;font-size:28px;font-weight:800;color:${primary};letter-spacing:0.2px">${esc(titleText)}</h1>
+        </div>
+      </div>
+
+      <!-- شريط معلومات الفاتورة ذو الإطار المنحني -->
+      ${cfg.show_info_box !== false ? `
+      <div style="position:relative;z-index:2;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:12px 18px;margin-bottom:18px;border-radius:14px;border:1.6px solid ${accent};background:rgba(${aRgb.r},${aRgb.g},${aRgb.b},0.06)">
+        <div style="text-align:right">
+          <div style="font-size:12.5px;font-weight:800;color:#0f172a;margin-bottom:3px">${info.isQuote ? "تاريخ عرض السعر" : "تاريخ فاتورة العميل"}</div>
+          <div style="font-size:13px;color:#334155">${esc(formatArabicDate(info.docDate))}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:12.5px;font-weight:800;color:#0f172a;margin-bottom:3px">${info.isQuote ? "صالح حتى تاريخ" : "تاريخ الاستحقاق"}</div>
+          <div style="font-size:13px;color:#334155">${esc(formatArabicDate(info.dueDate))}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:12.5px;font-weight:800;color:#0f172a;margin-bottom:3px">المصدر</div>
+          <div style="font-size:13px;color:#334155">${esc(info.sourceRef)}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:12.5px;font-weight:800;color:#0f172a;margin-bottom:3px">رقم الإشارة</div>
+          <div style="font-size:13px;color:#334155">${esc(info.signalRef)}</div>
+        </div>
+      </div>` : ""}
+
+      <!-- جدول الأصناف الرئيسي -->
+      <div style="position:relative;z-index:2;border-radius:12px;overflow:hidden;border:1.2px solid #cbd5e1;margin-bottom:4px">
+        <table style="width:100%;border-collapse:collapse;font-size:13.5px">
+          <thead>
+            <tr style="background:${primary};color:#ffffff;font-weight:700">
+              <th style="padding:11px 14px;text-align:right;border-left:1px solid rgba(255,255,255,0.25)">الوصف</th>
+              <th style="padding:11px 10px;text-align:center;width:76px;border-left:1px solid rgba(255,255,255,0.25)">الكمية</th>
+              <th style="padding:11px 10px;text-align:center;width:105px;border-left:1px solid rgba(255,255,255,0.25)">سعر الوحدة</th>
+              ${cfg.show_tax_col !== false ? `<th style="padding:11px 10px;text-align:center;width:110px;border-left:1px solid rgba(255,255,255,0.25)">الضرائب</th>` : ""}
+              <th style="padding:11px 14px;text-align:left;width:125px">المبلغ</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml || `<tr><td colspan="5" style="padding:24px;text-align:center;color:#94a3b8">لا توجد أصناف مضافة</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- قسم الإجماليات والتواصل بشأن الدفع -->
+      <div style="position:relative;z-index:2;display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-top:8px">
+        <!-- يمين: التواصل بشأن الدفع والملاحظات -->
+        <div style="order:1;flex:1;padding-top:34px;text-align:right;font-size:13.5px;color:#1e293b">
+          ${cfg.show_payment_comm !== false ? `
+            <div style="margin-bottom:10px">التواصل بشأن الدفع: <b style="color:#0f172a">${esc(info.docNo)}</b></div>
+          ` : ""}
+          ${info.notes ? `<div style="margin-top:8px;padding:10px 12px;border-radius:10px;background:#f8fafc;border:1px solid #e2e8f0;font-size:12.5px;color:#334155"><b>ملاحظات:</b> ${esc(info.notes)}</div>` : ""}
+          ${cfg.custom_terms ? `<div style="margin-top:8px;font-size:12px;color:#475569;white-space:pre-line">${esc(cfg.custom_terms)}</div>` : ""}
+        </div>
+
+        <!-- يسار: جدول ملخص المبالغ والمدفوعات والمبلغ المستحق -->
+        <div style="order:2;width:320px;border:1.2px solid #cbd5e1;border-radius:6px;overflow:hidden;font-size:13.5px">
+          <table style="width:100%;border-collapse:collapse">
+            <tbody>
+              <tr style="border-bottom:1px solid #cbd5e1">
+                <td style="padding:8px 12px;text-align:right;color:#1e293b;border-left:1px solid #cbd5e1">المبلغ دون الضريبة</td>
+                <td style="padding:8px 12px;text-align:left;font-family:monospace,sans-serif;direction:ltr;width:125px">${esc(fmtCur(info.subtotal))}</td>
+              </tr>
+              ${info.discount > 0 ? `
+              <tr style="border-bottom:1px solid #cbd5e1">
+                <td style="padding:8px 12px;text-align:right;color:#dc2626;border-left:1px solid #cbd5e1">الخصم</td>
+                <td style="padding:8px 12px;text-align:left;font-family:monospace,sans-serif;direction:ltr;color:#dc2626">- ${esc(fmtCur(info.discount))}</td>
+              </tr>` : ""}
+              ${cfg.show_tax_col !== false ? `
+              <tr style="border-bottom:1px solid #cbd5e1">
+                <td style="padding:8px 12px;text-align:right;color:#475569;border-left:1px solid #cbd5e1">ضرائب اخرى</td>
+                <td style="padding:8px 12px;text-align:left;font-family:monospace,sans-serif;direction:ltr">${esc(fmtCur(info.tax))}</td>
+              </tr>` : ""}
+              <tr style="border-bottom:1px solid #cbd5e1;background:${primary};color:#ffffff;font-weight:800">
+                <td style="padding:9px 12px;text-align:right;border-left:1px solid rgba(255,255,255,0.3)">الإجمالي</td>
+                <td style="padding:9px 12px;text-align:left;font-family:monospace,sans-serif;direction:ltr">${esc(fmtCur(info.total))}</td>
+              </tr>
+              ${(cfg.show_payments_detail !== false && (!info.isQuote || info.paidAmount > 0)) ? `
+              <tr style="border-bottom:1px solid #cbd5e1">
+                <td style="padding:8px 12px;text-align:right;font-style:italic;color:#1e293b;border-left:1px solid #cbd5e1;line-height:1.45">
+                  تم الدفع في ${esc(formatArabicDate(info.payDate))}<br/>باستخدام ${esc(info.payMethodAr)}
+                </td>
+                <td style="padding:8px 12px;text-align:left;font-family:monospace,sans-serif;direction:ltr;vertical-align:top">${esc(fmtCur(info.paidAmount))}</td>
+              </tr>
+              <tr>
+                <td style="padding:9px 12px;text-align:right;font-weight:800;color:#0f172a;border-left:1px solid #cbd5e1">المبلغ المستحق</td>
+                <td style="padding:9px 12px;text-align:left;font-family:monospace,sans-serif;font-weight:800;direction:ltr;color:#0f172a">${esc(fmtCur(info.dueAmount))}</td>
+              </tr>` : ""}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- تذييل الصفحة والموجة السفلية -->
+      ${bottomWaveSvg}
+      ${cfg.show_footer_page !== false ? `
+      <div style="position:absolute;bottom:18px;left:0;right:0;z-index:2;text-align:center;font-size:13px;color:#334155">
+        ${cfg.company_email ? `<div style="font-weight:600;margin-bottom:4px">${esc(cfg.company_email)}</div>` : ""}
+        <div style="font-size:12px;color:#64748b">الصفحة 1 / 1</div>
+      </div>` : ""}
+    </div>
+  `;
+}
+
+async function renderA4DocumentToJpeg(rawDoc, a4Cfg = {}) {
+  const cfg = Object.assign({
+    theme: "taqnia_wave",
+    primary_color: "#0e6ba8",
+    accent_color: "#9e2a5b",
+    company_title: "تقنية -Technology",
+    company_address: "خلف المطافي\nخلف مستشفى دار الشفاء\nطهطا - سوهاج - 1405\nمصر",
+    company_email: "hany_hassan2000@hotmail.com",
+    company_phone: "",
+    company_logo: "",
+    invoice_title_label: "الفاتورة",
+    quote_title_label: "عرض سعر",
+    currency_symbol: "LE",
+    default_tax_label: "Zero Rated 0%",
+    show_waves: true,
+    show_logo: true,
+    show_info_box: true,
+    show_sku_brackets: true,
+    show_tax_col: true,
+    show_payment_comm: true,
+    show_payments_detail: true,
+    show_footer_page: true,
+    custom_terms: "",
+  }, a4Cfg || {});
+
+  const info = normalizeDocForA4(rawDoc, cfg);
+  const cur = cfg.currency_symbol || "LE";
+  const fmtCur = (cents) => `${cur} ${fmt(cents)}`;
+  const primary = cfg.primary_color || "#0e6ba8";
+  const accent = cfg.accent_color || "#9e2a5b";
+  const pRgb = _hexToRgb(primary);
+  const aRgb = _hexToRgb(accent);
+
+  const W = 1240;
+  const H = Math.max(1754, 920 + info.items.length * 64);
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, W, H);
+
+  // 1) الموجة العلوية الزرقاء الناعمة
+  if (cfg.show_waves !== false && cfg.theme === "taqnia_wave") {
+    ctx.fillStyle = `rgba(${pRgb.r}, ${pRgb.g}, ${pRgb.b}, 0.09)`;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(W * 0.62, 0);
+    ctx.bezierCurveTo(W * 0.50, 190, W * 0.28, 260, 0, 250);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // 2) الموجة السفلية الوردية/العنابية الناعمة
+  if (cfg.show_waves !== false && cfg.theme === "taqnia_wave") {
+    ctx.fillStyle = `rgba(${aRgb.r}, ${aRgb.g}, ${aRgb.b}, 0.11)`;
+    ctx.beginPath();
+    ctx.moveTo(0, H);
+    ctx.lineTo(W * 0.85, H);
+    ctx.bezierCurveTo(W * 0.70, H - 110, W * 0.38, H - 150, 0, H - 115);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // 3) رسم الشعار أعلى اليمين
+  if (cfg.show_logo !== false && cfg.company_logo) {
+    try {
+      await new Promise((resolve) => {
+        const im = new Image();
+        im.onload = () => {
+          const maxW = 310, maxH = 170;
+          const r = Math.min(maxW / (im.width || 1), maxH / (im.height || 1), 1);
+          const dw = (im.width || 240) * r;
+          const dh = (im.height || 140) * r;
+          ctx.drawImage(im, W - 64 - dw, 48, dw, dh);
+          resolve();
+        };
+        im.onerror = () => resolve();
+        im.src = cfg.company_logo;
+      });
+    } catch (e) {}
+  }
+
+  // 4) بيانات وعنوان الشركة أعلى اليسار
+  ctx.direction = "rtl";
+  ctx.textAlign = "right";
+  ctx.fillStyle = "#0f172a";
+  ctx.font = "bold 23px 'IBM Plex Sans Arabic', 'Cairo', sans-serif";
+  let ay = 74;
+  ctx.fillText(cfg.company_title || "تقنية -Technology", 360, ay);
+  ay += 32;
+  ctx.font = "20px 'IBM Plex Sans Arabic', 'Cairo', sans-serif";
+  ctx.fillStyle = "#1e293b";
+  for (const line of String(cfg.company_address || "").split(/\r?\n/).filter((x) => x.trim())) {
+    ctx.fillText(line.trim(), 360, ay);
+    ay += 29;
+  }
+
+  // 5) اسم العميل يمين وعنوان الفاتورة يسار
+  let y = Math.max(270, ay + 36);
+  ctx.fillStyle = "#0f172a";
+  ctx.font = "bold 26px 'IBM Plex Sans Arabic', 'Cairo', sans-serif";
+  ctx.textAlign = "right";
+  ctx.fillText(info.customerName, W - 64, y);
+  if (info.customerPhone) {
+    ctx.font = "19px monospace";
+    ctx.fillStyle = "#64748b";
+    ctx.fillText(info.customerPhone, W - 64, y + 28);
+  }
+
+  const titleText = `${info.isQuote ? (cfg.quote_title_label || "عرض سعر") : (cfg.invoice_title_label || "الفاتورة")} ${info.docNo}`;
+  ctx.fillStyle = primary;
+  ctx.font = "bold 40px 'IBM Plex Sans Arabic', 'Cairo', sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillText(titleText, 64, y);
+  y += 40;
+
+  // 6) شريط التواريخ والمصدر ورقم الإشارة
+  if (cfg.show_info_box !== false) {
+    const bx = 64, bw = W - 128, bh = 96;
+    ctx.fillStyle = `rgba(${aRgb.r}, ${aRgb.g}, ${aRgb.b}, 0.06)`;
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(bx, y, bw, bh, 20);
+    else ctx.rect(bx, y, bw, bh);
+    ctx.fill();
+    ctx.stroke();
+
+    const cols = [
+      { lbl: info.isQuote ? "تاريخ عرض السعر" : "تاريخ فاتورة العميل", val: formatArabicDate(info.docDate), x: W - 92 },
+      { lbl: info.isQuote ? "صالح حتى تاريخ" : "تاريخ الاستحقاق", val: formatArabicDate(info.dueDate), x: W - 365 },
+      { lbl: "المصدر", val: info.sourceRef, x: W - 640 },
+      { lbl: "رقم الإشارة", val: info.signalRef, x: W - 915 },
+    ];
+    for (const c of cols) {
+      ctx.textAlign = "right";
+      ctx.fillStyle = "#0f172a";
+      ctx.font = "bold 20px 'IBM Plex Sans Arabic', 'Cairo', sans-serif";
+      ctx.fillText(c.lbl, c.x, y + 38);
+      ctx.fillStyle = "#334155";
+      ctx.font = "19px 'IBM Plex Sans Arabic', 'Cairo', sans-serif";
+      ctx.fillText(c.val || "", c.x, y + 70);
+    }
+    y += bh + 26;
+  }
+
+  // 7) جدول الأصناف
+  const tx = 64, tw = W - 128, th = 56;
+  ctx.fillStyle = primary;
+  ctx.fillRect(tx, y, tw, th);
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 21px 'IBM Plex Sans Arabic', 'Cairo', sans-serif";
+  ctx.textAlign = "right";
+  ctx.fillText("الوصف", W - 84, y + 36);
+  ctx.textAlign = "center";
+  ctx.fillText("الكمية", 545, y + 36);
+  ctx.fillText("سعر الوحدة", 415, y + 36);
+  if (cfg.show_tax_col !== false) ctx.fillText("الضرائب", 275, y + 36);
+  ctx.textAlign = "left";
+  ctx.fillText("المبلغ", 84, y + 36);
+  y += th;
+
+  for (const it of info.items) {
+    const rh = 56;
+    ctx.strokeStyle = "#cbd5e1";
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(tx, y, tw, rh);
+    const skuPart = (cfg.show_sku_brackets !== false && it.sku) ? `[${it.sku}] ` : "";
+    ctx.fillStyle = "#0f172a";
+    ctx.font = "20px 'IBM Plex Sans Arabic', 'Cairo', sans-serif";
+    ctx.textAlign = "right";
+    ctx.fillText(`${skuPart}${it.name}`.slice(0, 56), W - 84, y + 35);
+    ctx.textAlign = "center";
+    ctx.font = "20px monospace";
+    ctx.fillText(Number(it.qty || 0).toFixed(2), 545, y + 35);
+    ctx.fillText(fmt(it.unit_price), 415, y + 35);
+    if (cfg.show_tax_col !== false) {
+      ctx.font = "17px sans-serif";
+      ctx.fillText(it.tax_label || "", 275, y + 35);
+    }
+    ctx.textAlign = "left";
+    ctx.font = "bold 20px monospace";
+    ctx.fillText(fmtCur(it.line_total), 84, y + 35);
+    y += rh;
+  }
+
+  y += 20;
+  // التواصل بشأن الدفع على اليمين
+  if (cfg.show_payment_comm !== false) {
+    ctx.fillStyle = "#0f172a";
+    ctx.font = "21px 'IBM Plex Sans Arabic', 'Cairo', sans-serif";
+    ctx.textAlign = "right";
+    ctx.fillText(`التواصل بشأن الدفع: ${info.docNo}`, W - 64, y + 60);
+  }
+  if (info.notes) {
+    ctx.fillStyle = "#475569";
+    ctx.font = "19px 'IBM Plex Sans Arabic', 'Cairo', sans-serif";
+    ctx.textAlign = "right";
+    ctx.fillText(`ملاحظات: ${info.notes}`, W - 64, y + 98);
+  }
+
+  // جدول الإجماليات على اليسار
+  const sx = 64, sw = 480;
+  const drawSumRow = (lbl, val, isPrimary = false, isBold = false) => {
+    const sh = 50;
+    if (isPrimary) {
+      ctx.fillStyle = primary;
+      ctx.fillRect(sx, y, sw, sh);
+    }
+    ctx.strokeStyle = "#cbd5e1";
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(sx, y, sw, sh);
+    ctx.fillStyle = isPrimary ? "#ffffff" : "#0f172a";
+    ctx.font = (isPrimary || isBold ? "bold " : "") + "20px 'IBM Plex Sans Arabic', 'Cairo', sans-serif";
+    ctx.textAlign = "right";
+    ctx.fillText(lbl, sx + sw - 18, y + 32);
+    ctx.textAlign = "left";
+    ctx.font = (isPrimary || isBold ? "bold " : "") + "20px monospace";
+    ctx.fillText(val, sx + 18, y + 32);
+    y += sh;
+  };
+
+  drawSumRow("المبلغ دون الضريبة", fmtCur(info.subtotal));
+  if (info.discount > 0) drawSumRow("الخصم", `- ${fmtCur(info.discount)}`);
+  if (cfg.show_tax_col !== false) drawSumRow("ضرائب اخرى", fmtCur(info.tax));
+  drawSumRow("الإجمالي", fmtCur(info.total), true, true);
+  if (cfg.show_payments_detail !== false && (!info.isQuote || info.paidAmount > 0)) {
+    drawSumRow(`تم الدفع (${info.payMethodAr})`, fmtCur(info.paidAmount));
+    drawSumRow("المبلغ المستحق", fmtCur(info.dueAmount), false, true);
+  }
+
+  // التذييل السفلي
+  if (cfg.show_footer_page !== false) {
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#1e293b";
+    ctx.font = "bold 20px sans-serif";
+    if (cfg.company_email) ctx.fillText(cfg.company_email, W / 2, H - 62);
+    ctx.fillStyle = "#64748b";
+    ctx.font = "18px 'IBM Plex Sans Arabic', 'Cairo', sans-serif";
+    ctx.fillText("الصفحة 1 / 1", W / 2, H - 30);
+  }
+
+  return { dataUrl: canvas.toDataURL("image/jpeg", 0.92), width: W, height: H };
+}
+
+async function sendQuoteOrA4PdfToWhatsapp(quoteId, phoneOverride = "", a4CfgOverride = null) {
+  const qDoc = await guard(() => api("quotation", { id: +quoteId }));
+  if (!qDoc) return null;
+  let phone = (phoneOverride || qDoc.customer_phone || "").trim();
+  if (!phone) {
+    phone = prompt("أدخل رقم موبايل العميل لإرسال ملف الـ PDF (A4) عبر واتساب (مثال: 01012345678):", "");
+    if (!phone || !phone.trim()) return null;
+    phone = phone.trim();
+  }
+  let a4Cfg = a4CfgOverride;
+  if (!a4Cfg) {
+    const tpls = await guard(() => api("templates_get"));
+    a4Cfg = (tpls && tpls.a4) || {};
+  }
+  toast("جاري توليد ملف الفاتورة / عرض السعر (A4 PDF) وإرفاقه تلقائياً في واتساب...");
+  const rendered = await renderA4DocumentToJpeg(qDoc, a4Cfg);
+  const res = await guard(() => api("whatsapp_send_quote", {
+    quote_id: qDoc.id,
+    phone,
+    pdf_image: rendered.dataUrl,
+    img_w: rendered.width,
+    img_h: rendered.height,
+  }));
+  if (res) {
+    toast(`تم تجهيز الرسالة وإرفاق ملف (${res.pdf_name}) في محادثة واتساب`);
   }
   return res;
 }

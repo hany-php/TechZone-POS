@@ -315,9 +315,41 @@ call(a, "login", {"username": "admin", "pin": "1234"})
 ru_del = call(a, "user_delete", {"id": uid2})
 check("user delete ok", ru_del["ok"])
 
+# 13b) فحص قسم المبيعات وعروض الأسعار وقوالب الفواتير (A4 + POS Thermal)
+tpl_res = call(a, "templates_get", {})
+check("templates_get ok (a4 + pos)", tpl_res["ok"] and "a4" in tpl_res["data"] and "pos" in tpl_res["data"] and tpl_res["data"]["a4"]["theme"] == "taqnia_wave")
+tpl_save = call(a, "templates_save", {"a4": {"company_title": "تقنية -Technology", "currency_symbol": "LE"}, "pos": {"paper_width": "80mm"}})
+check("templates_save ok", tpl_save["ok"] and tpl_save["data"]["a4"]["currency_symbol"] == "LE")
+
+q_create = call(a, "quotation_save", {
+    "doc_type": "quote",
+    "customer_name": "فاروق مجدي شحاته",
+    "customer_phone": "01099887766",
+    "doc_date": "2026-08-26",
+    "due_date": "2026-08-26",
+    "source_ref": "تقنية - Technology/0004",
+    "signal_ref": "تقنية - Technology/0004",
+    "items": [
+        {"sku": "HDD 500", "name": "هارددسك 500 مكتبي HDD 500", "qty": 1, "unit_price": 650, "tax_label": "Zero Rated 0%", "tax_rate": 0},
+        {"sku": "CABLE RG58 100M", "name": "كابل كاميرا 100 متر CABLE RG58 100M", "qty": 1, "unit_price": 1260, "tax_label": "", "tax_rate": 0},
+        {"sku": "Power Supply 12V 20A", "name": "Power Supply 12V 20A", "qty": 1, "unit_price": 310, "tax_label": "", "tax_rate": 0},
+        {"sku": "PNC AND DC CAMERA", "name": "PNC AND DC CAMERA", "qty": 8, "unit_price": 10, "tax_label": "", "tax_rate": 0},
+        {"sku": "HP 24 LCD", "name": "شاشة HP 24 LCD", "qty": 1, "unit_price": 1770, "tax_label": "Zero Rated 0%", "tax_rate": 0},
+        {"sku": "DVR HIKVISION 8 CH", "name": "دفي ار 8 قناة هيكفيجن DVR HIKVISION 8 CH", "qty": 1, "unit_price": 2550, "tax_label": "", "tax_rate": 0},
+    ],
+})
+check("quotation_save ok (total 6620.00)", q_create["ok"] and q_create["data"]["total"] == 662000 and q_create["data"]["status"] == "draft")
+qid = q_create["data"]["id"]
+
+q_conv = call(a, "quotation_convert_to_sale", {"id": qid, "paid_amount": 5000, "payment_method": "cash"})
+check("quotation_convert_to_sale ok (paid 5000, due 1620)", q_conv["ok"] and q_conv["data"]["status"] == "converted" and q_conv["data"]["paid_amount"] == 500000 and q_conv["data"]["due_amount"] == 162000)
+
+q_list = call(a, "quotations", {})
+check("quotations list & summary ok", q_list["ok"] and q_list["data"]["summary"]["invoices_count"] >= 1)
+
 # 14) تطابق العقد: كل api('NAME') في الواجهة موجود في Api
 names = set()
-for p in list((ROOT / "web").glob("*.html")) + [ROOT / "web" / "desktop.html", ROOT / "web" / "app.js"]:
+for p in list((ROOT / "web").glob("*.html")) + [ROOT / "web" / "desktop.html", ROOT / "web" / "sales_quotes.html", ROOT / "web" / "app.js"]:
     if not p.exists(): continue
     names |= set(re.findall(r"api\(\s*['\"]([A-Za-z_]+)", p.read_text(encoding="utf-8")))
 real = {n for n in dir(api_mod.Api) if not n.startswith("_") and callable(getattr(api_mod.Api, n)) and n != "call"}

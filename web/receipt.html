@@ -111,18 +111,26 @@
 <div class="space-y-2" id="pays"></div>
 </div>
 <div class="mt-auto pt-6 border-t border-gray-100 dark:border-gray-800 flex flex-wrap gap-3">
-<button onclick="if(window.parent&&window.parent!==window&&window.parent.TZOS&&window.parent.TZOS.printHtml){window.parent.TZOS.printHtml(document.getElementById('paper').innerHTML);}else{window.print();}" class="flex-1 bg-primary hover:bg-primary-dark text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 transition-transform active:scale-[0.98]">
+<button id="btn-print-thermal" type="button" class="flex-1 bg-primary hover:bg-primary-dark text-white py-4 px-4 rounded-xl font-bold text-base shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 transition-transform active:scale-[0.98]">
 <span class="material-icons-outlined">print</span>
-طباعة الإيصال
+طباعة إيصال كاشير حراري (80mm)
+</button>
+<button id="btn-print-a4" type="button" class="px-5 py-4 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold flex items-center gap-2 transition-colors shadow-lg">
+<span class="material-icons-outlined">description</span>
+طباعة فاتورة A4 (قالب تقنية)
 </button>
 <button id="btn-wa" type="button" class="px-5 py-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-2 transition-colors shadow-lg shadow-emerald-600/20">
 <span class="material-icons-outlined">send</span>
 إرسال ملف PDF عبر واتساب
 </button>
-<button id="btn-text" class="px-5 py-4 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors">
+<button id="btn-text" class="px-4 py-4 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors">
 <span class="material-icons-outlined">receipt</span>
 نص حراري
 </button>
+<a href="sales_quotes.html" class="px-4 py-4 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30 font-bold text-sm flex items-center gap-1.5 hover:bg-amber-500/20">
+<span class="material-icons-outlined text-base">palette</span>
+مصمم قوالب الفواتير وعروض الأسعار
+</a>
 </div>
 <pre id="raw" dir="ltr" class="hidden mt-4 text-[10px] leading-tight bg-slate-900 text-green-100 p-4 rounded-xl overflow-x-auto"></pre>
 </section>
@@ -405,6 +413,39 @@
       <span class="font-numeric font-bold">${fmt(p.amount)} ${CURRENCY}${p.change ? ` <span class="text-xs text-green-600">(الباقي ${fmt(p.change)})</span>` : ''}</span>
     </div>`).join('');
   renderPaper();
+  let tplsLoaded = null;
+  try { tplsLoaded = await api('templates_get'); } catch (e) {}
+  const posCfg = (tplsLoaded && tplsLoaded.pos) || {};
+  const a4Cfg = (tplsLoaded && tplsLoaded.a4) || {};
+  if (posCfg.paper_width === '58mm') {
+    document.getElementById('paper').style.maxWidth = '58mm';
+    document.getElementById('paper').style.margin = '0 auto';
+  }
+
+  document.getElementById('btn-print-thermal').addEventListener('click', () => {
+    const mode = posCfg.paper_width === '58mm' ? '58mm' : 'thermal';
+    if (window.parent && window.parent !== window && window.parent.TZOS && window.parent.TZOS.printHtml) {
+      window.parent.TZOS.printHtml(document.getElementById('paper').innerHTML, mode);
+    } else {
+      window.print();
+    }
+  });
+
+  document.getElementById('btn-print-a4').addEventListener('click', () => {
+    if (!sale) return;
+    const htmlA4 = buildA4InvoiceHtml(sale, a4Cfg);
+    if (window.parent && window.parent !== window && window.parent.TZOS && window.parent.TZOS.printHtml) {
+      window.parent.TZOS.printHtml(htmlA4, 'a4');
+    } else {
+      const w = window.open('', '_blank');
+      if (w) {
+        w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><style>@page{size:A4 portrait;margin:0}body{margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}</style></head><body>' + htmlA4 + '</body></html>');
+        w.document.close();
+        setTimeout(() => w.print(), 150);
+      }
+    }
+  });
+
   document.getElementById('btn-wa').addEventListener('click', async () => {
     if (!sale) return;
     await sendInvoicePdfToWhatsapp(sale.id, sale.customer_phone || '');
