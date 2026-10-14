@@ -378,7 +378,71 @@ class Api:
                 raise ApiError("الرقم التسلسلي مسجل مسبقاً")
             return True
 
-    # ---------------------------------------------------------- ورديات
+    # ---------------------------------------------------------- عملاء
+    def customers_search(self, q=""):
+        self._user()
+        q = (q or "").strip()
+        with db.connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM customers WHERE name LIKE ? OR phone LIKE ? ORDER BY name LIMIT 20",
+                (f"%{q}%", f"%{q}%"),
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    def customers_save(self, name, phone=None, id=None):
+        self._admin()
+        name = (name or "").strip()
+        if not name:
+            raise ApiError("اسم العميل مطلوب")
+        with db.connect() as conn:
+            if id:
+                conn.execute("UPDATE customers SET name=?, phone=? WHERE id=?", (name, phone, _int(id)))
+                return {"id": _int(id)}
+            else:
+                cur = conn.execute(
+                    "INSERT INTO customers(name, phone, created_at) VALUES(?,?,?)",
+                    (name, phone, db.now()),
+                )
+                return {"id": cur.lastrowid}
+
+    def customers_delete(self, id):
+        self._admin()
+        with db.connect() as conn:
+            conn.execute("DELETE FROM customers WHERE id=?", (_int(id),))
+            return True
+
+    def customers_list(self, limit=100, offset=0):
+        self._admin()
+        limit, offset = _int(limit, 100), _int(offset, 0)
+        with db.connect() as conn:
+            total = conn.execute("SELECT COUNT(*) c FROM customers").fetchone()["c"]
+            rows = conn.execute("SELECT * FROM customers ORDER BY name LIMIT ? OFFSET ?", (limit, offset)).fetchall()
+            return {"rows": [dict(r) for r in rows], "total": total}
+
+    def customer_history(self, id):
+        self._user()
+        cid = _int(id)
+        with db.connect() as conn:
+            sales = conn.execute(
+                """SELECT s.id, s.invoice_no, s.created_at, s.total, s.status
+                   FROM sales s
+                   WHERE s.customer_id=?
+                      OR (s.customer_id IS NULL AND s.customer_name IN (SELECT name FROM customers WHERE id=?))
+                   ORDER BY s.id DESC""",
+                (cid, cid),
+            ).fetchall()
+            repairs = conn.execute(
+                """SELECT r.id, r.ref, r.created_at, r.status, r.cost
+                   FROM repairs r
+                   WHERE r.customer_name IN (SELECT name FROM customers WHERE id=?)
+                   ORDER BY r.id DESC""",
+                (cid,),
+            ).fetchall()
+            return {
+                "sales": [dict(r) for r in sales],
+                "repairs": [dict(r) for r in repairs],
+            }
+
     def shift(self):
         u = self._user()
         with db.connect() as conn:
@@ -453,6 +517,18 @@ class Api:
                 raise ApiError("لا يمكن البيع بدون وردية مفتوحة — افتح وردية أولاً")
             rate = int(Decimal(self._settings(conn).get("tax_rate", "15") or 0))
 
+            # تسجيل العميل في جدول العملاء
+            customer_id = None
+            if customer_name:
+                customer_name = customer_name.strip()
+                # إضافة العميل أو تحديث الهاتف إذا كان موجوداً
+                cur = conn.execute(
+                    "INSERT INTO customers(name, phone, created_at) VALUES(?,?,?) "
+                    "ON CONFLICT(name, phone) DO UPDATE SET phone=excluded.phone",
+                    (customer_name, customer_phone, db.now()),
+                )
+                customer_id = cur.lastrowid or conn.execute("SELECT id FROM customers WHERE name=? AND phone=?", (customer_name, customer_phone)).fetchone()["id"]
+
             lines = []
             for it in items:
                 pid = _int(it.get("product_id"))
@@ -510,10 +586,10 @@ class Api:
                 raise ApiError(f"مجموع الدفعات ({_fmt_money(got)}) لا يساوي الإجمالي ({_fmt_money(total)})")
 
             cur = conn.execute(
-                """INSERT INTO sales(invoice_no, shift_id, user_id, created_at, customer_name, customer_phone,
+                """INSERT INTO sales(invoice_no, shift_id, user_id, customer_id, created_at, customer_name, customer_phone,
                                      subtotal, discount, tax, total, notes)
-                   VALUES('INV-00000',?,?,?,?,?,?,?,?,?,?)""",
-                (s["id"], u["id"], db.now(), customer_name, customer_phone,
+                    VALUES('INV-00000',?,?,?,?,?,?,?,?,?,?,?)""",
+                (s["id"], u["id"], customer_id, db.now(), customer_name, customer_phone,
                  subtotal, discount, tax, total, notes),
             )
             sale_id = cur.lastrowid

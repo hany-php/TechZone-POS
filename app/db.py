@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS sales (
   invoice_no TEXT NOT NULL UNIQUE,
   shift_id INTEGER REFERENCES shifts(id),
   user_id INTEGER NOT NULL REFERENCES users(id),
+  customer_id INTEGER REFERENCES customers(id),
   created_at TEXT NOT NULL,
   customer_name TEXT,
   customer_phone TEXT,
@@ -149,9 +150,9 @@ CREATE TABLE IF NOT EXISTS repair_parts (
 CREATE TABLE IF NOT EXISTS stock_movements (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   created_at TEXT NOT NULL,
-  user_id INTEGER REFERENCES users(id),
+  user_id REFERENCES users(id),
   product_id INTEGER NOT NULL REFERENCES products(id),
-  serial_id INTEGER REFERENCES serials(id),
+  serial_id REFERENCES serials(id),
   qty_change INTEGER NOT NULL,
   qty_after INTEGER NOT NULL,
   reason TEXT NOT NULL,
@@ -161,6 +162,14 @@ CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT
 );
+CREATE TABLE IF NOT EXISTS customers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  phone TEXT,
+  created_at TEXT NOT NULL,
+  UNIQUE(name, phone)
+);
+
 CREATE INDEX IF NOT EXISTS idx_sales_created ON sales(created_at);
 CREATE INDEX IF NOT EXISTS idx_movements_product ON stock_movements(product_id);
 CREATE INDEX IF NOT EXISTS idx_serials_serial ON serials(serial);
@@ -223,7 +232,54 @@ def connect() -> sqlite3.Connection:
     conn.execute("PRAGMA foreign_keys=ON")
     conn.execute("PRAGMA journal_mode=WAL")
     init_db(conn)
+    _ensure_customer_id_column(conn)
+    _migrate_customers(conn)
     return conn
+
+
+def _ensure_customer_id_column(conn):
+    """Ensure the customer_id column exists in the sales table."""
+    try:
+        # Check if column exists
+        columns = conn.execute("PRAGMA table_info(sales)").fetchall()
+        if not any(col["name"] == "customer_id" for col in columns):
+            conn.execute("ALTER TABLE sales ADD COLUMN customer_id INTEGER REFERENCES customers(id)")
+            conn.commit()
+    except Exception as e:
+        print(f"Column ensure error: {e}")
+
+
+def _migrate_customers(conn):
+    """ترحيل العملاء من جدول المبيعات إلى جدول العملاء المنفصل."""
+    try:
+        # 1. Ensure customers table exists
+        conn.execute("CREATE TABLE IF NOT EXISTS customers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, phone TEXT, created_at TEXT NOT NULL, UNIQUE(name, phone))")
+        
+        # 2. Migrate unique customers from sales to customers table
+        count = conn.execute("SELECT COUNT(*) c FROM customers").fetchone()["c"]
+        if count == 0:
+            customers = conn.execute(
+                "SELECT DISTINCT customer_name, customer_phone FROM sales WHERE customer_name IS NOT NULL"
+            ).fetchall()
+            for c in customers:
+                conn.execute(
+                    "INSERT OR IGNORE INTO customers(name, phone, created_at) VALUES(?,?,?)",
+                    (c["customer_name"], c["customer_phone"], db.now()),
+                )
+            conn.commit()
+        
+        # 3. Link existing sales to customers via name and phone
+        conn.execute(
+            """UPDATE sales SET customer_id = (
+               SELECT id FROM customers 
+               WHERE customers.name = sales.customer_name 
+               AND (customers.phone = sales.customer_phone OR customers.phone IS NULL)
+               LIMIT 1
+            ) WHERE customer_id IS NULL AND customer_name IS NOT NULL"""
+        )
+        conn.commit()
+    except Exception as e:
+        print(f"Migration error: {e}")
 
 
 def init_db(conn: sqlite3.Connection) -> None:

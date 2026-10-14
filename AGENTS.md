@@ -112,6 +112,12 @@ python -c "import ast,glob; [ast.parse(open(f,encoding='utf-8').read()) for f in
 
 ## سجل التغييرات
 
+- `2026-10-12`: إضافة نظام متكامل لإدارة العملاء وربطهم بالفواتير:
+  1. إنشاء جدول `customers` مستقل وترحيله تلقائياً من المبيعات.
+  2. إضافة حقل `customer_id` لجدول `sales` وربطه بالعملاء.
+  3. صفحة إدارة العملاء (`web/customers.html`) وصفحة تفاصيل العميل وسجل عملياته (`web/customer_details.html`).
+  4. ميزة الإكمال التلقائي (Autocomplete) للعملاء في نقاط البيع (`pos.html`) والتسجيل التلقائي عند البيع.
+  5. إضافة حقل العملة في صفحة تخصيص الإيصال (`receipt.html`) لتغييرها من "ر.س" إلى "ج.م" أو غيرها.
 - `2026-10-12`: إصلاح خطأ `Python.Runtime.Loader.Initialize` في ملف الـ exe عبر تغيير نمط البناء من `--onedir` إلى `--onefile` في `build-exe.bat`.
 - `2026-10-12`: قاعدة البيانات بجانب المشروع (`data/shop.db` + ترحيل تلقائي من `%LOCALAPPDATA%`) + بناء exe بضغطة واحدة (`build-exe.bat` → `dist/TechZone/TechZone.exe ~5.4MB` + دعم frozen في `main.py`/`db.py`) + فحصا selfcheck الجديدان (42/42). تنبيه: الـ exe المجمد لا يقلع من داخل مجلد المشروع (pythonnet/ClrLoader) — يعمل من أي مسار آخر.
 - `2026-10-12`: توثيق مهلة الجسر و`store_title()` في §6 (رسالة بدل البياض خارج النافذة).

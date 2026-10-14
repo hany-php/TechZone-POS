@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>تفاصيل العميل - تك زون للإلكترونيات</title>
+<link href="app.css" rel="stylesheet"/>
+<script>if(localStorage.getItem('tz-theme')==='dark')document.documentElement.classList.add('dark');</script>
+</head>
+<body id="shell" class="bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-200 h-screen overflow-hidden flex flex-col">
+<main class="flex-1 overflow-y-auto p-6 md:p-8">
+  <div class="max-w-6xl mx-auto">
+    <div class="flex justify-between items-center mb-8">
+      <button id="back-btn" class="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2">
+        <span class="material-icons-outlined">arrow_back</span>
+        عودة إلى قائمة العملاء
+      </button>
+      <h1 id="cust-name" class="text-3xl font-bold text-slate-900 dark:text-white">...</h1>
+    </div>
+
+    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 mb-8">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div>
+          <p class="text-sm text-slate-500 dark:text-slate-400 mb-1">الاسم</p>
+          <p id="info-name" class="text-lg font-medium text-slate-800 dark:text-white">...</p>
+        </div>
+        <div>
+          <p class="text-sm text-slate-500 dark:text-slate-400 mb-1">رقم الهاتف</p>
+          <p id="info-phone" class="text-lg font-medium text-slate-800 dark:text-white">...</p>
+        </div>
+        <div>
+          <p class="text-sm text-slate-500 dark:text-slate-400 mb-1">تاريخ التسجيل</p>
+          <p id="info-date" class="text-lg font-medium text-slate-800 dark:text-white">...</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm mb-8">
+      <div class="p-6 border-b border-slate-100 dark:border-slate-700">
+        <h2 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="material-icons-outlined">receipt_long</span>
+          الفواتير (<span id="sales-count">0</span>)
+        </h2>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-right border-collapse">
+          <thead>
+            <tr class="bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">
+              <th class="px-6 py-4 font-semibold">رقم الفاتورة</th>
+              <th class="px-6 py-4 font-semibold">التاريخ</th>
+              <th class="px-6 py-4 font-semibold">الإجمالي</th>
+              <th class="px-6 py-4 font-semibold">الحالة</th>
+              <th class="px-6 py-4 font-semibold text-center">الإيصال</th>
+            </tr>
+          </thead>
+          <tbody id="sales-list" class="divide-y divide-slate-100 dark:divide-slate-700"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+      <div class="p-6 border-b border-slate-100 dark:border-slate-700">
+        <h2 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="material-icons-outlined">build</span>
+          صيانة (<span id="repairs-count">0</span>)
+        </h2>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-right border-collapse">
+          <thead>
+            <tr class="bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">
+              <th class="px-6 py-4 font-semibold">المرجع</th>
+              <th class="px-6 py-4 font-semibold">التاريخ</th>
+              <th class="px-6 py-4 font-semibold">الحالة</th>
+              <th class="px-6 py-4 font-semibold">التكلفة</th>
+            </tr>
+          </thead>
+          <tbody id="repairs-list" class="divide-y divide-slate-100 dark:divide-slate-700"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+<script src="app.js"></script>
+<script>
+function statusLabel(s) {
+  const map = { completed: 'مكتمل', partial_return: 'مُرجعة جزئياً', returned: 'مُرجعة كلياً' };
+  return map[s] || s;
+}
+function statusColor(s) {
+  const map = { completed: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', partial_return: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', returned: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' };
+  return map[s] || 'bg-gray-100 text-gray-700';
+}
+function repairStatusLabel(s) {
+  const map = { received: 'قيد الاستلام', in_review: 'قيد المراجعة', pending_approval: 'في الانتظار', repaired: 'تم الإصلاح', delivered: 'مُسلمة', rejected: 'مرفوضة' };
+  return map[s] || s;
+}
+function repairStatusColor(s) {
+  const map = { received: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400', in_review: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400', pending_approval: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400', repaired: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400', delivered: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', rejected: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' };
+  return map[s] || 'bg-gray-100 text-gray-700';
+}
+
+(async () => {
+  const user = await pageInit('customer_details');
+  if (!user) return;
+
+  const params = new URLSearchParams(window.location.search);
+  const cid = params.get('id');
+  if (!cid) { location.href = 'customers.html'; return; }
+
+  document.getElementById('back-btn').addEventListener('click', () => {
+    history.back();
+  });
+
+  const res = await guard(() => api('customer_history', { id: cid }));
+  if (!res) return;
+
+  const all = await guard(() => api('customers_list', { limit: 1000 }));
+  const c = all.rows.find(x => x.id == cid);
+  if (!c) { toast('العميل غير موجود', 'error'); return; }
+
+  document.title = 'تفاصيل العميل: ' + c.name;
+  document.getElementById('cust-name').textContent = c.name;
+  document.getElementById('info-name').textContent = c.name;
+  document.getElementById('info-phone').textContent = c.phone || '—';
+  document.getElementById('info-date').textContent = c.created_at ? c.created_at.slice(0, 10) : '—';
+
+  const sales = res.sales || [];
+  document.getElementById('sales-count').textContent = sales.length;
+  const salesList = document.getElementById('sales-list');
+  salesList.innerHTML = sales.length ? sales.map(s => `
+    <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+      <td class="px-6 py-4 font-medium text-slate-800 dark:text-white">${esc(s.invoice_no)}</td>
+      <td class="px-6 py-4 text-slate-600 dark:text-slate-400 text-sm">${fmtDT(s.created_at)}</td>
+      <td class="px-6 py-4 font-medium text-primary font-num">${money(s.total)}</td>
+      <td class="px-6 py-4"><span class="px-2 py-1 rounded text-xs font-medium ${statusColor(s.status)}">${statusLabel(s.status)}</span></td>
+      <td class="px-6 py-4 text-center"><a href="receipt.html?id=${s.id}" class="inline-flex items-center gap-1 text-sm text-slate-600 dark:text-slate-400 hover:text-primary transition-colors" title="عرض الإيصال"><span class="material-icons-outlined text-sm">visibility</span></a></td>
+    </tr>`).join('') : '<tr><td colspan="5" class="px-6 py-12 text-center text-slate-400">لا توجد فواتير لهذا العميل</td></tr>';
+
+  const repairs = res.repairs || [];
+  document.getElementById('repairs-count').textContent = repairs.length;
+  const repairsList = document.getElementById('repairs-list');
+  repairsList.innerHTML = repairs.length ? repairs.map(r => `
+    <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+      <td class="px-6 py-4 font-medium text-slate-800 dark:text-white">${esc(r.ref)}</td>
+      <td class="px-6 py-4 text-slate-600 dark:text-slate-400 text-sm">${fmtDT(r.created_at)}</td>
+      <td class="px-6 py-4"><span class="px-2 py-1 rounded text-xs font-medium ${repairStatusColor(r.status)}">${repairStatusLabel(r.status)}</span></td>
+      <td class="px-6 py-4 font-medium text-slate-800 dark:text-white font-num">${money(r.cost)}</td>
+    </tr>`).join('') : '<tr><td colspan="4" class="px-6 py-12 text-center text-slate-400">لا توجد عمليات صيانة لهذا العميل</td></tr>';
+})();
+</script>
+</body></html>

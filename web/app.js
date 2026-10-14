@@ -83,6 +83,7 @@ async function guard(fn) {
 
 /* ===== شريط التنقل الموحد (كل الصفحات الثمانية reachable) ===== */
 const NAV = [
+  { page: 'customers', href: 'customers.html', icon: 'people', label: 'إدارة العملاء', admin: true },
   { page: 'pos', href: 'pos.html', icon: 'point_of_sale', label: 'نقاط البيع' },
   { page: 'history', href: 'history.html', icon: 'receipt_long', label: 'سجل المبيعات' },
   { page: 'receipt', href: 'receipt.html', icon: 'print', label: 'طباعة إيصال' },

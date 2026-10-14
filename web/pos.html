@@ -65,8 +65,9 @@
 <!-- Cart Items List -->
 <div class="flex-1 overflow-y-auto p-4 space-y-4" id="cart"></div>
 <!-- Customer + Discount -->
-<div class="px-6 pt-3 space-y-2">
-<input id="cust" class="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm" placeholder="اسم العميل (اختياري)"/>
+<div class="px-6 pt-3 space-y-2 relative">
+<input id="cust" class="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm" placeholder="اسم العميل (اختياري)" autocomplete="off"/>
+    <div id="cust-sug" class="absolute top-full left-0 right-0 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 hidden max-h-60 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700"></div>
 <div class="flex gap-2">
 <input id="disc" type="number" min="0" step="0.01" class="w-1/2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm" placeholder="خصم (مبلغ)"/>
 <input id="phone" class="w-1/2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm" placeholder="هاتف العميل (اختياري)"/>
@@ -335,7 +336,39 @@ document.getElementById('pay-ok').addEventListener('click', async () => {
   location.href = 'receipt.html?id=' + res.sale_id;
 });
 
-(async () => {
+  // Autocomplete for Customers
+  const custInput = document.getElementById('cust');
+  const custSug = document.getElementById('cust-sug');
+
+  custInput.addEventListener('input', async () => {
+    const q = custInput.value.trim();
+    if (q.length < 2) { custSug.classList.add('hidden'); return; }
+    
+    const res = await guard(() => api('customers_search', { q }));
+    if (!res || !res.length) { custSug.classList.add('hidden'); return; }
+    
+    custSug.innerHTML = res.map(c => `
+      <div class="p-3 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer flex justify-between items-center text-sm transition-colors" onclick="selectCustomer('${esc(c.name)}', '${esc(c.phone || '')}')">
+        <span class="font-medium text-slate-800 dark:text-white">${esc(c.name)}</span>
+        <span class="text-xs text-slate-500 dark:text-slate-400">${esc(c.phone || 'بدون هاتف')}</span>
+      </div>
+    `).join('');
+    custSug.classList.remove('hidden');
+  });
+
+  window.selectCustomer = (name, phone) => {
+    document.getElementById('cust').value = name;
+    document.getElementById('phone').value = phone;
+    document.getElementById('cust-sug').classList.add('hidden');
+  };
+
+  document.addEventListener('click', (e) => {
+    if (!custInput.contains(e.target) && !custSug.contains(e.target)) {
+      custSug.classList.add('hidden');
+    }
+  });
+
+  (async () => {
   user = await pageInit('pos');
   if (!user) return;
   document.getElementById('user-name').textContent = user.name;

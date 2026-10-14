@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>إدارة العملاء - تك زون للإلكترونيات</title>
+<link href="app.css" rel="stylesheet"/>
+<script>if(localStorage.getItem('tz-theme')==='dark')document.documentElement.classList.add('dark');</script>
+</head>
+<body id="shell" class="bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-200 h-screen overflow-hidden flex flex-col md:flex-row">
+<main class="flex-1 overflow-y-auto p-6 md:p-8">
+  <div class="max-w-6xl mx-auto">
+    <div class="flex justify-between items-center mb-8">
+      <div>
+        <h1 class="text-3xl font-bold text-slate-900 dark:text-white">إدارة العملاء</h1>
+        <p class="text-slate-500 dark:text-slate-400">عرض وتعديل وحذف بيانات العملاء المسجلين</p>
+      </div>
+      <button id="btn-add" class="px-6 py-3 rounded-xl bg-primary text-white font-bold shadow-lg shadow-primary/30 hover:bg-primary-dark transition-all flex items-center gap-2 active:scale-95">
+        <span class="material-icons-outlined">person_add</span>
+        إضافة عميل جديد
+      </button>
+    </div>
+
+    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+      <div class="p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex justify-between items-center">
+        <div class="relative w-full max-w-md">
+          <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+            <span class="material-icons-outlined text-sm">search</span>
+          </div>
+          <input id="q" class="w-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg py-2 pr-10 pl-4 text-sm outline-none focus:ring-2 focus:ring-primary" placeholder="بحث بالاسم أو الهاتف..."/>
+        </div>
+        <div class="text-sm text-slate-500 dark:text-slate-400 font-medium mr-4">
+          إجمالي العملاء: <span id="total-count" class="font-bold text-slate-800 dark:text-white">0</span>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-right border-collapse">
+          <thead>
+            <tr class="bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">
+              <th class="px-6 py-4 font-semibold">الاسم</th>
+              <th class="px-6 py-4 font-semibold">رقم الهاتف</th>
+              <th class="px-6 py-4 font-semibold">تاريخ التسجيل</th>
+              <th class="px-6 py-4 font-semibold text-center">الإجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="cust-list" class="divide-y divide-slate-100 dark:divide-slate-700">
+            <!-- Rows injected here -->
+          </tbody>
+        </table>
+      </div>
+      <div class="p-4 border-t border-slate-100 dark:border-slate-700 flex justify-center items-center gap-4" id="pagination">
+        <!-- Pagination buttons -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Add/Edit Customer -->
+  <div id="cust-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+      <h3 class="text-xl font-bold mb-6" id="modal-title">إضافة عميل جديد</h3>
+      <form id="cust-form" class="space-y-4">
+        <input type="hidden" id="f-id"/>
+        <div>
+          <label class="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">اسم العميل *</label>
+          <input id="f-name" required class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary" placeholder="مثلاً: محمد أحمد"/>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">رقم الهاتف</label>
+          <input id="f-phone" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary" placeholder="05xxxxxxxx"/>
+        </div>
+        <div class="flex gap-3 pt-4">
+          <button type="button" id="modal-cancel" class="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-600 font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">إلغاء</button>
+          <button type="submit" class="flex-1 py-3 rounded-xl bg-primary text-white font-bold shadow-lg shadow-primary/30 hover:bg-primary-dark transition-all">حفظ</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</main>
+<script src="app.js"></script>
+<script>
+(async () => {
+  const user = await pageInit('customers');
+  if (!user) return;
+  
+  const $ = (id) => document.getElementById(id);
+  let currentOffset = 0;
+  const LIMIT = 50;
+
+  async function loadCustomers() {
+    const q = $('q').value;
+    const res = q ? await guard(() => api('customers_search', { q })) : await guard(() => api('customers_list', { limit: LIMIT, offset: currentOffset }));
+    
+    if (!res) return;
+    const rows = q ? res : res.rows;
+    const total = q ? rows.length : res.total;
+    
+    $('total-count').textContent = total;
+    const list = $('cust-list');
+    list.innerHTML = rows.length ? rows.map(c => `
+      <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors cursor-pointer" onclick="location.href='customer_details.html?id=${c.id}'">
+        <td class="px-6 py-4 font-medium text-primary hover:underline">${esc(c.name)}</td>
+        <td class="px-6 py-4 text-slate-600 dark:text-slate-400 font-num">${esc(c.phone || '—')}</td>
+        <td class="px-6 py-4 text-slate-500 dark:text-slate-400 text-xs">${c.created_at ? c.created_at.slice(0,10) : '—'}</td>
+        <td class="px-6 py-4 text-center">
+          <div class="flex justify-center gap-2">
+            <button onclick="editCustomer(${c.id}); event.stopPropagation()" class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors flex items-center justify-center" title="تعديل">
+              <span class="material-icons-outlined text-sm">edit</span>
+            </button>
+            <button onclick="deleteCustomer(${c.id}); event.stopPropagation()" class="w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors flex items-center justify-center" title="حذف">
+              <span class="material-icons-outlined text-sm">delete</span>
+            </button>
+            <a href="customer_details.html?id=${c.id}" onclick="event.stopPropagation()" class="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors flex items-center justify-center" title="تفاصيل">
+              <span class="material-icons-outlined text-sm">visibility</span>
+            </a>
+          </div>
+        </td>
+      </tr>`).join('') : '<tr><td colspan="4" class="px-6 py-12 text-center text-slate-400">لا يوجد عملاء مطابقين</td></tr>';
+  }
+
+  window.editCustomer = async (id) => {
+    const rows = await guard(() => api('customers_list', { limit: 1000 }));
+    const c = rows.rows.find(x => x.id === id);
+    if (!c) { toast('العميل غير موجود', 'error'); return; }
+    
+    $('modal-title').textContent = 'تعديل بيانات العميل';
+    $('f-id').value = c.id;
+    $('f-name').value = c.name;
+    $('f-phone').value = c.phone || '';
+    $('cust-modal').classList.replace('hidden', 'flex');
+  };
+
+  window.deleteCustomer = async (id) => {
+    if (!confirm('هل أنت متأكد من حذف هذا العميل؟')) return;
+    if (await guard(() => api('customers_delete', { id }))) {
+      toast('تم حذف العميل');
+      loadCustomers();
+    }
+  };
+
+  $('btn-add').addEventListener('click', () => {
+    $('modal-title').textContent = 'إضافة عميل جديد';
+    $('f-id').value = '';
+    $('f-name').value = '';
+    $('f-phone').value = '';
+    $('cust-modal').classList.replace('hidden', 'flex');
+  });
+
+  $('modal-cancel').addEventListener('click', () => {
+    $('cust-modal').classList.replace('flex', 'hidden');
+  });
+
+  $('cust-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const res = await guard(() => api('customers_save', {
+      id: $('f-id').value || null,
+      name: $('f-name').value,
+      phone: $('f-phone').value
+    }));
+    if (res) {
+      toast('تم حفظ بيانات العميل');
+      $('cust-modal').classList.replace('flex', 'hidden');
+      loadCustomers();
+    }
+  });
+
+  $('q').addEventListener('input', () => {
+    currentOffset = 0;
+    loadCustomers();
+  });
+
+  loadCustomers();
+})();
+</script>
+</body></html>
