@@ -11,6 +11,7 @@ import sys
 DEFAULT_CASHIER_PERMS = {
     "pos_sell": True,
     "pos_price": False,
+    "pos_item_discount": False,
     "sales_return": False,
     "sales_all": False,
     "inventory_view": False,
@@ -37,6 +38,7 @@ CREATE TABLE IF NOT EXISTS users (
   pin_salt BLOB NOT NULL,
   pin_hash BLOB NOT NULL,
   permissions TEXT,
+  card_size INTEGER,
   created_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS categories (
@@ -53,6 +55,7 @@ CREATE TABLE IF NOT EXISTS products (
   qty INTEGER NOT NULL DEFAULT 0,
   min_qty INTEGER NOT NULL DEFAULT 5,
   tracked INTEGER NOT NULL DEFAULT 0,
+  image TEXT,
   notes TEXT,
   active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL
@@ -95,7 +98,11 @@ CREATE TABLE IF NOT EXISTS sales (
   tax INTEGER NOT NULL DEFAULT 0,
   total INTEGER NOT NULL DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'completed' CHECK (status IN ('completed','partial_return','returned')),
-  notes TEXT
+  notes TEXT,
+  modified_by INTEGER REFERENCES users(id),
+  modified_by_name TEXT,
+  modified_at TEXT,
+  modification_summary TEXT
 );
 CREATE TABLE IF NOT EXISTS sale_items (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -207,7 +214,6 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 
 CREATE INDEX IF NOT EXISTS idx_sales_created ON sales(created_at);
-CREATE INDEX IF NOT EXISTS idx_sales_customer ON sales(customer_id);
 CREATE INDEX IF NOT EXISTS idx_cust_payments_cust ON customer_payments(customer_id);
 CREATE INDEX IF NOT EXISTS idx_movements_product ON stock_movements(product_id);
 CREATE INDEX IF NOT EXISTS idx_serials_serial ON serials(serial);
@@ -296,6 +302,15 @@ def _ensure_schema_columns(conn: sqlite3.Connection):
         sales_cols = {c["name"] for c in conn.execute("PRAGMA table_info(sales)").fetchall()}
         if "customer_id" not in sales_cols:
             conn.execute("ALTER TABLE sales ADD COLUMN customer_id INTEGER REFERENCES customers(id)")
+        if "modified_by" not in sales_cols:
+            conn.execute("ALTER TABLE sales ADD COLUMN modified_by INTEGER REFERENCES users(id)")
+        if "modified_by_name" not in sales_cols:
+            conn.execute("ALTER TABLE sales ADD COLUMN modified_by_name TEXT")
+        if "modified_at" not in sales_cols:
+            conn.execute("ALTER TABLE sales ADD COLUMN modified_at TEXT")
+        if "modification_summary" not in sales_cols:
+            conn.execute("ALTER TABLE sales ADD COLUMN modification_summary TEXT")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_sales_customer ON sales(customer_id)")
 
         pay_cols = {c["name"] for c in conn.execute("PRAGMA table_info(payments)").fetchall()}
         if "ref_no" not in pay_cols:
@@ -304,11 +319,19 @@ def _ensure_schema_columns(conn: sqlite3.Connection):
         user_cols = {c["name"] for c in conn.execute("PRAGMA table_info(users)").fetchall()}
         if "permissions" not in user_cols:
             conn.execute("ALTER TABLE users ADD COLUMN permissions TEXT")
+        if "card_size" not in user_cols:
+            conn.execute("ALTER TABLE users ADD COLUMN card_size INTEGER")
 
-        # ضمان وجود مفتاح tax_enabled في الإعدادات
+        prod_cols = {c["name"] for c in conn.execute("PRAGMA table_info(products)").fetchall()}
+        if "image" not in prod_cols:
+            conn.execute("ALTER TABLE products ADD COLUMN image TEXT")
+
         te = conn.execute("SELECT value FROM settings WHERE key='tax_enabled'").fetchone()
         if not te:
             conn.execute("INSERT OR IGNORE INTO settings(key, value) VALUES('tax_enabled', '1')")
+        cs = conn.execute("SELECT value FROM settings WHERE key='pos_card_size'").fetchone()
+        if not cs:
+            conn.execute("INSERT OR IGNORE INTO settings(key, value) VALUES('pos_card_size', '200')")
         conn.commit()
     except Exception as e:
         print(f"Schema upgrade error: {e}")
@@ -367,6 +390,7 @@ def _seed(conn: sqlite3.Connection) -> None:
         "currency": "ج.م",
         "tax_enabled": "1",
         "tax_rate": "14",
+        "pos_card_size": "200",
     }
     conn.executemany("INSERT INTO settings(key, value) VALUES(?, ?)", list(defaults.items()))
 

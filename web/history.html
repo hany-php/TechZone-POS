@@ -152,11 +152,15 @@ async function load() {
       <td class="px-6 py-4 text-sm"><div class="flex items-center gap-2">
         <div class="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-[10px] text-blue-600 dark:text-blue-400 font-bold">${esc((x.user_name || '؟').slice(0, 1))}</div>
         <span class="text-slate-700 dark:text-slate-300">${esc(x.user_name)}</span></div></td>
-      <td class="px-6 py-4">${isSale ? badge(SALE_AR, x.status) : badge(REPAIR_AR, x.status)}</td>
+      <td class="px-6 py-4">
+        <div>${isSale ? badge(SALE_AR, x.status) : badge(REPAIR_AR, x.status)}</div>
+        ${(isSale && x.modified_by_name) ? `<div class="text-[11px] text-orange-600 dark:text-amber-300 font-bold mt-1" title="${esc(x.modification_summary || '')}">معدلة بواسطة: ${esc(x.modified_by_name)} (${fmtDT(x.modified_at)})</div>` : ''}
+      </td>
       <td class="px-6 py-4 font-num font-bold text-slate-900 dark:text-white">${fmt(isSale ? x.total : x.cost)} ${CURRENCY}</td>
       <td class="px-6 py-4"><div class="flex items-center justify-end gap-2 transition-opacity">
-        ${isSale ? `<a class="p-1.5 rounded text-slate-400 hover:text-primary hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors" title="طباعة" href="receipt.html?id=${x.id}"><span class="material-icons-outlined text-lg">print</span></a>` : `<a class="p-1.5 rounded text-slate-400 hover:text-primary hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors" title="فتح التذكرة" href="repair.html?id=${x.id}"><span class="material-icons-outlined text-lg">visibility</span></a>`}
-        ${(isSale && canReturn && x.status !== 'returned') ? `<button data-ret="${x.id}" class="p-1.5 rounded text-slate-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors" title="استرجاع"><span class="material-icons-outlined text-lg">replay</span></button>` : ''}
+        ${isSale ? `<a class="p-1.5 rounded text-slate-400 hover:text-primary hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors" title="طباعة ومعاينة" href="receipt.html?id=${x.id}"><span class="material-icons-outlined text-lg">print</span></a>` : `<a class="p-1.5 rounded text-slate-400 hover:text-primary hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors" title="فتح التذكرة" href="repair.html?id=${x.id}"><span class="material-icons-outlined text-lg">visibility</span></a>`}
+        ${(isSale && canReturn && x.status !== 'returned') ? `<a href="pos.html?edit_sale=${x.id}" class="px-2.5 py-1 rounded-lg bg-orange-50 dark:bg-orange-900/20 text-orange-600 hover:bg-orange-100 text-xs font-bold flex items-center gap-1" title="فتح الفاتورة في سلة المشتريات للتعديل أو المرتجع"><span class="material-icons-outlined text-sm">shopping_cart_checkout</span>تعديل بالسلة</a>` : ''}
+        ${(isSale && canReturn && x.status !== 'returned') ? `<button data-ret="${x.id}" class="p-1.5 rounded text-slate-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors" title="استرجاع سريع"><span class="material-icons-outlined text-lg">replay</span></button>` : ''}
       </div></td>
     </tr>`;
   }).join('') : '<tr><td colspan="8" class="px-6 py-12 text-center text-slate-400">لا توجد نتائج</td></tr>';

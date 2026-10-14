@@ -90,7 +90,7 @@
   <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
     <div>
       <h3 class="font-bold text-lg text-gray-800 dark:text-white" id="u-form-title">إدارة الموظفين وتخصيص الصلاحيات لكل مستخدم</h3>
-      <p class="text-xs text-gray-500">حدد لكل موظف الصلاحيات المسموحة له بدقة (البيع، تعديل الأسعار، المخزون، التعديل، الحذف، المرتجعات، التقارير...)</p>
+      <p class="text-xs text-gray-500">حدد لكل موظف الصلاحيات المسموحة له بدقة (البيع، خصم الأصناف %، استرجاع الفواتير، المخزون، التعديل، الحذف، التقارير...)</p>
     </div>
     <button id="u-reset" type="button" class="text-xs px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">تفريغ النموذج (موظف جديد)</button>
   </div>
@@ -130,11 +130,12 @@ let PERIOD = 'day', EDIT_USER_ID = null;
 
 const PERM_LABELS = [
   { key: 'pos_sell', label: 'البيع وإنشاء الفواتير (نقاط البيع)', def: true },
-  { key: 'pos_price', label: 'تعديل أسعار البيع في السلة', def: false },
-  { key: 'sales_return', label: 'عمل مرتجعات المبيعات', def: false },
+  { key: 'pos_item_discount', label: 'خصم على منتج معين في السلة (% أو مبلغ)', def: false },
+  { key: 'pos_price', label: 'تعديل أسعار البيع بحرية في السلة', def: false },
+  { key: 'sales_return', label: 'عرض فاتورة مدفوعة وعمل مرتجع أو خصم عليها', def: false },
   { key: 'sales_all', label: 'رؤية فواتير كل الموظفين في السجل', def: false },
   { key: 'inventory_view', label: 'دخول صفحة المخزون (عرض فقط)', def: false },
-  { key: 'inventory_edit', label: 'إضافة وتعديل وحذف المنتجات والفئات والكميات', def: false },
+  { key: 'inventory_edit', label: 'إضافة وتعديل وحذف المنتجات والصور والفئات', def: false },
   { key: 'cost_view', label: 'رؤية أسعار الشراء (التكلفة)', def: false },
   { key: 'customers_view', label: 'دخول صفحة العملاء وعرض كشف الحساب', def: true },
   { key: 'customers_edit', label: 'إضافة/تعديل العملاء وإصدار سندات قبض', def: true },

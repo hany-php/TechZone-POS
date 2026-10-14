@@ -104,7 +104,6 @@ def _customer_debt_summary(conn, cust_row) -> dict:
     for s in sales:
         d = dict(s)
         net_total = max(0, d["total"] - d["ret_amt"])
-        # المرتجعات تخفض أولاً من المديونية الآجلة إن وجدت على نفس الفاتورة
         net_credit = max(0, d["credit_amt"] - d["ret_amt"])
         d["net_total"] = net_total
         d["net_credit"] = net_credit
@@ -204,13 +203,24 @@ class Api:
     # ---------------------------------------------------------- جلسة ومستخدمون
     def users(self):
         with db.connect() as conn:
-            rows = conn.execute("SELECT id, username, name, role, permissions, created_at FROM users ORDER BY id").fetchall()
+            rows = conn.execute("SELECT id, username, name, role, permissions, card_size, created_at FROM users ORDER BY id").fetchall()
             out = []
             for r in rows:
                 d = dict(r)
                 d["permissions"] = db.parse_user_perms(d["role"], d.get("permissions"))
                 out.append(d)
             return out
+
+    def user_pref_save(self, card_size=None):
+        """حفظ تفضيلات العرض الخاصة بالمستخدم الحالي (مثل حجم بلوك المنتجات في نقاط البيع)."""
+        u = self._user()
+        cs = _int(card_size, 0) if card_size not in (None, "") else None
+        if cs is not None and (cs < 110 or cs > 360):
+            raise ApiError("حجم البلوك يجب أن يكون بين 110 و 360")
+        with db.connect() as conn:
+            conn.execute("UPDATE users SET card_size=? WHERE id=?", (cs, u["id"]))
+        _STATE["user"]["card_size"] = cs
+        return {"card_size": cs}
 
     def user_save(self, username, name, role="cashier", pin=None, permissions=None, id=None):
         self._perm("settings_manage")
@@ -280,6 +290,7 @@ class Api:
                 if admins <= 1:
                     raise ApiError("لا يمكن حذف المدير الوحيد في النظام")
             try:
+                conn.execute("UPDATE sales SET modified_by=NULL WHERE modified_by=?", (uid,))
                 conn.execute("DELETE FROM users WHERE id=?", (uid,))
             except sqlite3.IntegrityError:
                 raise ApiError("لا يمكن حذف مستخدم مرتبط بعمليات بيع أو صيانة سابقة")
@@ -301,13 +312,14 @@ class Api:
                 "name": row["name"],
                 "role": row["role"],
                 "permissions": perms,
+                "card_size": row["card_size"] if "card_size" in row.keys() else None,
             }
             return dict(_STATE["user"])
 
     def session(self):
         if _STATE["user"]:
             with db.connect() as conn:
-                row = conn.execute("SELECT id, username, name, role, permissions FROM users WHERE id=?", (_STATE["user"]["id"],)).fetchone()
+                row = conn.execute("SELECT id, username, name, role, permissions, card_size FROM users WHERE id=?", (_STATE["user"]["id"],)).fetchone()
                 if row:
                     _STATE["user"] = {
                         "id": row["id"],
@@ -315,6 +327,7 @@ class Api:
                         "name": row["name"],
                         "role": row["role"],
                         "permissions": db.parse_user_perms(row["role"], row["permissions"]),
+                        "card_size": row["card_size"],
                     }
         return {"user": _STATE["user"]}
 
@@ -331,7 +344,7 @@ class Api:
     def settings_save(self, **kv):
         self._perm("settings_manage")
         allowed = {"store_name", "store_address", "store_phone", "currency", "tax_enabled", "tax_rate",
-                   "store_email", "store_cr", "store_vat", "receipt_thanks", "receipt_footer",
+                   "pos_card_size", "store_email", "store_cr", "store_vat", "receipt_thanks", "receipt_footer",
                    "receipt_logo", "receipt_show_logo", "receipt_show_barcode",
                    "receipt_show_tax", "receipt_show_payments"}
         show = {"tax_enabled", "receipt_show_logo", "receipt_show_barcode", "receipt_show_tax", "receipt_show_payments"}
@@ -345,6 +358,11 @@ class Api:
                 if k in show:
                     if s not in ("0", "1"):
                         raise ApiError("قيمة عرض غير صالحة (استخدم 0 أو 1)")
+                elif k == "pos_card_size":
+                    cs = _int(s, 200)
+                    if cs < 110 or cs > 360:
+                        raise ApiError("حجم البلوك الافتراضي يجب أن يكون بين 110 و 360")
+                    s = str(cs)
                 elif k == "receipt_logo":
                     if not s.startswith("data:image/"):
                         raise ApiError("صيغة الشعار غير صالحة (يجب أن تكون صورة data:image/)")
@@ -451,31 +469,40 @@ class Api:
             return self._product_row(r, show_cost)
 
     def product_save(self, id=None, sku="", name="", category_id=None, price=0, cost=0,
-                     min_qty=5, tracked=0, notes=None, serials=None):
+                     min_qty=5, tracked=0, notes=None, serials=None, image=None):
         self._perm("inventory_edit")
         name = (name or "").strip()
         sku = (sku or "").strip()
         if not name or not sku:
             raise ApiError("اسم المنتج والباركود/SKU مطلوبان")
+        if image is not None and image != "":
+            image = str(image).strip()
+            if not image.startswith("data:image/"):
+                raise ApiError("صيغة صورة المنتج غير صالحة")
+            if len(image.encode("utf-8")) > 600 * 1024:
+                raise ApiError("حجم صورة المنتج كبير جداً (الحد الأقصى 600KB)")
         serials = [s.strip() for s in (serials or []) if s and s.strip()]
         with db.connect() as conn:
             try:
                 if id:
-                    cur = conn.execute(
-                        """UPDATE products SET sku=?, name=?, category_id=?, price=?, cost=?, min_qty=?, tracked=?, notes=?
+                    pid = _int(id)
+                    existing = conn.execute("SELECT image FROM products WHERE id=?", (pid,)).fetchone()
+                    if not existing:
+                        raise ApiError("المنتج غير موجود")
+                    final_img = existing["image"] if image is None else (None if image == "" else image)
+                    conn.execute(
+                        """UPDATE products SET sku=?, name=?, category_id=?, price=?, cost=?, min_qty=?, tracked=?, image=?, notes=?
                            WHERE id=?""",
                         (sku, name, _int(category_id) or None, _money(price), _money(cost),
-                         _int(min_qty, 5), _int(tracked), notes, _int(id)),
+                         _int(min_qty, 5), _int(tracked), final_img, notes, pid),
                     )
-                    if not cur.rowcount:
-                        raise ApiError("المنتج غير موجود")
-                    pid = _int(id)
                 else:
+                    final_img = None if not image else image
                     cur = conn.execute(
-                        """INSERT INTO products(sku, name, category_id, price, cost, min_qty, tracked, notes, created_at)
-                           VALUES(?,?,?,?,?,?,?,?,?)""",
+                        """INSERT INTO products(sku, name, category_id, price, cost, min_qty, tracked, image, notes, created_at)
+                           VALUES(?,?,?,?,?,?,?,?,?,?)""",
                         (sku, name, _int(category_id) or None, _money(price), _money(cost),
-                         _int(min_qty, 5), _int(tracked), notes, db.now()),
+                         _int(min_qty, 5), _int(tracked), final_img, notes, db.now()),
                     )
                     pid = cur.lastrowid
                 if serials:
@@ -506,23 +533,23 @@ class Api:
                 raise ApiError("المنتج غير موجود")
             return True
 
-    def products_search(self, q=None, limit=30, category_id=None):
+    def products_search(self, q=None, limit=60, category_id=None):
         self._user()
         q = (q or "").strip()
-        limit = _int(limit, 30)
+        limit = _int(limit, 60)
         cat = _int(category_id) if category_id not in (None, "") else None
         cat_sql = " AND p.category_id=?" if cat else ""
         cat_args = [cat] if cat else []
         with db.connect() as conn:
             if not q:
                 rows = conn.execute(
-                    """SELECT p.id, p.name, p.sku, p.price, p.qty, p.tracked, p.min_qty, c.name category
+                    """SELECT p.id, p.name, p.sku, p.price, p.qty, p.tracked, p.min_qty, p.image, c.name category
                        FROM products p LEFT JOIN categories c ON c.id=p.category_id
                        WHERE p.active=1""" + cat_sql + """ ORDER BY p.name LIMIT ?""", (*cat_args, limit),
                 ).fetchall()
             else:
                 rows = conn.execute(
-                    """SELECT DISTINCT p.id, p.name, p.sku, p.price, p.qty, p.tracked, p.min_qty, c.name category
+                    """SELECT DISTINCT p.id, p.name, p.sku, p.price, p.qty, p.tracked, p.min_qty, p.image, c.name category
                        FROM products p LEFT JOIN categories c ON c.id=p.category_id
                        WHERE p.active=1""" + cat_sql + """ AND (p.name LIKE ? OR p.sku LIKE ? OR EXISTS(
                            SELECT 1 FROM serials s WHERE s.product_id=p.id AND s.serial LIKE ? AND s.status='in_stock'))
@@ -647,6 +674,7 @@ class Api:
         limit, offset = _int(limit, 100), _int(offset, 0)
         with db.connect() as conn:
             all_rows = conn.execute("SELECT * FROM customers ORDER BY name").fetchall()
+            all_enriched = []
             enriched = []
             for r in all_rows:
                 d = dict(r)
@@ -655,11 +683,20 @@ class Api:
                 d["credit_total"] = summary["credit_total"]
                 d["paid_total"] = summary["paid_total"]
                 d["debt"] = summary["debt"]
+                all_enriched.append(d)
                 if debt_only and d["debt"] <= 0:
                     continue
                 enriched.append(d)
             total = len(enriched)
-            return {"rows": enriched[offset:offset + limit], "total": total}
+            global_summary = {
+                "total_customers": len(all_enriched),
+                "debt_customers_count": sum(1 for x in all_enriched if x["debt"] > 0),
+                "total_purchases": sum(x["total_purchases"] for x in all_enriched),
+                "total_credit": sum(x["credit_total"] for x in all_enriched),
+                "total_paid": sum(x["paid_total"] for x in all_enriched),
+                "total_debt": sum(x["debt"] for x in all_enriched),
+            }
+            return {"rows": enriched[offset:offset + limit], "total": total, "summary": global_summary}
 
     def customer_history(self, id):
         self._perm("customers_view")
@@ -788,6 +825,92 @@ class Api:
                 "shift_sales": dict(shift_sales) if shift_sales else None,
             }
 
+    def shift_summary(self):
+        """تقرير تفصيلي كامل للوردية المفتوحة قبل إغلاقها (جميع العمليات وتفصيل النقدي والمحفظة والآجل)."""
+        u = self._user()
+        with db.connect() as conn:
+            s = self._open_shift(conn, u["id"])
+            if not s:
+                raise ApiError("لا توجد وردية مفتوحة حالياً")
+            sid = s["id"]
+            sales_rows = conn.execute(
+                """SELECT s.id, s.invoice_no, s.created_at, s.customer_name, s.total, s.status
+                   FROM sales s WHERE s.shift_id=? ORDER BY s.id DESC""",
+                (sid,),
+            ).fetchall()
+
+            pays_by_method = {"cash": 0, "wallet": 0, "credit": 0}
+            for r in conn.execute(
+                """SELECT p.method, COALESCE(SUM(p.amount),0) t FROM payments p
+                   JOIN sales s ON s.id=p.sale_id WHERE s.shift_id=? GROUP BY p.method""",
+                (sid,),
+            ).fetchall():
+                pays_by_method[r["method"]] = r["t"]
+
+            ret_row = conn.execute(
+                """SELECT COUNT(*) n, COALESCE(SUM(sr.total),0) t FROM sale_returns sr
+                   JOIN sales s ON s.id=sr.sale_id WHERE s.shift_id=?""",
+                (sid,),
+            ).fetchone()
+
+            vouchers_rows = conn.execute(
+                """SELECT cp.*, c.name AS customer_name FROM customer_payments cp
+                   LEFT JOIN customers c ON c.id=cp.customer_id
+                   WHERE cp.shift_id=? ORDER BY cp.id DESC""",
+                (sid,),
+            ).fetchall()
+            cash_vouchers = sum(v["amount"] for v in vouchers_rows if v["method"] == "cash")
+            wallet_vouchers = sum(v["amount"] for v in vouchers_rows if v["method"] == "wallet")
+
+            ops = []
+            for sr in sales_rows:
+                spays = conn.execute("SELECT method, amount, ref_no FROM payments WHERE sale_id=?", (sr["id"],)).fetchall()
+                m_labels = []
+                for p in spays:
+                    lbl = {"cash": "نقدي", "wallet": "محفظة", "credit": "آجل"}.get(p["method"], p["method"])
+                    if p["ref_no"]:
+                        lbl += f" ({p['ref_no']})"
+                    m_labels.append(f"{lbl}: {_fmt_money(p['amount'])}")
+                ops.append({
+                    "kind": "sale",
+                    "ref": sr["invoice_no"],
+                    "created_at": sr["created_at"],
+                    "party": sr["customer_name"] or "عميل نقدي",
+                    "amount": sr["total"],
+                    "methods_summary": " + ".join(m_labels) if m_labels else "—",
+                    "status": sr["status"],
+                })
+            for vr in vouchers_rows:
+                lbl = "سند قبض نقدي" if vr["method"] == "cash" else f"سند قبض محفظة ({vr['ref_no'] or ''})"
+                ops.append({
+                    "kind": "voucher",
+                    "ref": vr["ref"],
+                    "created_at": vr["created_at"],
+                    "party": vr["customer_name"] or "عميل",
+                    "amount": vr["amount"],
+                    "methods_summary": lbl,
+                    "status": "completed",
+                })
+            ops.sort(key=lambda x: x["created_at"], reverse=True)
+
+            expected_cash = s["opening_cash"] + pays_by_method["cash"] + cash_vouchers
+            sales_total = sum(sr["total"] for sr in sales_rows)
+            return {
+                "shift": dict(s),
+                "opening_cash": s["opening_cash"],
+                "sales_count": len(sales_rows),
+                "sales_total": sales_total,
+                "returns_count": ret_row["n"],
+                "returns_total": ret_row["t"],
+                "cash_sales": pays_by_method["cash"],
+                "wallet_sales": pays_by_method["wallet"],
+                "credit_sales": pays_by_method["credit"],
+                "cash_vouchers": cash_vouchers,
+                "wallet_vouchers": wallet_vouchers,
+                "expected_cash": expected_cash,
+                "operations": ops,
+            }
+
     def shift_open(self, opening_cash=0):
         u = self._user()
         with db.connect() as conn:
@@ -838,7 +961,7 @@ class Api:
     # ---------------------------------------------------------- مبيعات
     def sale_create(self, items, discount=0, payments=None, customer_name=None, customer_phone=None, notes=None):
         u = self._perm("pos_sell")
-        can_edit_price = self._has_perm("pos_price")
+        can_edit_price = self._has_perm("pos_price") or self._has_perm("pos_item_discount")
         items = items or []
         if not items:
             raise ApiError("السلة فارغة")
@@ -872,6 +995,8 @@ class Api:
                 unit = p["price"]
                 if up is not None and can_edit_price:
                     unit = _money(up)
+                    if unit < 0:
+                        raise ApiError("سعر الوحدة بعد الخصم لا يمكن أن يكون سالباً")
                 if p["tracked"]:
                     serial_ids = it.get("serial_ids") or []
                     if len(serial_ids) != qty:
@@ -968,7 +1093,12 @@ class Api:
             if not r:
                 raise ApiError("الفاتورة غير موجودة")
             items = []
-            for x in conn.execute("SELECT * FROM sale_items WHERE sale_id=?", (r["id"],)):
+            for x in conn.execute(
+                """SELECT si.*, p.image, p.price AS catalog_price, p.tracked
+                   FROM sale_items si LEFT JOIN products p ON p.id=si.product_id
+                   WHERE si.sale_id=?""",
+                (r["id"],),
+            ):
                 it = dict(x)
                 returned_qty = conn.execute(
                     "SELECT COALESCE(SUM(qty),0) q FROM sale_return_items WHERE sale_item_id=?",
@@ -978,10 +1108,201 @@ class Api:
                 it["remaining_qty"] = max(0, it["qty"] - returned_qty)
                 items.append(it)
             pays = [dict(x) for x in conn.execute("SELECT * FROM payments WHERE sale_id=?", (r["id"],))]
+            returns_log = [
+                dict(x) for x in conn.execute(
+                    """SELECT sr.*, u.name AS user_name
+                       FROM sale_returns sr JOIN users u ON u.id=sr.user_id
+                       WHERE sr.sale_id=? ORDER BY sr.id DESC""",
+                    (r["id"],),
+                )
+            ]
             d = dict(r)
             d["items"] = items
             d["payments"] = pays
+            d["returns_log"] = returns_log
             return d
+
+    def sale_discount(self, sale_id, discount=0):
+        """تعديل أو إضافة خصم على فاتورة تم دفعها (يتطلب صلاحية المرتجعات أو خصم الأصناف)."""
+        u = self._user()
+        if not (self._has_perm("sales_return") or self._has_perm("pos_item_discount")):
+            raise ApiError("ممنوع: للمدير أو لمن يملك صلاحية المرتجعات والخصم فقط")
+        sid = _int(sale_id)
+        disc = _money(discount)
+        with db.connect() as conn:
+            s = conn.execute("SELECT * FROM sales WHERE id=?", (sid,)).fetchone()
+            if not s:
+                raise ApiError("الفاتورة غير موجودة")
+            if disc < 0 or disc > s["subtotal"]:
+                raise ApiError("قيمة الخصم غير صالحة (يجب ألا تتجاوز المجموع الفرعي)")
+            tax_rate = Decimal(0)
+            if s["tax"] > 0 and (s["subtotal"] - s["discount"]) > 0:
+                st = self._settings(conn)
+                tax_rate = Decimal(st.get("tax_rate", "14") or 0)
+            taxable = s["subtotal"] - disc
+            new_tax = int((Decimal(taxable) * tax_rate / 100).to_integral_value(rounding=ROUND_HALF_UP))
+            new_total = taxable + new_tax
+            diff = s["total"] - new_total
+            now_ts = db.now()
+            log_line = f"[{now_ts}] بواسطة {u['name']}: تعديل خصم الفاتورة إلى {_fmt_money(disc)}"
+            prev_log = (s["modification_summary"] or "").strip() if "modification_summary" in s.keys() else ""
+            full_log = (prev_log + " | " + log_line) if prev_log else log_line
+            conn.execute(
+                "UPDATE sales SET discount=?, tax=?, total=?, modified_by=?, modified_by_name=?, modified_at=?, modification_summary=? WHERE id=?",
+                (disc, new_tax, new_total, u["id"], u["name"], now_ts, full_log, sid),
+            )
+            if diff != 0:
+                first_pay = conn.execute("SELECT * FROM payments WHERE sale_id=? ORDER BY id LIMIT 1", (sid,)).fetchone()
+                if first_pay:
+                    new_amt = max(0, first_pay["amount"] - diff)
+                    conn.execute("UPDATE payments SET amount=? WHERE id=?", (new_amt, first_pay["id"]))
+            return {"sale_id": sid, "discount": disc, "total": new_total, "modified_by_name": u["name"], "modified_at": now_ts}
+
+    def sale_modify_from_cart(self, sale_id, items=None, discount=0, notes=None, reason=None):
+        """حفظ تعديل / مرتجع فاتورة مدفوعة من داخل سلة المشتريات مع توثيق المستخدم والوقت لمنع التلاعب."""
+        u = self._user()
+        if not (self._has_perm("sales_return") or self._has_perm("pos_item_discount") or self._has_perm("pos_price")):
+            raise ApiError("ممنوع: ليست لديك صلاحية تعديل الفواتير أو عمل مرتجع")
+        sid = _int(sale_id)
+        items = items or []
+        sub_map = {_int(it.get("sale_item_id")): it for it in items if it.get("sale_item_id")}
+        with db.connect() as conn:
+            s = conn.execute("SELECT * FROM sales WHERE id=?", (sid,)).fetchone()
+            if not s:
+                raise ApiError("الفاتورة غير موجودة")
+            if s["status"] == "returned":
+                raise ApiError("هذه الفاتورة مرتجعة بالكامل مسبقاً")
+
+            orig_items = conn.execute("SELECT * FROM sale_items WHERE sale_id=?", (sid,)).fetchall()
+            returned_entries = []
+            price_changes = []
+            now_ts = db.now()
+
+            for si in orig_items:
+                item_id = si["id"]
+                already_ret = conn.execute(
+                    "SELECT COALESCE(SUM(qty),0) q FROM sale_return_items WHERE sale_item_id=?",
+                    (item_id,),
+                ).fetchone()["q"]
+                orig_rem = max(0, si["qty"] - already_ret)
+                if orig_rem <= 0:
+                    continue
+
+                sub_it = sub_map.get(item_id)
+                new_rem = _int(sub_it.get("qty", 0)) if sub_it else 0
+                if new_rem < 0 or new_rem > orig_rem:
+                    raise ApiError(f"الكمية للصنف «{si['name']}» غير صالحة (المتاح في الفاتورة: {orig_rem})")
+
+                if new_rem < orig_rem:
+                    if not self._has_perm("sales_return"):
+                        raise ApiError("ممنوع: ليست لديك صلاحية استرجاع أصناف من الفاتورة")
+                    ret_qty = orig_rem - new_rem
+                    conn.execute("UPDATE products SET qty=qty+? WHERE id=?", (ret_qty, si["product_id"]))
+                    if si["serial_id"]:
+                        conn.execute("UPDATE serials SET status='in_stock' WHERE id=?", (si["serial_id"],))
+                    after_qty = conn.execute("SELECT qty FROM products WHERE id=?", (si["product_id"],)).fetchone()[0]
+                    conn.execute(
+                        """INSERT INTO stock_movements(created_at, user_id, product_id, qty_change, qty_after, reason, ref)
+                           VALUES(?,?,?,?,?,?,?)""",
+                        (now_ts, u["id"], si["product_id"], ret_qty, after_qty, "return", s["invoice_no"]),
+                    )
+                    ret_amt = si["unit_price"] * ret_qty
+                    returned_entries.append((item_id, ret_qty, ret_amt, si["name"]))
+
+                if sub_it and sub_it.get("unit_price") is not None and new_rem > 0:
+                    new_up = _money(sub_it.get("unit_price"))
+                    if new_up < 0:
+                        raise ApiError("سعر الصنف لا يمكن أن يكون سالباً")
+                    if new_up != si["unit_price"]:
+                        if not (self._has_perm("pos_item_discount") or self._has_perm("pos_price")):
+                            raise ApiError("ممنوع: ليست لديك صلاحية تعديل أسعار أو خصم الأصناف")
+                        conn.execute(
+                            "UPDATE sale_items SET unit_price=?, line_total=qty*? WHERE id=?",
+                            (new_up, new_up, item_id),
+                        )
+                        price_changes.append(f"خصم سعر «{si['name']}» من {_fmt_money(si['unit_price'])} إلى {_fmt_money(new_up)}")
+
+            new_disc = _money(discount)
+            if new_disc != s["discount"]:
+                if not (self._has_perm("pos_item_discount") or self._has_perm("pos_price") or self._has_perm("sales_return")):
+                    raise ApiError("ممنوع: ليست لديك صلاحية تعديل خصم الفاتورة")
+                price_changes.append(f"تعديل خصم الفاتورة من {_fmt_money(s['discount'])} إلى {_fmt_money(new_disc)}")
+
+            if not returned_entries and not price_changes and (notes or None) == s["notes"]:
+                raise ApiError("لم يتم إجراء أي مرتجع أو تعديل على الفاتورة")
+
+            ret_total = 0
+            if returned_entries:
+                ret_total = sum(x[2] for x in returned_entries)
+                cur = conn.execute(
+                    "INSERT INTO sale_returns(sale_id, user_id, created_at, reason, total) VALUES(?,?,?,?,?)",
+                    (sid, u["id"], now_ts, (reason or "").strip() or "مرتجع من سلة نقاط البيع", ret_total),
+                )
+                for item_id, r_qty, r_amt, _ in returned_entries:
+                    conn.execute(
+                        "INSERT INTO sale_return_items(return_id, sale_item_id, qty, amount) VALUES(?,?,?,?)",
+                        (cur.lastrowid, item_id, r_qty, r_amt),
+                    )
+
+            # إعادة حساب إجمالي الفاتورة للأصناف المتبقية
+            updated_items = conn.execute("SELECT * FROM sale_items WHERE sale_id=?", (sid,)).fetchall()
+            new_subtotal = 0
+            remaining_units = 0
+            for si in updated_items:
+                alr = conn.execute(
+                    "SELECT COALESCE(SUM(qty),0) q FROM sale_return_items WHERE sale_item_id=?",
+                    (si["id"],),
+                ).fetchone()["q"]
+                rem = max(0, si["qty"] - alr)
+                remaining_units += rem
+                new_subtotal += si["qty"] * si["unit_price"]
+
+            if new_disc < 0 or new_disc > new_subtotal:
+                new_disc = min(max(0, new_disc), new_subtotal)
+
+            tax_rate = Decimal(0)
+            if s["tax"] > 0 and (s["subtotal"] - s["discount"]) > 0:
+                st = self._settings(conn)
+                tax_rate = Decimal(st.get("tax_rate", "14") or 0)
+            taxable = max(0, new_subtotal - new_disc)
+            new_tax = int((Decimal(taxable) * tax_rate / 100).to_integral_value(rounding=ROUND_HALF_UP))
+            new_total = taxable + new_tax
+
+            total_ret_ever = conn.execute(
+                "SELECT COALESCE(SUM(total),0) t FROM sale_returns WHERE sale_id=?", (sid,)
+            ).fetchone()["t"]
+            new_status = "returned" if remaining_units == 0 else ("partial_return" if (total_ret_ever > 0 or price_changes) else s["status"])
+
+            log_parts = []
+            if returned_entries:
+                log_parts.append("مرتجع (" + "، ".join(f"{nm} ×{rq}" for _, rq, _, nm in returned_entries) + ")")
+            if price_changes:
+                log_parts.extend(price_changes)
+            if reason and reason.strip():
+                log_parts.append(f"السبب: {reason.strip()}")
+            log_line = f"[{now_ts}] بواسطة {u['name']}: " + (" — ".join(log_parts) if log_parts else "تعديل فاتورة")
+            prev_log = (s["modification_summary"] or "").strip() if "modification_summary" in s.keys() else ""
+            full_log = (prev_log + " | " + log_line) if prev_log else log_line
+
+            conn.execute(
+                """UPDATE sales
+                   SET subtotal=?, discount=?, tax=?, total=?, status=?, notes=?,
+                       modified_by=?, modified_by_name=?, modified_at=?, modification_summary=?
+                   WHERE id=?""",
+                (new_subtotal, new_disc, new_tax, new_total, new_status,
+                 (notes or "").strip() or s["notes"], u["id"], u["name"], now_ts, full_log, sid),
+            )
+            return {
+                "sale_id": sid,
+                "invoice_no": s["invoice_no"],
+                "status": new_status,
+                "total": new_total,
+                "returned_total": ret_total,
+                "net_after_returns": max(0, new_total - total_ret_ever),
+                "modified_by_name": u["name"],
+                "modified_at": now_ts,
+                "modification_summary": full_log,
+            }
 
     def receipt_text(self, id):
         """نص إيصال 80 عموداً للطابعة الحرارية."""
@@ -1049,9 +1370,79 @@ class Api:
         L.append(sep("="))
         return "\n".join(line[:W] for line in L)
 
+    def whatsapp_send_invoice(self, sale_id, phone=None):
+        """فتح تطبيق واتساب على الجهاز مباشرة لإرسال تفاصيل الفاتورة لرقم العميل، مع حفظ نسخة محلية في مجلد data/receipts."""
+        import urllib.parse
+        import webbrowser
+        d = self.sale(sale_id)
+        with db.connect() as conn:
+            st = self._settings(conn)
+        raw_phone = (phone or d.get("customer_phone") or "").strip()
+        digits = "".join(ch for ch in raw_phone if ch.isdigit())
+        if not digits:
+            raise ApiError("يرجى إدخال رقم موبايل العميل (مثال: 010xxxxxxxx) لإرسال الفاتورة عبر واتساب")
+        if digits.startswith("00"):
+            digits = digits[2:]
+        elif digits.startswith("01") and len(digits) == 11:
+            digits = "2" + digits
+        elif not digits.startswith("20") and len(digits) == 10:
+            digits = "20" + digits
+
+        store_name = st.get("store_name", "تك زون للإلكترونيات")
+        cur = st.get("currency", "ج.م")
+        lines = [
+            f"*{store_name}*",
+            f"فاتورة رقم: *{d['invoice_no']}*",
+            f"التاريخ: {d['created_at'][:16]}",
+        ]
+        if d.get("customer_name"):
+            lines.append(f"العميل: {d['customer_name']}")
+        if d.get("status") in ("partial_return", "returned"):
+            lines.append(f"الحالة: *{'مرتجع كلي' if d['status'] == 'returned' else 'مرتجع جزئي / معدلة'}*")
+        lines.append("───────────────")
+        for it in d["items"]:
+            rem = it.get("remaining_qty", it["qty"])
+            ret = it.get("returned_qty", 0)
+            ret_note = f" (مرتجع {ret})" if ret > 0 else ""
+            lines.append(f"• {it['name']} × {rem}{ret_note} = {_fmt_money(rem * it['unit_price'])} {cur}")
+        lines.append("───────────────")
+        if d.get("discount"):
+            lines.append(f"الخصم: -{_fmt_money(d['discount'])} {cur}")
+        if d.get("tax") and st.get("tax_enabled", "1") != "0":
+            lines.append(f"الضريبة: {_fmt_money(d['tax'])} {cur}")
+        lines.append(f"*الإجمالي المطلوب: {_fmt_money(d['total'])} {cur}*")
+        if st.get("receipt_thanks"):
+            lines.append(st["receipt_thanks"])
+
+        msg_text = "\n".join(lines)
+        encoded = urllib.parse.quote(msg_text)
+
+        # حفظ نسخة نصية/قابلة للطباعة من الإيصال داخل مجلد data/receipts لسهولة إرفاقها
+        receipts_dir = pathlib.Path(db.db_path()).parent / "receipts"
+        receipts_dir.mkdir(parents=True, exist_ok=True)
+        txt_file = receipts_dir / f"{d['invoice_no']}.txt"
+        txt_file.write_text(self.receipt_text(sale_id), encoding="utf-8")
+
+        wa_proto = f"whatsapp://send?phone={digits}&text={encoded}"
+        wa_web = f"https://wa.me/{digits}?text={encoded}"
+        opened = False
+        if hasattr(os, "startfile"):
+            try:
+                os.startfile(wa_proto)
+                opened = True
+            except OSError:
+                opened = False
+        if not opened:
+            try:
+                webbrowser.open(wa_web)
+                opened = True
+            except Exception:
+                pass
+        return {"phone": digits, "url": wa_web, "receipt_file": str(txt_file), "opened": opened}
+
     def sales(self, date=None, kind=None, q=None, limit=100, offset=0):
         u = self._user()
-        see_all = self._has_perm("sales_all")
+        see_all = self._has_perm("sales_all") or self._has_perm("sales_return")
         limit, offset = _int(limit, 100), _int(offset, 0)
         with db.connect() as conn:
             out, tot = [], 0
@@ -1062,13 +1453,14 @@ class Api:
                     where.append("s.created_at LIKE ?")
                     args.append(f"{date}%")
                 if q:
-                    where.append("(s.invoice_no LIKE ? OR s.customer_name LIKE ?)")
-                    args += [f"%{q}%", f"%{q}%"]
+                    where.append("(s.invoice_no LIKE ? OR s.customer_name LIKE ? OR s.customer_phone LIKE ?)")
+                    args += [f"%{q}%", f"%{q}%", f"%{q}%"]
                 if not see_all:
                     where.append("s.user_id=?")
                     args.append(u["id"])
                 base = f"""SELECT s.id, s.invoice_no, s.created_at, u.name user_name,
-                                  s.status, s.total, s.customer_name
+                                  s.status, s.total, s.discount, s.customer_name,
+                                  s.modified_by_name, s.modified_at, s.modification_summary
                            FROM sales s JOIN users u ON u.id=s.user_id
                            WHERE {' AND '.join(where)}"""
                 tot += conn.execute(base.replace("SELECT s.id", "SELECT COUNT(*)"), args).fetchone()[0]
@@ -1164,8 +1556,13 @@ class Api:
                             JOIN sale_returns sr ON sr.id=r.return_id WHERE sr.sale_id=?)""",
                 (s["id"], s["id"]),
             ).fetchone()[0]
+            now_ts = db.now()
+            log_line = f"[{now_ts}] بواسطة {u['name']}: مرتجع بقيمة {_fmt_money(total)}" + (f" ({reason})" if reason else "")
+            prev_log = (s["modification_summary"] or "").strip() if "modification_summary" in s.keys() else ""
+            full_log = (prev_log + " | " + log_line) if prev_log else log_line
             conn.execute(
-                "UPDATE sales SET status=? WHERE id=?", ("returned" if not remaining else "partial_return", s["id"]),
+                "UPDATE sales SET status=?, modified_by=?, modified_by_name=?, modified_at=?, modification_summary=? WHERE id=?",
+                ("returned" if not remaining else "partial_return", u["id"], u["name"], now_ts, full_log, s["id"]),
             )
             return {"return_id": cur.lastrowid, "total": total}
 
@@ -1420,13 +1817,13 @@ class Api:
         with db.connect() as conn:
             rows = conn.execute(
                 f"""SELECT p.name, p.sku,
-                           SUM(i.qty - COALESCE((SELECT SUM(ri.qty) FROM sale_return_items ri WHERE ri.sale_item_id=i.id), 0)) qty,
-                           SUM(i.line_total - COALESCE((SELECT SUM(ri.amount) FROM sale_return_items ri WHERE ri.sale_item_id=i.id), 0)) total
+                           SUM(i.qty - COALESCE((SELECT SUM(ri.qty) FROM sale_return_items ri WHERE ri.sale_item_id=i.id), 0)) AS sold_qty,
+                           SUM(i.line_total - COALESCE((SELECT SUM(ri.amount) FROM sale_return_items ri WHERE ri.sale_item_id=i.id), 0)) AS total
                     FROM sale_items i JOIN sales s ON s.id=i.sale_id JOIN products p ON p.id=i.product_id
-                    WHERE {' AND '.join(where)} GROUP BY p.id HAVING qty > 0 ORDER BY qty DESC LIMIT ?""",
+                    WHERE {' AND '.join(where)} GROUP BY p.id HAVING sold_qty > 0 ORDER BY sold_qty DESC LIMIT ?""",
                 args + [limit],
             ).fetchall()
-            return [dict(r) for r in rows]
+            return [{"name": r["name"], "sku": r["sku"], "qty": r["sold_qty"], "total": r["total"]} for r in rows]
 
     def report_profit(self, date_from=None, date_to=None):
         self._perm("reports_view")

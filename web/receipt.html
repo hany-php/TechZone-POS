@@ -23,7 +23,7 @@
 </head>
 <body id="shell" class="bg-background-light dark:bg-background-dark font-display min-h-screen flex flex-col md:flex-row">
 <main class="flex-1 min-w-0 p-4 md:p-8">
-<div class="max-w-[1200px] mx-auto">
+<div class="w-full">
 <!-- Header -->
 <div class="flex justify-between items-center mb-6">
 <div>
@@ -110,12 +110,16 @@
 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">طرق الدفع المسجلة</label>
 <div class="space-y-2" id="pays"></div>
 </div>
-<div class="mt-auto pt-6 border-t border-gray-100 dark:border-gray-800 flex gap-4">
+<div class="mt-auto pt-6 border-t border-gray-100 dark:border-gray-800 flex flex-wrap gap-3">
 <button onclick="window.print()" class="flex-1 bg-primary hover:bg-primary-dark text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 transition-transform active:scale-[0.98]">
 <span class="material-icons-outlined">print</span>
-طباعة
+طباعة الإيصال
 </button>
-<button id="btn-text" class="px-6 py-4 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors">
+<button id="btn-wa" type="button" class="px-5 py-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-2 transition-colors shadow-lg shadow-emerald-600/20">
+<span class="material-icons-outlined">send</span>
+إرسال عبر واتساب
+</button>
+<button id="btn-text" class="px-5 py-4 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors">
 <span class="material-icons-outlined">receipt</span>
 نص حراري
 </button>
@@ -385,7 +389,12 @@
     <div class="flex justify-between"><span class="text-slate-500">الكاشير</span><span class="font-bold">${esc(s.user_name)}</span></div>
     ${s.customer_name ? `<div class="flex justify-between"><span class="text-slate-500">العميل</span><span class="font-bold">${esc(s.customer_name)}${s.customer_phone ? ' — ' + esc(s.customer_phone) : ''}</span></div>` : ''}
     ${s.notes ? `<div class="flex justify-between"><span class="text-slate-500">ملاحظات</span><span class="font-medium">${esc(s.notes)}</span></div>` : ''}
-    <div class="flex justify-between"><span class="text-slate-500">الحالة</span><span class="font-bold">${s.status === 'returned' ? 'مرتجع' : s.status === 'partial_return' ? 'إرجاع جزئي' : 'مكتمل'}</span></div>`;
+    <div class="flex justify-between"><span class="text-slate-500">الحالة</span><span class="font-bold">${s.status === 'returned' ? 'فاتورة مرتجع كلي' : s.status === 'partial_return' ? 'فاتورة مرتجع جزئي / معدلة' : 'فاتورة بيع مكتملة'}</span></div>
+    ${s.modified_by_name ? `<div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-xs space-y-1">
+      <div class="font-bold text-orange-700 dark:text-amber-300">سجل الرقابة والتعديلات على الفاتورة:</div>
+      <div>آخر تعديل/مرتجع بواسطة: <b>${esc(s.modified_by_name)}</b> — بتاريخ: <b class="font-num">${fmtDT(s.modified_at)}</b></div>
+      ${s.modification_summary ? `<div class="text-slate-600 dark:text-slate-300">${esc(s.modification_summary)}</div>` : ''}
+    </div>` : ''}`;
   const AR = { cash: 'نقدي', wallet: 'محفظة إلكترونية', credit: 'آجل (مديونية)' };
   document.getElementById('pays').innerHTML = s.payments.map((p) => `
     <div class="flex justify-between items-center p-3 rounded-xl border border-slate-200 dark:border-slate-700">
@@ -396,6 +405,16 @@
       <span class="font-numeric font-bold">${fmt(p.amount)} ${CURRENCY}${p.change ? ` <span class="text-xs text-green-600">(الباقي ${fmt(p.change)})</span>` : ''}</span>
     </div>`).join('');
   renderPaper();
+  document.getElementById('btn-wa').addEventListener('click', async () => {
+    if (!sale) return;
+    let ph = sale.customer_phone || '';
+    if (!ph) {
+      ph = prompt('أدخل رقم موبايل العميل لإرسال الفاتورة عبر واتساب (مثال: 01012345678):', '');
+      if (!ph) return;
+    }
+    const r = await guard(() => api('whatsapp_send_invoice', { sale_id: sale.id, phone: ph }));
+    if (r) toast('تم فتح واتساب لإرسال الفاتورة للعميل');
+  });
   document.getElementById('btn-text').addEventListener('click', async () => {
     const t = await guard(() => api('receipt_text', { id: +id }));
     if (t == null) return;

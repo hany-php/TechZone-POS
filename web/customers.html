@@ -7,9 +7,9 @@
 <script>if(localStorage.getItem('tz-theme')==='dark')document.documentElement.classList.add('dark');</script>
 </head>
 <body id="shell" class="bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-200 h-screen overflow-hidden flex flex-col md:flex-row">
-<main class="flex-1 overflow-y-auto p-6 md:p-8">
-  <div class="max-w-6xl mx-auto">
-    <div class="flex flex-wrap justify-between items-center gap-4 mb-8">
+<main class="flex-1 min-w-0 w-full h-screen overflow-y-auto flex flex-col p-6 md:p-8">
+  <div class="w-full flex-1 flex flex-col">
+    <div class="flex flex-wrap justify-between items-center gap-4 mb-6">
       <div>
         <h1 class="text-3xl font-bold text-slate-900 dark:text-white">إدارة العملاء والمديونيات</h1>
         <p class="text-slate-500 dark:text-slate-400">متابعة حسابات العملاء الآجلة، كشوف الحساب، وسندات القبض</p>
@@ -20,9 +20,49 @@
       </button>
     </div>
 
-    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+    <!-- Summary KPI Blocks (بلوكات إجمالي المديونيات وما تم سداده) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm flex items-start justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">إجمالي العملاء المسجلين</p>
+          <h3 id="sum-cust-count" class="text-2xl font-bold font-num text-slate-900 dark:text-white">0</h3>
+          <p class="text-xs text-red-500 mt-1.5 font-medium">منهم <span id="sum-debt-count" class="font-num font-bold">0</span> عليهم مديونية</p>
+        </div>
+        <div class="p-3 rounded-xl bg-primary/10 text-primary"><span class="material-icons-outlined">groups</span></div>
+      </div>
+
+      <div class="bg-white dark:bg-slate-800 rounded-2xl border border-amber-200 dark:border-amber-800 p-5 shadow-sm flex items-start justify-between">
+        <div>
+          <p class="text-xs font-medium text-amber-700 dark:text-amber-400 mb-1">إجمالي المبيعات الآجلة</p>
+          <h3 id="sum-total-credit" class="text-2xl font-bold font-num text-amber-600">0.00</h3>
+          <p class="text-xs text-slate-400 mt-1.5">مجموع الفواتير الآجلة المسجلة</p>
+        </div>
+        <div class="p-3 rounded-xl bg-amber-100 dark:bg-amber-900/20 text-amber-600"><span class="material-icons-outlined">receipt_long</span></div>
+      </div>
+
+      <div class="bg-white dark:bg-slate-800 rounded-2xl border border-emerald-200 dark:border-emerald-800 p-5 shadow-sm flex items-start justify-between">
+        <div>
+          <p class="text-xs font-medium text-emerald-700 dark:text-emerald-400 mb-1">إجمالي ما تم سداده (سندات القبض)</p>
+          <h3 id="sum-total-paid" class="text-2xl font-bold font-num text-emerald-600">0.00</h3>
+          <p class="text-xs text-slate-400 mt-1.5">المحصّل نقداً وبالمحفظة من الآجل</p>
+        </div>
+        <div class="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600"><span class="material-icons-outlined">payments</span></div>
+      </div>
+
+      <div class="bg-white dark:bg-slate-800 rounded-2xl border-2 border-red-200 dark:border-red-900/40 p-5 shadow-sm flex items-start justify-between">
+        <div>
+          <p class="text-xs font-bold text-red-600 dark:text-red-400 mb-1">إجمالي المديونيات المتبقية</p>
+          <h3 id="sum-total-debt" class="text-2xl font-bold font-num text-red-600 dark:text-red-400">0.00</h3>
+          <p class="text-xs text-slate-400 mt-1.5">الرصيد المتبقي المستحق التحصيل</p>
+        </div>
+        <div class="p-3 rounded-xl bg-red-100 dark:bg-red-900/20 text-red-600"><span class="material-icons-outlined">account_balance_wallet</span></div>
+      </div>
+    </div>
+
+    <!-- Full-page Customers Table -->
+    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex-1 flex flex-col">
       <div class="p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex flex-wrap justify-between items-center gap-4">
-        <div class="flex items-center gap-3 flex-1 max-w-xl">
+        <div class="flex items-center gap-3 flex-1 max-w-2xl">
           <div class="relative flex-1">
             <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
               <span class="material-icons-outlined text-sm">search</span>
@@ -35,17 +75,18 @@
           </label>
         </div>
         <div class="text-sm text-slate-500 dark:text-slate-400 font-medium">
-          إجمالي العملاء: <span id="total-count" class="font-bold text-slate-800 dark:text-white">0</span>
+          العملاء المعروضون: <span id="total-count" class="font-bold text-slate-800 dark:text-white font-num">0</span>
         </div>
       </div>
-      <div class="overflow-x-auto">
+      <div class="overflow-x-auto flex-1">
         <table class="w-full text-right border-collapse">
           <thead>
             <tr class="bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">
               <th class="px-6 py-4 font-semibold">الاسم</th>
               <th class="px-6 py-4 font-semibold">رقم الهاتف</th>
+              <th class="px-6 py-4 font-semibold">إجمالي المشتريات</th>
               <th class="px-6 py-4 font-semibold">إجمالي الآجل</th>
-              <th class="px-6 py-4 font-semibold">المسدد</th>
+              <th class="px-6 py-4 font-semibold">ما تم سداده</th>
               <th class="px-6 py-4 font-semibold">المديونية المتبقية</th>
               <th class="px-6 py-4 font-semibold text-center">الإجراءات</th>
             </tr>
@@ -55,7 +96,7 @@
           </tbody>
         </table>
       </div>
-      <div class="px-6 py-4 border-t border-slate-100 dark:border-slate-700 flex justify-between items-center gap-4" id="pagination">
+      <div class="px-6 py-4 border-t border-slate-100 dark:border-slate-700 flex justify-between items-center gap-4 mt-auto" id="pagination">
         <span class="text-sm text-slate-500 dark:text-slate-400" id="page-info"></span>
         <div class="flex gap-2">
           <button id="prev" class="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700">السابق</button>
@@ -104,9 +145,19 @@
   async function loadCustomers() {
     const q = $('q').value.trim();
     const debtOnly = $('debt-only').checked;
+    const baseRes = await guard(() => api('customers_list', { limit: LIMIT, offset: currentOffset, debt_only: debtOnly }));
+    if (baseRes && baseRes.summary) {
+      const sm = baseRes.summary;
+      $('sum-cust-count').textContent = n(sm.total_customers || 0);
+      $('sum-debt-count').textContent = n(sm.debt_customers_count || 0);
+      $('sum-total-credit').textContent = money(sm.total_credit || 0);
+      $('sum-total-paid').textContent = money(sm.total_paid || 0);
+      $('sum-total-debt').textContent = money(sm.total_debt || 0);
+    }
+
     const res = q
       ? await guard(() => api('customers_search', { q }))
-      : await guard(() => api('customers_list', { limit: LIMIT, offset: currentOffset, debt_only: debtOnly }));
+      : baseRes;
     
     if (!res) return;
     let rows = q ? res : res.rows;
@@ -114,17 +165,18 @@
     const total = q ? rows.length : res.total;
     lastTotal = total;
     
-    $('total-count').textContent = total;
+    $('total-count').textContent = n(total);
     $('page-info').textContent = total ? `عرض ${q ? 1 : currentOffset + 1} إلى ${q ? rows.length : Math.min(total, currentOffset + LIMIT)} من ${n(total)}` : 'لا نتائج';
     const list = $('cust-list');
     list.innerHTML = rows.length ? rows.map(c => {
       const debt = c.debt || 0;
       return `
       <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors cursor-pointer" onclick="location.href='customer_details.html?id=${c.id}'">
-        <td class="px-6 py-4 font-medium text-primary hover:underline">${esc(c.name)}</td>
+        <td class="px-6 py-4 font-bold text-primary hover:underline">${esc(c.name)}</td>
         <td class="px-6 py-4 text-slate-600 dark:text-slate-400 font-num">${esc(c.phone || '—')}</td>
-        <td class="px-6 py-4 text-slate-600 dark:text-slate-400 font-num">${fmt(c.credit_total || 0)} ${CURRENCY}</td>
-        <td class="px-6 py-4 text-emerald-600 font-num">${fmt(c.paid_total || 0)} ${CURRENCY}</td>
+        <td class="px-6 py-4 text-slate-700 dark:text-slate-300 font-num">${fmt(c.total_purchases || 0)} ${CURRENCY}</td>
+        <td class="px-6 py-4 text-amber-600 font-num font-medium">${fmt(c.credit_total || 0)} ${CURRENCY}</td>
+        <td class="px-6 py-4 text-emerald-600 font-num font-medium">${fmt(c.paid_total || 0)} ${CURRENCY}</td>
         <td class="px-6 py-4 font-num font-bold">
           <span class="px-2.5 py-1 rounded-full text-xs ${debt > 0 ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'}">
             ${debt > 0 ? fmt(debt) + ' ' + CURRENCY : 'خالص (0.00)'}
@@ -141,7 +193,7 @@
           </div>
         </td>
       </tr>`;
-    }).join('') : '<tr><td colspan="6" class="px-6 py-12 text-center text-slate-400">لا يوجد عملاء مطابقين</td></tr>';
+    }).join('') : '<tr><td colspan="7" class="px-6 py-12 text-center text-slate-400">لا يوجد عملاء مطابقين</td></tr>';
   }
 
   window.editCustomer = async (id) => {

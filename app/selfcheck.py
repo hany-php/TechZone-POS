@@ -48,15 +48,22 @@ check("cashier return rejected", (not r["ok"]) and "للمدير" in r["error"])
 r = call(a, "report_daily", {})
 check("cashier report rejected", (not r["ok"]) and "للمدير" in r["error"])
 
-# 3) إضافة/تعديل منتج وبحث (اسم/باركود/سيريال)
+# 2b) حفظ تفضيلات حجم البلوك للمستخدم (user_pref_save)
+r_pref = call(a, "user_pref_save", {"card_size": 180})
+check("user card_size pref saved", r_pref["ok"] and r_pref["data"]["card_size"] == 180)
+check("session reflects user card_size", call(a, "session")["data"]["user"]["card_size"] == 180)
+
+# 3) إضافة/تعديل منتج مع صورة وبحث (اسم/باركود/سيريال)
 call(a, "login", {"username": "admin", "pin": "1234"})
-r = call(a, "product_save", {"sku": "TST-001", "name": "منتج فحص", "price": 100, "cost": 60, "min_qty": 5})
-check("product add", r["ok"])
+sample_img = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+r = call(a, "product_save", {"sku": "TST-001", "name": "منتج فحص", "price": 100, "cost": 60, "min_qty": 5, "image": sample_img})
+check("product add with image", r["ok"])
 pid = r["data"]["id"]
-r = call(a, "product_save", {"id": pid, "sku": "TST-001", "name": "منتج فحص معدل", "price": 120, "cost": 60})
+check("product image stored", call(a, "product", {"id": pid})["data"]["image"] == sample_img)
+r = call(a, "product_save", {"id": pid, "sku": "TST-001", "name": "منتج فحص معدل", "price": 120, "cost": 60, "image": sample_img})
 check("product edit", r["ok"])
 r = call(a, "products_search", {"q": "فحص معدل"})
-check("search by name", r["ok"] and any(x["id"] == pid for x in r["data"]))
+check("search by name & returns image", r["ok"] and any(x["id"] == pid and x["image"] == sample_img for x in r["data"]))
 r = call(a, "products_search", {"q": "TST-001"})
 check("search by sku", r["ok"] and any(x["id"] == pid for x in r["data"]))
 call(a, "serial_add", {"product_id": pid, "serial": "SN-SELF-1"})
@@ -66,7 +73,7 @@ check("search by serial", r["ok"] and any(x["id"] == pid for x in r["data"]))
 # 4) بيع ناجح يخصم المخزون ويكتب الحركة والدفع (مع اختبار تفعيل وإيقاف الضريبة)
 call(a, "shift_open", {"opening_cash": 100})
 call(a, "product_adjust", {"id": pid, "qty_change": 20, "reason": "فحص"})
-call(a, "settings_save", {"tax_enabled": "1", "tax_rate": "15"})
+call(a, "settings_save", {"tax_enabled": "1", "tax_rate": "15", "pos_card_size": "160"})
 before = call(a, "product", {"id": pid})["data"]["qty"]
 # سعر 120 للوحدة × 2 = 240، ضريبة 15% = 36، إجمالي 276 (ندخل 300 في الكاش فيحسب الباقي 24 تلقائياً)
 r = call(a, "sale_create", {
@@ -88,6 +95,10 @@ with db.connect() as c:
     check("payment written", pay is not None and pay["amount"] == 27600 and pay["change"] == 2400)
     s = c.execute("SELECT * FROM sales WHERE id=?", (sale_id,)).fetchone()
     check("tax correct", s["tax"] == 3600 and s["total"] == 27600)
+
+# 4a-2) اختبار تعديل خصم فاتورة مدفوعة (sale_discount) وتقرير الوردية التفصيلي (shift_summary)
+r_sdisc = call(a, "sale_discount", {"sale_id": sale_id, "discount": 40})
+check("sale_discount on paid invoice ok", r_sdisc["ok"] and r_sdisc["data"]["discount"] == 4000 and r_sdisc["data"]["total"] == 23000)
 
 # 4b) اختبار إيقاف الضريبة (tax_enabled = 0) + الدفع بالمحفظة برقم مرجعي + الدفع الآجل بإلزام العميل
 call(a, "settings_save", {"tax_enabled": "0"})
@@ -135,6 +146,10 @@ r_voucher = call(a, "customer_payment_create", {
 check("receipt voucher created", r_voucher["ok"] and r_voucher["data"]["remaining_debt"] == 8000)
 hist_after = call(a, "customer_history", {"id": credit_cid})["data"]
 check("customer ledger updated", hist_after["customer"]["debt"] == 8000 and len(hist_after["ledger"]) == 2)
+
+# 4d) اختبار ملخص إغلاق الوردية التفصيلي (shift_summary)
+sh_sum = call(a, "shift_summary")
+check("shift_summary ok & lists operations", sh_sum["ok"] and len(sh_sum["data"]["operations"]) >= 3 and sh_sum["data"]["wallet_sales"] == 10000 and sh_sum["data"]["credit_sales"] == 14000)
 
 # 5) رفض بيع عند نقص المخزون
 call(a, "settings_save", {"tax_enabled": "1", "tax_rate": "15"})
@@ -204,6 +219,26 @@ with db.connect() as c:
                    (datetime.date(now.year, now.month, 1) + datetime.timedelta(days=32)).replace(day=1).strftime("%Y-%m-%d"))).fetchone()
     check("monthly matches manual", mo["sales"]["count"] == m["n"] and mo["sales"]["total"] == m["t"])
 
+# 11b) فحص report_top و report_profit و sale_modify_from_cart وملخص مديونيات العملاء
+r_top = call(a, "report_top", {"limit": 10})
+check("report_top ok (no ambiguous qty)", r_top["ok"] and isinstance(r_top["data"], list))
+r_prof = call(a, "report_profit", {})
+check("report_profit ok", r_prof["ok"] and "goods_profit" in r_prof["data"])
+
+# فحص تعديل الفاتورة من داخل سلة المشتريات (sale_modify_from_cart) مع توثيق المعدل والوقت
+cw_full = call(a, "sale", {"id": cw_sale_id})["data"]
+cw_item_id = cw_full["items"][0]["id"]
+r_mod = call(a, "sale_modify_from_cart", {
+    "sale_id": cw_sale_id,
+    "items": [{"sale_item_id": cw_item_id, "qty": 1, "unit_price": 100}],
+    "discount": 10,
+    "reason": "مرتجع قطعة مع خصم من السلة",
+})
+check("sale_modify_from_cart ok & logs modifier", r_mod["ok"] and r_mod["data"]["modified_by_name"] == "المدير" and r_mod["data"]["returned_total"] == 12000)
+
+cl_res = call(a, "customers_list", {"limit": 50, "offset": 0})
+check("customers_list includes global debt/paid summary", cl_res["ok"] and "summary" in cl_res["data"] and "total_debt" in cl_res["data"]["summary"])
+
 # 12) settings اسم المحل + عملة مصر + مفاتيح التخصيص
 st = call(a, "settings", {})["data"]
 check("store name & EGP currency setting", st.get("store_name") == "تك زون للإلكترونيات" and st.get("currency") == "ج.م")
@@ -232,15 +267,17 @@ ru = call(a, "user_save", {
     "name": "سالم علي",
     "role": "cashier",
     "pin": "2222",
-    "permissions": {"inventory_edit": True, "reports_view": False},
+    "permissions": {"inventory_edit": True, "reports_view": False, "pos_item_discount": True},
 })
 check("custom permission user save ok", ru["ok"] and ru["data"]["id"] > 0)
 uid2 = ru["data"]["id"]
 
-# تسجيل الدخول بالموظف المخصص والتأكد أنه يستطيع تعديل المخزون ولا يستطيع فتح التقارير
+# تسجيل الدخول بالموظف المخصص والتأكد أنه يستطيع تعديل المخزون وعمل خصم ولا يستطيع فتح التقارير
 call(a, "login", {"username": "cashier2", "pin": "2222"})
 r_allowed = call(a, "categories_save", {"name": "فئة صلاحية خاصة"})
 check("custom perm allowed inventory_edit", r_allowed["ok"])
+r_disc_allowed = call(a, "sale_discount", {"sale_id": sale_id, "discount": 10})
+check("custom perm allowed pos_item_discount", r_disc_allowed["ok"])
 r_denied = call(a, "report_daily", {})
 check("custom perm denied reports_view", not r_denied["ok"])
 
