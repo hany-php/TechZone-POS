@@ -1,0 +1,1643 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>سطح المكتب — نظام تك زون للإلكترونيات</title>
+<link href="app.css" rel="stylesheet"/>
+<script>if(localStorage.getItem('tz-theme')==='dark')document.documentElement.classList.add('dark');</script>
+<style>
+  * { box-sizing: border-box; user-select: none; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'IBM Plex Sans Arabic', 'Cairo', sans-serif;
+  }
+
+  /* ===== خلفيات سطح المكتب المدمجة + المرفوعة ===== */
+  #os-root {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: background 0.4s ease;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+  #os-root[data-wp="win11-bloom"] {
+    background-image:
+      radial-gradient(circle at 18% 22%, rgba(56, 189, 248, 0.48) 0%, transparent 42%),
+      radial-gradient(circle at 78% 28%, rgba(59, 130, 246, 0.55) 0%, transparent 48%),
+      radial-gradient(circle at 52% 75%, rgba(99, 102, 241, 0.45) 0%, transparent 50%),
+      radial-gradient(circle at 85% 82%, rgba(14, 165, 233, 0.35) 0%, transparent 40%),
+      linear-gradient(135deg, #071126 0%, #0c234a 48%, #0f172a 100%);
+  }
+  #os-root[data-wp="macos-sonoma"] {
+    background-image:
+      radial-gradient(circle at 15% 80%, rgba(236, 72, 153, 0.45) 0%, transparent 45%),
+      radial-gradient(circle at 50% 25%, rgba(139, 92, 246, 0.52) 0%, transparent 50%),
+      radial-gradient(circle at 85% 65%, rgba(6, 182, 212, 0.48) 0%, transparent 46%),
+      linear-gradient(160deg, #130924 0%, #1e1b4b 50%, #09223a 100%);
+  }
+  #os-root[data-wp="macos-sequoia"] {
+    background-image:
+      radial-gradient(circle at 22% 75%, rgba(249, 115, 22, 0.50) 0%, transparent 46%),
+      radial-gradient(circle at 75% 25%, rgba(59, 130, 246, 0.44) 0%, transparent 48%),
+      radial-gradient(circle at 55% 55%, rgba(234, 179, 8, 0.28) 0%, transparent 45%),
+      linear-gradient(145deg, #0f172a 0%, #1e293b 45%, #431407 100%);
+  }
+  #os-root[data-wp="ubuntu-aurora"] {
+    background-image:
+      radial-gradient(circle at 25% 30%, rgba(217, 70, 239, 0.42) 0%, transparent 46%),
+      radial-gradient(circle at 78% 70%, rgba(244, 63, 94, 0.42) 0%, transparent 46%),
+      linear-gradient(135deg, #1a0626 0%, #3b0764 52%, #4c0519 100%);
+  }
+  #os-root[data-wp="emerald-studio"] {
+    background-image:
+      radial-gradient(circle at 20% 25%, rgba(16, 185, 129, 0.42) 0%, transparent 45%),
+      radial-gradient(circle at 80% 75%, rgba(20, 184, 166, 0.40) 0%, transparent 48%),
+      linear-gradient(145deg, #041f1a 0%, #063930 50%, #0f172a 100%);
+  }
+  #os-root[data-wp="daylight-glass"] {
+    background-image:
+      radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.28) 0%, transparent 45%),
+      radial-gradient(circle at 80% 75%, rgba(16, 185, 129, 0.24) 0%, transparent 45%),
+      linear-gradient(135deg, #dbeafe 0%, #eff6ff 50%, #e0f2fe 100%);
+  }
+
+  .os-ambient-orb {
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(70px);
+    pointer-events: none;
+    opacity: 0.30;
+    z-index: 0;
+  }
+
+  /* ===== الشريط العلوي (macOS Menu Bar) ===== */
+  #os-topbar {
+    position: relative;
+    z-index: 60;
+    height: 36px;
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    color: #f8fafc;
+    font-size: 12px;
+  }
+  .top-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 7px;
+    color: #e2e8f0;
+    font-weight: 600;
+    transition: background 0.15s;
+    cursor: pointer;
+    border: 0;
+    background: transparent;
+  }
+  .top-btn:hover {
+    background: rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+  }
+
+  /* ===== مساحة سطح المكتب (Desktop Workspace) ===== */
+  #os-workspace {
+    position: relative;
+    flex: 1;
+    width: 100%;
+    overflow: hidden;
+    z-index: 1;
+  }
+
+  /* أيقونات سطح المكتب القابلة للسحب والترتيب الحر (Draggable Desktop Icons) */
+  #os-desktop-icons {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .desk-icon {
+    position: absolute;
+    pointer-events: auto;
+    width: 98px;
+    padding: 10px 6px;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    cursor: grab;
+    transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    border: 1px solid transparent;
+    text-align: center;
+  }
+  .desk-icon:hover {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.28);
+    backdrop-filter: blur(10px);
+  }
+  .desk-icon.icon-dragging {
+    cursor: grabbing;
+    background: rgba(255, 255, 255, 0.24);
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.55);
+    transform: scale(1.06);
+    z-index: 50 !important;
+  }
+  .desk-icon-box {
+    width: 52px;
+    height: 52px;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.35);
+    position: relative;
+    pointer-events: none;
+  }
+  .desk-icon-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #ffffff;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+    line-height: 1.25;
+    pointer-events: none;
+  }
+  #os-root[data-wp="daylight-glass"] .desk-icon-label {
+    color: #0f172a;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.9);
+  }
+
+  /* ودجت سطح المكتب الذكي على اليسار */
+  #os-widgets {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    width: 310px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    z-index: 4;
+  }
+  .os-widget-card {
+    background: rgba(15, 23, 42, 0.62);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 22px;
+    padding: 18px;
+    color: #f8fafc;
+    box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.35);
+  }
+
+  /* ===== طبقة النوافذ العائمة (Multi-Window Manager) ===== */
+  #os-windows-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 20;
+  }
+  .tz-os-window {
+    position: absolute;
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+    min-width: 360px;
+    min-height: 280px;
+  }
+  html.dark .tz-os-window {
+    background: #0f172a;
+    border-color: rgba(71, 85, 105, 0.55);
+  }
+  .tz-os-window.win-active {
+    box-shadow: 0 30px 70px -12px rgba(0, 0, 0, 0.6), 0 0 0 2px rgba(19, 127, 236, 0.65);
+  }
+  .tz-os-window.win-maximized {
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: calc(100% - 68px) !important;
+    border-radius: 0 !important;
+    border: 0 !important;
+  }
+  .tz-os-window.win-snap-right {
+    top: 0 !important;
+    right: 0 !important;
+    left: auto !important;
+    width: 50% !important;
+    height: calc(100% - 68px) !important;
+    border-radius: 0 0 0 12px !important;
+  }
+  .tz-os-window.win-snap-left {
+    top: 0 !important;
+    left: 0 !important;
+    right: auto !important;
+    width: 50% !important;
+    height: calc(100% - 68px) !important;
+    border-radius: 0 0 12px 0 !important;
+  }
+  .tz-os-window.win-minimized {
+    opacity: 0 !important;
+    transform: translateY(60px) scale(0.88) !important;
+    pointer-events: none !important;
+  }
+
+  .tz-win-titlebar {
+    height: 42px;
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    border-bottom: 1px solid #e2e8f0;
+    cursor: grab;
+    flex-shrink: 0;
+  }
+  .tz-win-titlebar:active { cursor: grabbing; }
+  html.dark .tz-win-titlebar {
+    background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+    border-bottom-color: #334155;
+  }
+  .tz-os-window.win-active .tz-win-titlebar {
+    background: linear-gradient(180deg, #eff6ff 0%, #e0f2fe 100%);
+  }
+  html.dark .tz-os-window.win-active .tz-win-titlebar {
+    background: linear-gradient(180deg, #1e293b 0%, #172554 100%);
+  }
+
+  .win-ctrl-group {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .win-btn {
+    height: 26px;
+    padding: 0 8px;
+    border-radius: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    background: rgba(255, 255, 255, 0.75);
+    color: #475569;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  html.dark .win-btn {
+    background: rgba(30, 41, 59, 0.8);
+    color: #cbd5e1;
+    border-color: rgba(71, 85, 105, 0.6);
+  }
+  .win-btn:hover { transform: scale(1.05); }
+  .win-btn-min { background: #fef3c7 !important; color: #b45309 !important; border-color: #fcd34d !important; }
+  .win-btn-max { background: #dcfce7 !important; color: #15803d !important; border-color: #86efac !important; }
+  .win-btn-close { background: #fee2e2 !important; color: #b91c1c !important; border-color: #fca5a5 !important; }
+  .win-btn-close:hover { background: #dc2626 !important; color: #ffffff !important; }
+
+  .tz-win-body {
+    flex: 1;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #f8fafc;
+  }
+  html.dark .tz-win-body { background: #0f172a; }
+  .tz-win-iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+  }
+
+  .tz-resizer { position: absolute; z-index: 15; }
+  .tz-resizer-r { top: 42px; right: 0; width: 6px; bottom: 0; cursor: ew-resize; }
+  .tz-resizer-l { top: 42px; left: 0; width: 6px; bottom: 0; cursor: ew-resize; }
+  .tz-resizer-b { bottom: 0; left: 0; right: 0; height: 6px; cursor: ns-resize; }
+  .tz-resizer-se { bottom: 0; right: 0; width: 16px; height: 16px; cursor: nwse-resize; z-index: 16; }
+  .tz-resizer-sw { bottom: 0; left: 0; width: 16px; height: 16px; cursor: nesw-resize; z-index: 16; }
+
+  #os-drag-shield {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    display: none;
+    cursor: grabbing;
+  }
+
+  /* ===== شريط المهام السفلي الهجين ===== */
+  #os-taskbar-wrap {
+    position: absolute;
+    bottom: 8px;
+    left: 12px;
+    right: 12px;
+    height: 56px;
+    z-index: 70;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    background: rgba(15, 23, 42, 0.72);
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 18px;
+    box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.5);
+  }
+  #os-start-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 13px;
+    background: linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%);
+    color: #fff;
+    font-weight: 700;
+    font-size: 13px;
+    border: 0;
+    cursor: pointer;
+    box-shadow: 0 6px 16px -2px rgba(37, 99, 235, 0.55);
+    transition: all 0.18s;
+  }
+  #os-start-btn:hover { transform: translateY(-2px); }
+  #os-dock-apps {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 4px 6px;
+  }
+  .dock-item {
+    position: relative;
+    height: 42px;
+    padding: 0 12px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #e2e8f0;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+    transition: all 0.18s ease;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .dock-item:hover {
+    background: rgba(255, 255, 255, 0.16);
+    transform: translateY(-3px);
+    color: #fff;
+  }
+  .dock-item.dock-running {
+    background: rgba(255, 255, 255, 0.13);
+    border-color: rgba(255, 255, 255, 0.24);
+  }
+  .dock-item.dock-active {
+    background: rgba(37, 99, 235, 0.35);
+    border-color: rgba(96, 165, 250, 0.65);
+    color: #ffffff;
+  }
+  .dock-dot {
+    position: absolute;
+    bottom: 3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px;
+  }
+
+  /* ===== قائمة ابدأ (Windows 11 Start Menu) ===== */
+  #os-start-menu {
+    position: absolute;
+    bottom: 74px;
+    right: 16px;
+    width: 540px;
+    max-width: calc(100vw - 32px);
+    background: rgba(15, 23, 42, 0.88);
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 24px;
+    padding: 22px;
+    color: #f8fafc;
+    z-index: 80;
+    box-shadow: 0 30px 70px -10px rgba(0, 0, 0, 0.65);
+    transition: all 0.2s ease;
+  }
+  #os-start-menu.hidden { display: none; }
+  .start-app-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 8px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+    transition: all 0.16s;
+    text-align: center;
+  }
+  .start-app-card:hover {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: translateY(-2px);
+  }
+
+  #os-ctx-menu {
+    position: fixed;
+    z-index: 90;
+    width: 250px;
+    background: rgba(15, 23, 42, 0.92);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 14px;
+    padding: 6px;
+    color: #f8fafc;
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.55);
+    font-size: 12px;
+  }
+  .ctx-item {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #e2e8f0;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    text-align: right;
+    font-weight: 600;
+  }
+  .ctx-item:hover {
+    background: rgba(37, 99, 235, 0.45);
+    color: #fff;
+  }
+
+  #os-print-stage { display: none; }
+  @media print {
+    html, body { background: #fff !important; height: auto !important; overflow: visible !important; }
+    body > *:not(#os-print-stage) { display: none !important; }
+    #os-print-stage {
+      display: block !important;
+      width: 80mm !important;
+      max-width: 80mm !important;
+      margin: 0 auto !important;
+      padding: 4mm !important;
+      background: #fff !important;
+      color: #000 !important;
+      font-family: monospace, sans-serif !important;
+      font-size: 12px !important;
+    }
+  }
+</style>
+</head>
+<body>
+<div id="os-root" data-wp="win11-bloom">
+  <div class="os-ambient-orb" style="width:420px;height:420px;top:-80px;right:15%;background:#38bdf8"></div>
+  <div class="os-ambient-orb" style="width:380px;height:380px;bottom:40px;left:12%;background:#6366f1"></div>
+
+  <!-- ===== الشريط العلوي (macOS Style Top Menu Bar) ===== -->
+  <header id="os-topbar">
+    <div class="flex items-center gap-2">
+      <button id="top-logo-btn" class="top-btn" title="قائمة ابدأ">
+        <span class="material-icons-round text-blue-400 text-base">memory</span>
+        <span id="os-store-name" class="font-bold">تك زون للإلكترونيات</span>
+      </button>
+      <span class="text-slate-500">|</span>
+      <span id="os-active-win-title" class="text-blue-300 font-bold">سطح المكتب</span>
+      <span class="text-slate-500 hidden sm:inline">|</span>
+      <button id="top-tile-btn" class="top-btn hidden sm:inline-flex" title="ترتيب النوافذ المفتوحة جنباً إلى جنب (نصفين)">
+        <span class="material-icons-outlined text-sm">vertical_split</span>
+        <span>تقسيم الشاشة (نصفين)</span>
+      </button>
+      <button id="top-showdesk-btn" class="top-btn hidden sm:inline-flex" title="تصغير النوافذ وإظهار سطح المكتب">
+        <span class="material-icons-outlined text-sm">desktop_windows</span>
+        <span>سطح المكتب</span>
+      </button>
+      <button id="top-wp-btn" class="top-btn hidden md:inline-flex" title="تخصيص الخلفية والألوان وترتيب الأيقونات">
+        <span class="material-icons-outlined text-sm">palette</span>
+        <span>المظهر والخلفية</span>
+      </button>
+    </div>
+
+    <button id="os-shift-pill" class="top-btn px-3 py-1 rounded-full bg-white/10 text-xs font-bold">
+      <span id="os-shift-dot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+      <span id="os-shift-text">جاري فحص الوردية...</span>
+    </button>
+
+    <div class="flex items-center gap-2">
+      <button onclick="toggleTheme()" class="top-btn" title="تبديل الوضع الليلي / النهاري في جميع النوافذ">
+        <span class="material-icons-round text-sm">contrast</span>
+        <span class="hidden md:inline">ليلي / نهاري</span>
+      </button>
+      <div class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/10 text-xs">
+        <span class="material-icons-round text-sm text-blue-400">person</span>
+        <span id="os-user-name" class="font-bold">...</span>
+      </div>
+      <span id="os-clock" class="font-num font-bold text-xs px-2">00:00</span>
+    </div>
+  </header>
+
+  <!-- ===== مساحة سطح المكتب والنوافذ ===== -->
+  <div id="os-workspace">
+    <!-- أيقونات سطح المكتب القابلة للسحب وتغيير المكان بحرية لكل مستخدم -->
+    <div id="os-desktop-icons"></div>
+
+    <!-- ودجت سطح المكتب الذكي على اليسار -->
+    <div id="os-widgets" class="hidden lg:flex">
+      <div class="os-widget-card">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs text-blue-300 font-bold uppercase tracking-wider">نظام تشغيل تك زون</span>
+          <button id="w-refresh" class="text-xs text-slate-300 hover:text-white flex items-center gap-1" title="تحديث الأرقام">
+            <span class="material-icons-outlined text-sm">refresh</span>
+            <span>تحديث</span>
+          </button>
+        </div>
+        <div id="w-big-time" class="text-3xl font-bold font-num mb-0.5">00:00</div>
+        <div id="w-big-date" class="text-xs text-slate-300 mb-4">...</div>
+        <div class="grid grid-cols-2 gap-2.5 text-xs">
+          <div class="p-2.5 rounded-xl bg-white/10 border border-white/10">
+            <div class="text-slate-300 text-[11px]">مبيعات اليوم</div>
+            <div id="w-sales-today" class="font-num font-bold text-sm text-emerald-300 mt-0.5">0.00</div>
+          </div>
+          <div class="p-2.5 rounded-xl bg-white/10 border border-white/10">
+            <div class="text-slate-300 text-[11px]">عدد الفواتير</div>
+            <div id="w-sales-cnt" class="font-num font-bold text-sm text-blue-300 mt-0.5">0</div>
+          </div>
+          <div class="p-2.5 rounded-xl bg-white/10 border border-white/10">
+            <div class="text-slate-300 text-[11px]">نواقص المخزون</div>
+            <div id="w-low-stock" class="font-num font-bold text-sm text-amber-300 mt-0.5">0</div>
+          </div>
+          <div class="p-2.5 rounded-xl bg-white/10 border border-white/10">
+            <div class="text-slate-300 text-[11px]">صيانة قيد العمل</div>
+            <div id="w-repairs" class="font-num font-bold text-sm text-purple-300 mt-0.5">0</div>
+          </div>
+        </div>
+        <button onclick="TZOS.openApp('pos')" class="w-full mt-3 py-2.5 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-primary/30 transition-all">
+          <span class="material-icons-round text-base">point_of_sale</span>
+          <span>فتح نافذة نقاط البيع (الكاشير)</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="os-windows-layer"></div>
+    <div id="os-drag-shield"></div>
+
+    <!-- ===== قائمة ابدأ (Windows 11 Start Menu) ===== -->
+    <div id="os-start-menu" class="hidden">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-xl bg-primary flex items-center justify-center text-white">
+            <span class="material-icons-round text-lg">apps</span>
+          </div>
+          <div>
+            <h3 class="font-bold text-sm">قائمة ابدأ — جميع تطبيقات النظام</h3>
+            <p class="text-[11px] text-slate-400">اضغط على أي تطبيق لفتحه في نافذة مستقلة قابلة للتكبير والتصغير</p>
+          </div>
+        </div>
+        <button id="start-close-btn" class="text-slate-400 hover:text-white"><span class="material-icons-round text-lg">close</span></button>
+      </div>
+
+      <div class="relative mb-4">
+        <span class="material-icons-outlined absolute right-3 top-2.5 text-slate-400 text-base">search</span>
+        <input id="start-search" type="text" class="w-full bg-white/10 border border-white/15 rounded-xl py-2 pr-10 pl-4 text-xs text-white placeholder:text-slate-400 focus:outline-none focus:border-blue-400" placeholder="ابحث عن قسم (نقاط البيع، المخزون، العملاء، التقارير...)"/>
+      </div>
+
+      <div id="start-apps-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-2.5 mb-4 max-h-60 overflow-y-auto"></div>
+
+      <div class="border-t border-white/10 pt-3 mb-3 flex flex-wrap gap-2">
+        <button onclick="TZOS.tileWindows(); TZOS.closeStart();" class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-medium flex items-center gap-1.5">
+          <span class="material-icons-outlined text-sm">vertical_split</span>
+          <span>ترتيب النوافذ جنباً إلى جنب</span>
+        </button>
+        <button onclick="TZOS.minimizeAll(); TZOS.closeStart();" class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-medium flex items-center gap-1.5">
+          <span class="material-icons-outlined text-sm">minimize</span>
+          <span>تصغير كل النوافذ</span>
+        </button>
+        <button onclick="TZOS.resetIconsLayout(true); TZOS.closeStart();" class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-medium flex items-center gap-1.5">
+          <span class="material-icons-outlined text-sm">grid_on</span>
+          <span>ترتيب الأيقونات تلقائياً</span>
+        </button>
+        <button onclick="TZOS.openWallpaperModal(); TZOS.closeStart();" class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-medium flex items-center gap-1.5">
+          <span class="material-icons-outlined text-sm">palette</span>
+          <span>تخصيص الخلفية والألوان</span>
+        </button>
+      </div>
+
+      <div class="border-t border-white/15 pt-3 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div id="start-user-init" class="w-9 h-9 rounded-full bg-primary text-white font-bold flex items-center justify-center text-sm">م</div>
+          <div>
+            <div id="start-user-name" class="font-bold text-xs">...</div>
+            <div id="start-user-role" class="text-[11px] text-slate-400">...</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <a href="index.html" class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold flex items-center gap-1">
+            <span class="material-icons-round text-sm">switch_account</span>
+            <span>تبديل المستخدم</span>
+          </a>
+          <button id="start-logout-btn" class="px-3 py-1.5 rounded-xl bg-red-600/80 hover:bg-red-600 text-white text-xs font-bold flex items-center gap-1">
+            <span class="material-icons-round text-sm">logout</span>
+            <span>خروج</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== شريط المهام السفلي (Taskbar + Dock) ===== -->
+    <div id="os-taskbar-wrap">
+      <div class="flex items-center gap-2">
+        <button id="os-start-btn" type="button">
+          <span class="material-icons-round text-lg">grid_view</span>
+          <span>ابدأ</span>
+        </button>
+      </div>
+
+      <div id="os-dock-apps"></div>
+
+      <div class="flex items-center gap-1.5">
+        <button id="task-tile-btn" class="top-btn" title="تقسيم الشاشة بين النوافذ المفتوحة">
+          <span class="material-icons-outlined text-base">view_column</span>
+        </button>
+        <button id="task-wp-btn" class="top-btn" title="تخصيص الخلفية والألوان">
+          <span class="material-icons-outlined text-base">palette</span>
+        </button>
+        <button id="task-show-desktop" class="top-btn" title="إظهار سطح المكتب (تصغير/استعادة كل النوافذ)">
+          <span class="material-icons-outlined text-base">desktop_mac</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- قائمة كليك يمين على سطح المكتب -->
+<div id="os-ctx-menu" class="hidden">
+  <button class="ctx-item" onclick="TZOS.openApp('pos'); TZOS.hideCtx();"><span class="material-icons-round text-base text-blue-400">point_of_sale</span><span>فتح نقاط البيع (الكاشير)</span></button>
+  <button class="ctx-item" onclick="TZOS.openApp('customers'); TZOS.hideCtx();"><span class="material-icons-round text-base text-purple-400">groups</span><span>العملاء والمديونيات</span></button>
+  <button class="ctx-item" onclick="TZOS.openApp('inventory'); TZOS.hideCtx();"><span class="material-icons-round text-base text-emerald-400">inventory_2</span><span>إدارة المخزون والمنتجات</span></button>
+  <div class="my-1 border-t border-white/10"></div>
+  <button class="ctx-item" onclick="TZOS.tileWindows(); TZOS.hideCtx();"><span class="material-icons-outlined text-base text-amber-400">vertical_split</span><span>ترتيب النوافذ جنباً إلى جنب</span></button>
+  <button class="ctx-item" onclick="TZOS.minimizeAll(); TZOS.hideCtx();"><span class="material-icons-outlined text-base text-slate-300">minimize</span><span>إظهار سطح المكتب (تصغير الكل)</span></button>
+  <button class="ctx-item" onclick="TZOS.resetIconsLayout(true); TZOS.hideCtx();"><span class="material-icons-outlined text-base text-blue-300">grid_on</span><span>إعادة ترتيب أيقونات سطح المكتب</span></button>
+  <button class="ctx-item" onclick="TZOS.refreshWidgets(); TZOS.hideCtx();"><span class="material-icons-outlined text-base text-emerald-400">refresh</span><span>تحديث بيانات سطح المكتب</span></button>
+  <div class="my-1 border-t border-white/10"></div>
+  <button class="ctx-item" onclick="TZOS.openWallpaperModal(); TZOS.hideCtx();"><span class="material-icons-outlined text-base text-pink-400">palette</span><span>تخصيص الخلفية وألوان النظام</span></button>
+  <button class="ctx-item" onclick="toggleTheme(); TZOS.hideCtx();"><span class="material-icons-outlined text-base text-yellow-400">contrast</span><span>تبديل الوضع الليلي / النهاري</span></button>
+</div>
+
+<!-- نافذة تخصيص خلفية سطح المكتب + رفع صورة خاصة + ألوان النظام + افتراضي المدير -->
+<div id="wp-modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[100] p-4">
+  <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-slate-700 max-h-[92vh] overflow-y-auto">
+    <div class="flex justify-between items-center mb-4">
+      <div>
+        <h3 class="text-xl font-bold text-slate-900 dark:text-white">تخصيص خلفية سطح المكتب وألوان النظام</h3>
+        <p class="text-xs text-slate-500">يُحفظ اختيارك وصورتك وألوانك وترتيب أيقوناتك لحسابك الشخصي، ويمكن للمدير ضبط الوضع الافتراضي للجميع</p>
+      </div>
+      <button onclick="document.getElementById('wp-modal').classList.replace('flex','hidden')" class="text-slate-400 hover:text-slate-600"><span class="material-icons-round">close</span></button>
+    </div>
+
+    <!-- 1) رفع صورة خلفية خاصة من الجهاز -->
+    <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-700/40 border border-slate-200 dark:border-slate-700 mb-4">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h4 class="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
+            <span class="material-icons-outlined text-primary text-base">add_photo_alternate</span>
+            <span>رفع صورة خلفية خاصة من جهازك</span>
+          </h4>
+          <p class="text-xs text-slate-500 mt-0.5">اختر أي صورة من الكمبيوتر ليتم ضغطها تلقائياً وحفظها كخلفية لسطح مكتبك</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold cursor-pointer hover:bg-primary-dark transition-colors flex items-center gap-1.5 shadow-sm">
+            <span class="material-icons-outlined text-sm">upload</span>
+            <span>اختيار صورة من الجهاز</span>
+            <input id="wp-file-input" type="file" accept="image/*" class="hidden"/>
+          </label>
+          <button id="wp-remove-custom" type="button" class="hidden px-3 py-2 rounded-xl border border-red-200 text-red-600 text-xs font-bold hover:bg-red-50">حذف الصورة المرفوعة</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2) الخلفيات المدمجة -->
+    <div class="mb-5">
+      <h4 class="text-sm font-bold text-slate-800 dark:text-white mb-2">أو اختر من خلفيات النظام المدمجة:</h4>
+      <div id="wp-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-3"></div>
+    </div>
+
+    <!-- 3) تغيير ألوان النظام والأزرار لكل مستخدم حسب مزاجه -->
+    <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-700/40 border border-slate-200 dark:border-slate-700 mb-5">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+        <div>
+          <h4 class="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
+            <span class="material-icons-outlined text-primary text-base">color_lens</span>
+            <span>لون النظام والأزرار المفضل (حسب مزاجك)</span>
+          </h4>
+          <p class="text-xs text-slate-500">يغيّر لون الأزرار وقائمة ابدأ والنوافذ النشطة في جميع شاشات البرنامج</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-slate-500">لون حر:</span>
+          <input id="wp-custom-color" type="color" value="#137fec" class="w-9 h-9 rounded-lg cursor-pointer border-0 p-0 bg-transparent"/>
+        </div>
+      </div>
+      <div id="accent-grid" class="flex flex-wrap gap-2.5"></div>
+    </div>
+
+    <!-- 4) أزرار الحفظ واستعادة الافتراضي وتثبيت افتراضي المدير -->
+    <div class="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-200 dark:border-slate-700">
+      <div class="flex flex-wrap gap-2">
+        <button id="btn-wp-reset-default" type="button" class="px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-600 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-700">
+          استعادة المظهر الافتراضي للمدير
+        </button>
+        <button onclick="TZOS.resetIconsLayout(true)" type="button" class="px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-600 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-700">
+          إعادة ترتيب الأيقونات تلقائياً
+        </button>
+        <button id="btn-wp-admin-default" type="button" class="hidden px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-sm">
+          تثبيت المظهر الحالي كوضع افتراضي لجميع المستخدمين (مدير)
+        </button>
+      </div>
+      <button onclick="document.getElementById('wp-modal').classList.replace('flex','hidden')" class="px-6 py-2 rounded-xl bg-primary text-white text-sm font-bold">تم</button>
+    </div>
+  </div>
+</div>
+
+<!-- حاوية الطباعة الحرارية المباشرة 80mm -->
+<div id="os-print-stage" dir="rtl"></div>
+
+<script src="app.js"></script>
+<script>
+const OS_APPS = [
+  { id: 'pos', title: 'نقاط البيع (الكاشير)', url: 'pos.html', icon: 'point_of_sale', color: 'linear-gradient(135deg,#2563eb,#0ea5e9)' },
+  { id: 'customers', title: 'العملاء والمديونيات', url: 'customers.html', icon: 'groups', color: 'linear-gradient(135deg,#7c3aed,#a855f7)', perm: ['customers_view', 'customers_edit'] },
+  { id: 'inventory', title: 'المخزون والمنتجات', url: 'inventory.html', icon: 'inventory_2', color: 'linear-gradient(135deg,#059669,#10b981)', perm: ['inventory_view', 'inventory_edit'] },
+  { id: 'history', title: 'سجل المبيعات والمرتجعات', url: 'history.html', icon: 'receipt_long', color: 'linear-gradient(135deg,#ea580c,#f97316)' },
+  { id: 'repair', title: 'مركز الصيانة', url: 'repair.html', icon: 'build', color: 'linear-gradient(135deg,#d97706,#f59e0b)', perm: ['repair_view', 'repair_edit'] },
+  { id: 'buy_used', title: 'شراء أجهزة مستعملة', url: 'buy_used.html', icon: 'phonelink_setup', color: 'linear-gradient(135deg,#0d9488,#14b8a6)', perm: 'used_manage' },
+  { id: 'reports', title: 'التقارير والموظفون', url: 'reports.html', icon: 'bar_chart', color: 'linear-gradient(135deg,#4f46e5,#6366f1)', perm: ['reports_view', 'settings_manage'] },
+  { id: 'receipt', title: 'الإيصال وإعدادات المتجر', url: 'receipt.html', icon: 'print', color: 'linear-gradient(135deg,#475569,#64748b)' },
+];
+
+const WALLPAPERS = [
+  { id: 'win11-bloom', name: 'Windows 11 Bloom', preview: 'linear-gradient(135deg,#071126,#2563eb,#0ea5e9)' },
+  { id: 'macos-sonoma', name: 'macOS Sonoma', preview: 'linear-gradient(135deg,#130924,#7c3aed,#06b6d4)' },
+  { id: 'macos-sequoia', name: 'macOS Sequoia', preview: 'linear-gradient(135deg,#0f172a,#ea580c,#eab308)' },
+  { id: 'ubuntu-aurora', name: 'Linux Aurora', preview: 'linear-gradient(135deg,#1a0626,#c026d3,#e11d48)' },
+  { id: 'emerald-studio', name: 'Emerald Studio', preview: 'linear-gradient(135deg,#041f1a,#059669,#0f172a)' },
+  { id: 'daylight-glass', name: 'Daylight Breeze', preview: 'linear-gradient(135deg,#dbeafe,#93c5fd,#e0f2fe)' },
+];
+
+const ACCENT_PRESETS = [
+  { hex: '#137fec', name: 'أزرق ملكي' },
+  { hex: '#7c3aed', name: 'بنفسجي عصري' },
+  { hex: '#059669', name: 'زمردي فاخر' },
+  { hex: '#ea580c', name: 'برتقالي دافئ' },
+  { hex: '#db2777', name: 'وردي عصري' },
+  { hex: '#0891b2', name: 'سماوي هادئ' },
+  { hex: '#d97706', name: 'ذهبي كهرماني' },
+  { hex: '#dc2626', name: 'أحمر ياقوتي' },
+];
+
+const WINDOWS = {};
+let TOP_Z = 30;
+let ACTIVE_WIN_ID = null;
+let PERMITTED_APPS = [];
+let CURRENT_WP = 'win11-bloom';
+let CURRENT_CUSTOM_BG = null;
+let CURRENT_ACCENT = '#137fec';
+let ICON_LAYOUT = {}; // { iconId: { x, y } }
+
+/* ضغط صورة الخلفية المرفوعة من الجهاز عبر Canvas لتعمل Offline بسرعة عالية */
+function compressWallpaperFile(file, maxW = 1600, maxH = 1000, quality = 0.80) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('تعذر قراءة ملف الصورة'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('ملف الصورة غير صالح'));
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > maxW || h > maxH) {
+          const ratio = Math.min(maxW / w, maxH / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+const TZOS = {
+  openApp(appId, customUrl = null, startMaximized = false) {
+    if (appId === '_wp') {
+      this.openWallpaperModal();
+      return;
+    }
+    const app = PERMITTED_APPS.find((a) => a.id === appId) || OS_APPS.find((a) => a.id === appId);
+    if (!app) return;
+    if (app.perm && !hasPerm(app.perm)) {
+      toast('ليست لديك صلاحية لفتح هذا القسم', 'warn');
+      return;
+    }
+
+    if (WINDOWS[appId]) {
+      const w = WINDOWS[appId];
+      if (customUrl && w.currentUrl !== customUrl) {
+        w.currentUrl = customUrl;
+        w.iframe.src = customUrl;
+      }
+      if (w.minimized) {
+        w.minimized = false;
+        w.el.classList.remove('win-minimized');
+      }
+      this.focusWindow(appId);
+      this.closeStart();
+      return;
+    }
+
+    const layer = document.getElementById('os-windows-layer');
+    const openCount = Object.keys(WINDOWS).length;
+    const offset = (openCount % 5) * 26;
+    const ws = document.getElementById('os-workspace').getBoundingClientRect();
+    const defW = Math.min(Math.max(920, Math.round(ws.width * 0.86)), ws.width - 24);
+    const defH = Math.min(Math.max(580, Math.round((ws.height - 72) * 0.88)), ws.height - 76);
+    const defLeft = Math.max(12, Math.round((ws.width - defW) / 2) + offset - 20);
+    const defTop = Math.max(8, Math.round((ws.height - 72 - defH) / 2) + offset - 15);
+
+    const winEl = document.createElement('div');
+    winEl.className = 'tz-os-window' + (startMaximized ? ' win-maximized' : '');
+    winEl.style.width = defW + 'px';
+    winEl.style.height = defH + 'px';
+    winEl.style.left = defLeft + 'px';
+    winEl.style.top = defTop + 'px';
+    winEl.dataset.winId = appId;
+
+    const targetUrl = customUrl || app.url;
+    winEl.innerHTML = `
+      <div class="tz-win-titlebar" data-drag-bar>
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="w-6 h-6 rounded-lg flex items-center justify-center text-white shrink-0" style="background:${app.color}">
+            <span class="material-icons-round text-sm">${app.icon}</span>
+          </div>
+          <span class="font-bold text-xs text-slate-800 dark:text-white truncate">${esc(app.title)}</span>
+        </div>
+        <div class="win-ctrl-group" onmousedown="event.stopPropagation()">
+          <button type="button" class="win-btn hidden sm:inline-flex" data-act="snap-right" title="تثبيت في النصف الأيمن للشاشة">
+            <span class="material-icons-outlined text-sm">dock_to_right</span>
+          </button>
+          <button type="button" class="win-btn hidden sm:inline-flex" data-act="snap-left" title="تثبيت في النصف الأيسر للشاشة">
+            <span class="material-icons-outlined text-sm">dock_to_left</span>
+          </button>
+          <button type="button" class="win-btn" data-act="reload" title="تحديث محتوى النافذة">
+            <span class="material-icons-round text-sm">refresh</span>
+          </button>
+          <button type="button" class="win-btn win-btn-min" data-act="min" title="تصغير النافذة لشريط المهام (−)">
+            <span class="material-icons-round text-sm">remove</span>
+            <span class="hidden md:inline">تصغير</span>
+          </button>
+          <button type="button" class="win-btn win-btn-max" data-act="max" title="تكبير لملء الشاشة / استعادة الحجم (□)">
+            <span class="material-icons-outlined text-sm" data-max-icon>${startMaximized ? 'filter_none' : 'crop_square'}</span>
+            <span class="hidden md:inline" data-max-lbl>${startMaximized ? 'استعادة' : 'تكبير'}</span>
+          </button>
+          <button type="button" class="win-btn win-btn-close" data-act="close" title="إغلاق النافذة (×)">
+            <span class="material-icons-round text-sm">close</span>
+          </button>
+        </div>
+      </div>
+      <div class="tz-win-body">
+        <iframe class="tz-win-iframe" src="${esc(targetUrl)}"></iframe>
+      </div>
+      <div class="tz-resizer tz-resizer-r" data-rz="e"></div>
+      <div class="tz-resizer tz-resizer-l" data-rz="w"></div>
+      <div class="tz-resizer tz-resizer-b" data-rz="s"></div>
+      <div class="tz-resizer tz-resizer-se" data-rz="se"></div>
+      <div class="tz-resizer tz-resizer-sw" data-rz="sw"></div>
+    `;
+
+    layer.appendChild(winEl);
+    const iframe = winEl.querySelector('iframe');
+    WINDOWS[appId] = {
+      id: appId,
+      app,
+      el: winEl,
+      iframe,
+      currentUrl: targetUrl,
+      minimized: false,
+      maximized: !!startMaximized,
+      snap: null,
+      z: ++TOP_Z,
+    };
+
+    winEl.addEventListener('mousedown', () => this.focusWindow(appId));
+    iframe.addEventListener('load', () => {
+      try {
+        if (iframe.contentWindow) {
+          iframe.contentWindow.pywebview = window.pywebview;
+          iframe.contentWindow.addEventListener('mousedown', () => this.focusWindow(appId));
+          if (iframe.contentDocument) applyAccentToDoc(iframe.contentDocument, CURRENT_ACCENT);
+        }
+      } catch (e) {}
+    });
+
+    const titlebar = winEl.querySelector('[data-drag-bar]');
+    titlebar.addEventListener('dblclick', () => this.toggleMaximize(appId));
+    this._bindDrag(appId, titlebar);
+    winEl.querySelectorAll('[data-rz]').forEach((rz) => this._bindResize(appId, rz, rz.dataset.rz));
+
+    winEl.querySelector('[data-act="min"]').addEventListener('click', () => this.minimizeWindow(appId));
+    winEl.querySelector('[data-act="max"]').addEventListener('click', () => this.toggleMaximize(appId));
+    winEl.querySelector('[data-act="close"]').addEventListener('click', () => this.closeWindow(appId));
+    winEl.querySelector('[data-act="reload"]').addEventListener('click', () => {
+      try { iframe.contentWindow.location.reload(); } catch (e) { iframe.src = WINDOWS[appId].currentUrl; }
+    });
+    winEl.querySelector('[data-act="snap-right"]').addEventListener('click', () => this.snapWindow(appId, 'right'));
+    winEl.querySelector('[data-act="snap-left"]').addEventListener('click', () => this.snapWindow(appId, 'left'));
+
+    this.focusWindow(appId);
+    this.closeStart();
+    this.renderTaskbar();
+  },
+
+  openUrlInApp(href) {
+    if (!href) return;
+    if (href.startsWith('index.html')) {
+      location.href = 'index.html';
+      return;
+    }
+    const clean = href.split('?')[0];
+    const match = OS_APPS.find((a) => a.url === clean);
+    if (match) {
+      this.openApp(match.id, href);
+    } else if (href.startsWith('customer_details.html')) {
+      this.openApp('customers', href);
+    }
+  },
+
+  focusWindow(appId) {
+    const w = WINDOWS[appId];
+    if (!w) return;
+    w.z = ++TOP_Z;
+    w.el.style.zIndex = w.z;
+    ACTIVE_WIN_ID = appId;
+    Object.values(WINDOWS).forEach((x) => x.el.classList.toggle('win-active', x.id === appId));
+    document.getElementById('os-active-win-title').textContent = w.app.title;
+    this.renderTaskbar();
+  },
+
+  minimizeWindow(appId) {
+    const w = WINDOWS[appId];
+    if (!w) return;
+    w.minimized = true;
+    w.el.classList.add('win-minimized');
+    if (ACTIVE_WIN_ID === appId) {
+      const visible = Object.values(WINDOWS).filter((x) => !x.minimized).sort((a, b) => b.z - a.z);
+      ACTIVE_WIN_ID = visible.length ? visible[0].id : null;
+      if (ACTIVE_WIN_ID) this.focusWindow(ACTIVE_WIN_ID);
+      else document.getElementById('os-active-win-title').textContent = 'سطح المكتب';
+    }
+    this.renderTaskbar();
+  },
+
+  toggleMaximize(appId) {
+    const w = WINDOWS[appId];
+    if (!w) return;
+    w.snap = null;
+    w.el.classList.remove('win-snap-right', 'win-snap-left');
+    w.maximized = !w.maximized;
+    w.el.classList.toggle('win-maximized', w.maximized);
+    const icon = w.el.querySelector('[data-max-icon]');
+    const lbl = w.el.querySelector('[data-max-lbl]');
+    if (icon) icon.textContent = w.maximized ? 'filter_none' : 'crop_square';
+    if (lbl) lbl.textContent = w.maximized ? 'استعادة' : 'تكبير';
+    this.focusWindow(appId);
+  },
+
+  snapWindow(appId, side) {
+    const w = WINDOWS[appId];
+    if (!w) return;
+    w.maximized = false;
+    w.el.classList.remove('win-maximized', 'win-snap-right', 'win-snap-left');
+    if (w.snap === side) {
+      w.snap = null;
+    } else {
+      w.snap = side;
+      w.el.classList.add(side === 'right' ? 'win-snap-right' : 'win-snap-left');
+    }
+    this.focusWindow(appId);
+  },
+
+  closeWindow(appId) {
+    const w = WINDOWS[appId];
+    if (!w) return;
+    w.el.remove();
+    delete WINDOWS[appId];
+    if (ACTIVE_WIN_ID === appId) {
+      const rem = Object.values(WINDOWS).filter((x) => !x.minimized).sort((a, b) => b.z - a.z);
+      ACTIVE_WIN_ID = rem.length ? rem[0].id : null;
+      if (ACTIVE_WIN_ID) this.focusWindow(ACTIVE_WIN_ID);
+      else document.getElementById('os-active-win-title').textContent = 'سطح المكتب';
+    }
+    this.renderTaskbar();
+    this.refreshWidgets();
+  },
+
+  minimizeAll() {
+    const openVis = Object.values(WINDOWS).filter((x) => !x.minimized);
+    if (openVis.length > 0) {
+      openVis.forEach((w) => {
+        w.minimized = true;
+        w.el.classList.add('win-minimized');
+      });
+      ACTIVE_WIN_ID = null;
+      document.getElementById('os-active-win-title').textContent = 'سطح المكتب';
+    } else {
+      Object.values(WINDOWS).forEach((w) => {
+        w.minimized = false;
+        w.el.classList.remove('win-minimized');
+      });
+      const top = Object.values(WINDOWS).sort((a, b) => b.z - a.z)[0];
+      if (top) this.focusWindow(top.id);
+    }
+    this.renderTaskbar();
+  },
+
+  tileWindows() {
+    const vis = Object.values(WINDOWS).filter((x) => !x.minimized).sort((a, b) => b.z - a.z);
+    if (!vis.length) {
+      toast('افتح نافذتين على الأقل لترتيبهما جنباً إلى جنب', 'warn');
+      return;
+    }
+    if (vis.length === 1) {
+      this.snapWindow(vis[0].id, 'right');
+      toast('تم تثبيت النافذة في النصف الأيمن — افتح نافذة أخرى لتوضع بجانبها');
+      return;
+    }
+    this.snapWindow(vis[0].id, 'right');
+    this.snapWindow(vis[1].id, 'left');
+    toast(`تم ترتيب «${vis[0].app.title}» و«${vis[1].app.title}» جنباً إلى جنب`);
+  },
+
+  _bindDrag(appId, bar) {
+    bar.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      const w = WINDOWS[appId];
+      if (!w) return;
+      this.focusWindow(appId);
+      if (w.maximized || w.snap) {
+        w.maximized = false;
+        w.snap = null;
+        w.el.classList.remove('win-maximized', 'win-snap-right', 'win-snap-left');
+        const ws = document.getElementById('os-workspace').getBoundingClientRect();
+        const newW = Math.min(980, ws.width - 40);
+        const newH = Math.min(640, ws.height - 90);
+        w.el.style.width = newW + 'px';
+        w.el.style.height = newH + 'px';
+        w.el.style.left = Math.max(10, Math.min(ws.width - newW - 10, e.clientX - newW / 2)) + 'px';
+        w.el.style.top = '10px';
+      }
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const origLeft = parseInt(w.el.style.left, 10) || 0;
+      const origTop = parseInt(w.el.style.top, 10) || 0;
+      const shield = document.getElementById('os-drag-shield');
+      shield.style.display = 'block';
+      shield.style.cursor = 'grabbing';
+
+      const onMove = (ev) => {
+        const ws = document.getElementById('os-workspace').getBoundingClientRect();
+        const nx = Math.max(-120, Math.min(ws.width - 120, origLeft + (ev.clientX - startX)));
+        const ny = Math.max(0, Math.min(ws.height - 110, origTop + (ev.clientY - startY)));
+        w.el.style.left = nx + 'px';
+        w.el.style.top = ny + 'px';
+      };
+      const onUp = () => {
+        shield.style.display = 'none';
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+      };
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    });
+  },
+
+  _bindResize(appId, handle, dir) {
+    handle.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      if (e.button !== 0) return;
+      const w = WINDOWS[appId];
+      if (!w || w.maximized) return;
+      this.focusWindow(appId);
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const origW = w.el.offsetWidth;
+      const origH = w.el.offsetHeight;
+      const origL = parseInt(w.el.style.left, 10) || 0;
+      const shield = document.getElementById('os-drag-shield');
+      shield.style.display = 'block';
+      shield.style.cursor = getComputedStyle(handle).cursor;
+
+      const onMove = (ev) => {
+        const dx = ev.clientX - startX;
+        const dy = ev.clientY - startY;
+        if (dir.includes('e')) {
+          w.el.style.width = Math.max(380, origW + dx) + 'px';
+        }
+        if (dir.includes('w')) {
+          const nw = Math.max(380, origW - dx);
+          if (nw > 380) {
+            w.el.style.width = nw + 'px';
+            w.el.style.left = (origL + dx) + 'px';
+          }
+        }
+        if (dir.includes('s')) {
+          w.el.style.height = Math.max(300, origH + dy) + 'px';
+        }
+      };
+      const onUp = () => {
+        shield.style.display = 'none';
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+      };
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    });
+  },
+
+  /* ===== أيقونات سطح المكتب مع حرية التحريك وتغيير المكان وحفظه لكل مستخدم ===== */
+  _defaultIconPos(index) {
+    const ws = document.getElementById('os-workspace').getBoundingClientRect();
+    const maxRows = Math.max(3, Math.floor((ws.height - 96) / 104));
+    const col = Math.floor(index / maxRows);
+    const row = index % maxRows;
+    const x = Math.max(16, (ws.width || window.innerWidth) - 114 - col * 108);
+    const y = 18 + row * 104;
+    return { x, y };
+  },
+
+  resetIconsLayout(save = false) {
+    ICON_LAYOUT = {};
+    this.renderDesktopIcons();
+    if (save) {
+      localStorage.removeItem('tz-desktop-layout');
+      guard(() => api('user_pref_save', { desktop_layout: '' }));
+      toast('تم إعادة ترتيب أيقونات سطح المكتب تلقائياً');
+    }
+  },
+
+  renderDesktopIcons() {
+    const box = document.getElementById('os-desktop-icons');
+    const allIcons = [
+      ...PERMITTED_APPS,
+      { id: '_wp', title: 'المظهر والخلفية', icon: 'palette', color: 'linear-gradient(135deg,#db2777,#ec4899)' },
+    ];
+    box.innerHTML = allIcons.map((a, idx) => {
+      const pos = ICON_LAYOUT[a.id] || this._defaultIconPos(idx);
+      return `
+        <div class="desk-icon" data-icon-id="${a.id}" style="left:${pos.x}px;top:${pos.y}px" title="اضغط للفتح — أو اسحب الأيقونة لتغيير مكانها على سطح المكتب">
+          <div class="desk-icon-box" style="background:${a.color}">
+            <span class="material-icons-round text-2xl">${a.icon}</span>
+          </div>
+          <span class="desk-icon-label">${esc(a.title)}</span>
+        </div>
+      `;
+    }).join('');
+
+    box.querySelectorAll('.desk-icon').forEach((el) => {
+      this._bindDesktopIconDragOrClick(el);
+    });
+  },
+
+  _bindDesktopIconDragOrClick(el) {
+    el.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      e.stopPropagation();
+      const iconId = el.dataset.iconId;
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const origLeft = parseInt(el.style.left, 10) || 0;
+      const origTop = parseInt(el.style.top, 10) || 0;
+      let moved = false;
+      const shield = document.getElementById('os-drag-shield');
+
+      const onMove = (ev) => {
+        const dx = ev.clientX - startX;
+        const dy = ev.clientY - startY;
+        if (!moved && Math.hypot(dx, dy) > 6) {
+          moved = true;
+          el.classList.add('icon-dragging');
+          shield.style.display = 'block';
+          shield.style.cursor = 'grabbing';
+        }
+        if (moved) {
+          const ws = document.getElementById('os-workspace').getBoundingClientRect();
+          const nx = Math.max(8, Math.min(ws.width - 104, origLeft + dx));
+          const ny = Math.max(8, Math.min(ws.height - 150, origTop + dy));
+          el.style.left = nx + 'px';
+          el.style.top = ny + 'px';
+        }
+      };
+
+      const onUp = () => {
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+        shield.style.display = 'none';
+        el.classList.remove('icon-dragging');
+
+        if (!moved) {
+          this.openApp(iconId);
+        } else {
+          // تقريب المكان إلى شبكة 10px ليكون مرتباً وحفظه للمستخدم الحالي
+          const snappedX = Math.round((parseInt(el.style.left, 10) || 0) / 10) * 10;
+          const snappedY = Math.round((parseInt(el.style.top, 10) || 0) / 10) * 10;
+          el.style.left = snappedX + 'px';
+          el.style.top = snappedY + 'px';
+          ICON_LAYOUT[iconId] = { x: snappedX, y: snappedY };
+          guard(async () => {
+            const saved = await api('user_pref_save', { desktop_layout: ICON_LAYOUT });
+            if (CURRENT_USER && saved) CURRENT_USER.desktop_layout = saved.desktop_layout;
+          });
+        }
+      };
+
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    });
+  },
+
+  renderStartMenu(q = '') {
+    const grid = document.getElementById('start-apps-grid');
+    const cleanQ = (q || '').trim().toLowerCase();
+    const list = PERMITTED_APPS.filter((a) => !cleanQ || a.title.toLowerCase().includes(cleanQ));
+    grid.innerHTML = list.map((a) => `
+      <div class="start-app-card" data-start-app="${a.id}">
+        <div class="w-11 h-11 rounded-2xl flex items-center justify-center text-white shadow-md" style="background:${a.color}">
+          <span class="material-icons-round text-2xl">${a.icon}</span>
+        </div>
+        <span class="text-xs font-bold text-slate-100 leading-tight">${esc(a.title)}</span>
+      </div>
+    `).join('');
+    grid.querySelectorAll('[data-start-app]').forEach((el) => {
+      el.addEventListener('click', () => this.openApp(el.dataset.startApp));
+    });
+  },
+
+  renderTaskbar() {
+    const dock = document.getElementById('os-dock-apps');
+    dock.innerHTML = PERMITTED_APPS.map((a) => {
+      const w = WINDOWS[a.id];
+      const isRunning = !!w;
+      const isActive = ACTIVE_WIN_ID === a.id && w && !w.minimized;
+      const dotColor = !isRunning ? 'transparent' : (w.minimized ? '#f59e0b' : (isActive ? '#38bdf8' : '#94a3b8'));
+      return `
+        <button type="button" class="dock-item ${isRunning ? 'dock-running' : ''} ${isActive ? 'dock-active' : ''}" data-dock-app="${a.id}" title="${esc(a.title)}">
+          <div class="w-7 h-7 rounded-lg flex items-center justify-center text-white shrink-0" style="background:${a.color}">
+            <span class="material-icons-round text-base">${a.icon}</span>
+          </div>
+          <span class="hidden sm:inline">${esc(a.title.split(' ')[0] === 'نقاط' ? 'نقاط البيع' : a.title.split(' ')[0])}</span>
+          <span class="dock-dot" style="background:${dotColor}"></span>
+        </button>
+      `;
+    }).join('');
+
+    dock.querySelectorAll('[data-dock-app]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.dockApp;
+        const w = WINDOWS[id];
+        if (!w) {
+          this.openApp(id);
+        } else if (w.minimized) {
+          w.minimized = false;
+          w.el.classList.remove('win-minimized');
+          this.focusWindow(id);
+        } else if (ACTIVE_WIN_ID === id) {
+          this.minimizeWindow(id);
+        } else {
+          this.focusWindow(id);
+        }
+      });
+    });
+  },
+
+  toggleStart() {
+    const m = document.getElementById('os-start-menu');
+    const hidden = m.classList.toggle('hidden');
+    if (!hidden) {
+      document.getElementById('start-search').value = '';
+      this.renderStartMenu('');
+      document.getElementById('start-search').focus();
+    }
+  },
+  closeStart() {
+    document.getElementById('os-start-menu').classList.add('hidden');
+  },
+
+  openWallpaperModal() {
+    const grid = document.getElementById('wp-grid');
+    grid.innerHTML = WALLPAPERS.map((wp) => `
+      <div data-pick-wp="${wp.id}" class="cursor-pointer rounded-xl p-2 border-2 transition-all ${CURRENT_WP === wp.id ? 'border-primary bg-primary/5' : 'border-slate-200 dark:border-slate-700 hover:border-primary/40'}">
+        <div class="h-16 rounded-lg mb-2 shadow-inner" style="background:${wp.preview}"></div>
+        <div class="text-xs font-bold text-center text-slate-800 dark:text-white">${esc(wp.name)}</div>
+      </div>
+    `).join('');
+    grid.querySelectorAll('[data-pick-wp]').forEach((el) => {
+      el.addEventListener('click', () => {
+        const wpId = el.dataset.pickWp;
+        this.applyWallpaper(wpId, null, true);
+        this.openWallpaperModal();
+      });
+    });
+
+    // ألوان النظام (Swatches)
+    const accGrid = document.getElementById('accent-grid');
+    accGrid.innerHTML = ACCENT_PRESETS.map((ac) => `
+      <button type="button" data-pick-acc="${ac.hex}" class="px-3 py-1.5 rounded-xl border-2 flex items-center gap-2 text-xs font-bold transition-all ${CURRENT_ACCENT.toLowerCase() === ac.hex.toLowerCase() ? 'border-slate-900 dark:border-white scale-105 shadow-md' : 'border-transparent bg-white dark:bg-slate-800'}" style="color:${ac.hex}">
+        <span class="w-4 h-4 rounded-full inline-block" style="background:${ac.hex}"></span>
+        <span>${esc(ac.name)}</span>
+      </button>
+    `).join('');
+    accGrid.querySelectorAll('[data-pick-acc]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        this.applyAccent(btn.dataset.pickAcc, true);
+        this.openWallpaperModal();
+      });
+    });
+    document.getElementById('wp-custom-color').value = CURRENT_ACCENT;
+    document.getElementById('wp-remove-custom').classList.toggle('hidden', !CURRENT_CUSTOM_BG);
+    document.getElementById('btn-wp-admin-default').classList.toggle('hidden', !hasPerm('settings_manage'));
+
+    document.getElementById('wp-modal').classList.replace('hidden', 'flex');
+  },
+
+  async applyWallpaper(wpId, customBgData = null, saveToServer = false) {
+    const root = document.getElementById('os-root');
+    if (wpId === 'custom' && (customBgData || CURRENT_CUSTOM_BG)) {
+      CURRENT_WP = 'custom';
+      CURRENT_CUSTOM_BG = customBgData || CURRENT_CUSTOM_BG;
+      root.dataset.wp = 'custom';
+      root.style.backgroundImage = `url("${CURRENT_CUSTOM_BG}")`;
+    } else {
+      const valid = WALLPAPERS.some((w) => w.id === wpId) ? wpId : 'win11-bloom';
+      CURRENT_WP = valid;
+      root.dataset.wp = valid;
+      root.style.backgroundImage = '';
+    }
+    if (saveToServer) {
+      const payload = (CURRENT_WP === 'custom' && CURRENT_CUSTOM_BG)
+        ? { wallpaper: 'custom', custom_bg: CURRENT_CUSTOM_BG }
+        : { wallpaper: CURRENT_WP };
+      const saved = await guard(() => api('user_pref_save', payload));
+      if (saved) {
+        if (CURRENT_USER) {
+          CURRENT_USER.wallpaper = saved.wallpaper;
+          CURRENT_USER.custom_bg = saved.custom_bg;
+        }
+        toast('تم حفظ خلفية سطح المكتب في حسابك بنجاح');
+      }
+    }
+  },
+
+  async applyAccent(hex, saveToServer = false) {
+    CURRENT_ACCENT = hex || '#137fec';
+    applyAccentColorEverywhere(CURRENT_ACCENT);
+    if (saveToServer) {
+      const saved = await guard(() => api('user_pref_save', { accent_color: CURRENT_ACCENT }));
+      if (saved) {
+        if (CURRENT_USER) CURRENT_USER.accent_color = saved.accent_color;
+        toast('تم حفظ لون النظام المفضل في حسابك بنجاح');
+      }
+    }
+  },
+
+  hideCtx() {
+    document.getElementById('os-ctx-menu').classList.add('hidden');
+  },
+
+  async refreshWidgets() {
+    try {
+      const sh = await api('shift');
+      if (sh) {
+        const dot = document.getElementById('os-shift-dot');
+        const txt = document.getElementById('os-shift-text');
+        if (sh.shift) {
+          dot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+          txt.textContent = `وردية مفتوحة (${fmtDT(sh.shift.opened_at).slice(11, 16)})`;
+        } else {
+          dot.className = 'w-2 h-2 rounded-full bg-red-500';
+          txt.textContent = 'الوردية مغلقة — اضغط للفتح';
+        }
+        document.getElementById('w-sales-today').textContent = money((sh.today && sh.today.total) || 0);
+        document.getElementById('w-sales-cnt').textContent = n((sh.today && sh.today.count) || 0);
+      }
+      const st = await api('stock_stats');
+      if (st) {
+        document.getElementById('w-low-stock').textContent = n((st.low || 0) + (st.out || 0));
+      }
+      const ss = await api('sales_stats', {});
+      if (ss && ss.repairs) {
+        document.getElementById('w-repairs').textContent = n(ss.repairs.active || 0);
+      }
+    } catch (e) {}
+  },
+
+  printHtml(htmlContent) {
+    const stage = document.getElementById('os-print-stage');
+    stage.innerHTML = htmlContent;
+    setTimeout(() => window.print(), 90);
+  },
+};
+
+window.TZOS = TZOS;
+
+function updateClocks() {
+  const now = new Date();
+  const t = now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+  const d = now.toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  document.getElementById('os-clock').textContent = t;
+  document.getElementById('w-big-time').textContent = t;
+  document.getElementById('w-big-date').textContent = d;
+}
+setInterval(updateClocks, 1000);
+updateClocks();
+
+/* أحداث رفع الصورة وتخصيص الألوان وتثبيت افتراضي المدير */
+document.getElementById('wp-file-input').addEventListener('change', async (e) => {
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  try {
+    const dataUrl = await compressWallpaperFile(f);
+    TZOS.applyWallpaper('custom', dataUrl, true);
+    TZOS.openWallpaperModal();
+  } catch (err) {
+    toast(err.message || 'تعذر رفع الصورة', 'error');
+  }
+  e.target.value = '';
+});
+
+document.getElementById('wp-remove-custom').addEventListener('click', async () => {
+  CURRENT_CUSTOM_BG = null;
+  await guard(() => api('user_pref_save', { custom_bg: '', wallpaper: 'win11-bloom' }));
+  TZOS.applyWallpaper('win11-bloom', null, false);
+  TZOS.openWallpaperModal();
+  toast('تم حذف الصورة المرفوعة والعودة للخلفية الافتراضية');
+});
+
+document.getElementById('wp-custom-color').addEventListener('input', (e) => {
+  TZOS.applyAccent(e.target.value, false);
+});
+document.getElementById('wp-custom-color').addEventListener('change', (e) => {
+  TZOS.applyAccent(e.target.value, true);
+  TZOS.openWallpaperModal();
+});
+
+document.getElementById('btn-wp-admin-default').addEventListener('click', async () => {
+  const payload = {
+    os_default_wallpaper: CURRENT_WP,
+    os_default_custom_bg: CURRENT_WP === 'custom' && CURRENT_CUSTOM_BG ? CURRENT_CUSTOM_BG : '',
+    os_default_accent: CURRENT_ACCENT,
+    os_default_layout: JSON.stringify(ICON_LAYOUT || {}),
+  };
+  const st = await guard(() => api('settings_save', payload));
+  if (st) {
+    SETTINGS = st;
+    toast('تم تثبيت الخلفية واللون وترتيب الأيقونات كوضع افتراضي لجميع المستخدمين');
+  }
+});
+
+document.getElementById('btn-wp-reset-default').addEventListener('click', async () => {
+  await guard(() => api('user_pref_save', { reset_theme: true, desktop_layout: '' }));
+  localStorage.removeItem('tz-wallpaper');
+  localStorage.removeItem('tz-accent');
+  localStorage.removeItem('tz-desktop-layout');
+  const defWp = SETTINGS.os_default_wallpaper || 'win11-bloom';
+  const defBg = SETTINGS.os_default_custom_bg || null;
+  const defAcc = SETTINGS.os_default_accent || '#137fec';
+  ICON_LAYOUT = {};
+  if (SETTINGS.os_default_layout) {
+    try { ICON_LAYOUT = JSON.parse(SETTINGS.os_default_layout) || {}; } catch (e) {}
+  }
+  TZOS.applyWallpaper(defWp, defBg, false);
+  TZOS.applyAccent(defAcc, false);
+  TZOS.renderDesktopIcons();
+  TZOS.openWallpaperModal();
+  toast('تم استعادة المظهر الافتراضي المحدد من قِبل المدير');
+});
+
+document.getElementById('os-start-btn').addEventListener('click', (e) => { e.stopPropagation(); TZOS.toggleStart(); });
+document.getElementById('top-logo-btn').addEventListener('click', (e) => { e.stopPropagation(); TZOS.toggleStart(); });
+document.getElementById('start-close-btn').addEventListener('click', () => TZOS.closeStart());
+document.getElementById('start-search').addEventListener('input', (e) => TZOS.renderStartMenu(e.target.value));
+document.getElementById('top-tile-btn').addEventListener('click', () => TZOS.tileWindows());
+document.getElementById('task-tile-btn').addEventListener('click', () => TZOS.tileWindows());
+document.getElementById('top-showdesk-btn').addEventListener('click', () => TZOS.minimizeAll());
+document.getElementById('task-show-desktop').addEventListener('click', () => TZOS.minimizeAll());
+document.getElementById('top-wp-btn').addEventListener('click', () => TZOS.openWallpaperModal());
+document.getElementById('task-wp-btn').addEventListener('click', () => TZOS.openWallpaperModal());
+document.getElementById('os-shift-pill').addEventListener('click', () => TZOS.openApp('pos'));
+document.getElementById('w-refresh').addEventListener('click', () => { TZOS.refreshWidgets(); toast('تم تحديث إحصائيات سطح المكتب'); });
+
+document.getElementById('start-logout-btn').addEventListener('click', async () => {
+  await guard(() => api('logout'));
+  location.href = 'index.html';
+});
+
+document.addEventListener('click', (e) => {
+  const sm = document.getElementById('os-start-menu');
+  if (!sm.classList.contains('hidden') && !sm.contains(e.target) && !e.target.closest('#os-start-btn') && !e.target.closest('#top-logo-btn')) {
+    TZOS.closeStart();
+  }
+  TZOS.hideCtx();
+});
+
+document.getElementById('os-workspace').addEventListener('contextmenu', (e) => {
+  if (e.target.closest('.tz-os-window') || e.target.closest('#os-start-menu') || e.target.closest('#os-taskbar-wrap')) return;
+  e.preventDefault();
+  const ctx = document.getElementById('os-ctx-menu');
+  ctx.classList.remove('hidden');
+  const x = Math.min(window.innerWidth - 260, Math.max(10, e.clientX));
+  const y = Math.min(window.innerHeight - 340, Math.max(40, e.clientY));
+  ctx.style.left = x + 'px';
+  ctx.style.top = y + 'px';
+});
+
+(async () => {
+  const user = await pageInit('desktop');
+  if (!user) return;
+
+  document.getElementById('os-store-name').textContent = SETTINGS.store_name || 'تك زون للإلكترونيات';
+  document.getElementById('os-user-name').textContent = user.name;
+  document.getElementById('start-user-name').textContent = user.name;
+  document.getElementById('start-user-role').textContent = user.role === 'admin' ? 'مدير النظام (صلاحيات كاملة)' : 'موظف / كاشير';
+  document.getElementById('start-user-init').textContent = (user.name || 'م').slice(0, 1);
+
+  // تحميل الخلفية الخاصة بالمستخدم من قاعدة البيانات أولاً، وإلا فافتراضي المدير
+  let wp = 'win11-bloom';
+  let customBg = null;
+  if (user.wallpaper) {
+    wp = user.wallpaper;
+    customBg = user.custom_bg || null;
+  } else if (SETTINGS.os_default_wallpaper) {
+    wp = SETTINGS.os_default_wallpaper;
+    customBg = SETTINGS.os_default_custom_bg || null;
+  }
+  CURRENT_CUSTOM_BG = user.custom_bg || SETTINGS.os_default_custom_bg || null;
+  await TZOS.applyWallpaper(wp, customBg, false);
+
+  // تحميل اللون المفضل الخاص بالمستخدم أولاً، وإلا فافتراضي المدير
+  const acc = user.accent_color || SETTINGS.os_default_accent || '#137fec';
+  await TZOS.applyAccent(acc, false);
+
+  // تحميل ترتيب أيقونات سطح المكتب الخاص بالمستخدم أولاً، وإلا فافتراضي المدير
+  const rawLayout = user.desktop_layout || SETTINGS.os_default_layout || null;
+  ICON_LAYOUT = {};
+  if (rawLayout) {
+    try { ICON_LAYOUT = typeof rawLayout === 'string' ? JSON.parse(rawLayout) : rawLayout; } catch (e) { ICON_LAYOUT = {}; }
+  }
+
+  PERMITTED_APPS = OS_APPS.filter((a) => !a.perm || hasPerm(a.perm, user));
+  TZOS.renderDesktopIcons();
+  TZOS.renderStartMenu('');
+  TZOS.renderTaskbar();
+  await TZOS.refreshWidgets();
+
+  // فتح نافذة نقاط البيع تلقائياً عند بدء التشغيل لسرعة العمل
+  TZOS.openApp('pos', null, false);
+})();
+</script>
+</body>
+</html>

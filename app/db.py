@@ -39,6 +39,10 @@ CREATE TABLE IF NOT EXISTS users (
   pin_hash BLOB NOT NULL,
   permissions TEXT,
   card_size INTEGER,
+  wallpaper TEXT,
+  custom_bg TEXT,
+  accent_color TEXT,
+  desktop_layout TEXT,
   created_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS categories (
@@ -284,15 +288,21 @@ def parse_user_perms(role: str, raw_perms: str | None) -> dict:
     return base
 
 
+_INITIALIZED_DBS = set()
+
+
 def connect() -> sqlite3.Connection:
     _migrate_once()
-    conn = sqlite3.connect(db_path(), timeout=10)
+    path = db_path()
+    conn = sqlite3.connect(path, timeout=15, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys=ON")
     conn.execute("PRAGMA journal_mode=WAL")
-    init_db(conn)
-    _ensure_schema_columns(conn)
-    _migrate_customers(conn)
+    if path not in _INITIALIZED_DBS:
+        init_db(conn)
+        _ensure_schema_columns(conn)
+        _migrate_customers(conn)
+        _INITIALIZED_DBS.add(path)
     return conn
 
 
@@ -321,6 +331,14 @@ def _ensure_schema_columns(conn: sqlite3.Connection):
             conn.execute("ALTER TABLE users ADD COLUMN permissions TEXT")
         if "card_size" not in user_cols:
             conn.execute("ALTER TABLE users ADD COLUMN card_size INTEGER")
+        if "wallpaper" not in user_cols:
+            conn.execute("ALTER TABLE users ADD COLUMN wallpaper TEXT")
+        if "custom_bg" not in user_cols:
+            conn.execute("ALTER TABLE users ADD COLUMN custom_bg TEXT")
+        if "accent_color" not in user_cols:
+            conn.execute("ALTER TABLE users ADD COLUMN accent_color TEXT")
+        if "desktop_layout" not in user_cols:
+            conn.execute("ALTER TABLE users ADD COLUMN desktop_layout TEXT")
 
         prod_cols = {c["name"] for c in conn.execute("PRAGMA table_info(products)").fetchall()}
         if "image" not in prod_cols:

@@ -3,6 +3,7 @@ import datetime
 import hmac
 import json
 import os
+import pathlib
 import sqlite3
 import sys
 import traceback
@@ -38,6 +39,65 @@ def _int(v, default=0):
         return int(v)
     except Exception:
         raise ApiError("قيمة عددية غير صالحة")
+
+
+
+# 1x1 white JPEG fallback for headless/CLI tests when canvas image is not passed
+_FALLBACK_JPEG = (
+    b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x01\x00`\x00`\x00\x00"
+    b"\xff\xdb\x00C\x00\x08\x06\x06\x07\x06\x05\x08\x07\x07\x07\t\t"
+    b"\x08\n\x0c\x14\r\x0c\x0b\x0b\x0c\x19\x12\x13\x0f\x14\x1d\x1a"
+    b"\x1f\x1e\x1d\x1a\x1c\x1c $.\' \",#\x1c\x1c(7),01444\x1f\'9=82<.342"
+    b"\xff\xc0\x00\x0b\x08\x00\x01\x00\x01\x01\x01\x11\x00\xff\xc4"
+    b"\x00\x1f\x00\x00\x01\x05\x01\x01\x01\x01\x01\x01\x00\x00\x00"
+    b"\x00\x00\x00\x00\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b"
+    b"\xff\xda\x00\x08\x01\x01\x00\x00?\x00\xfb\xd2\x8a(\x03\xff\xd9"
+)
+
+
+def _jpeg_to_pdf_bytes(jpeg_bytes: bytes, img_w: int, img_h: int) -> bytes:
+    """تحويل صورة الفاتورة (JPEG) إلى ملف PDF 1.4 قياسي يعمل على جميع الأجهزة بدون مكتبات خارجية."""
+    img_w = max(1, int(img_w or 720))
+    img_h = max(1, int(img_h or 1000))
+    pdf_w = 226.77  # 80mm thermal width in points
+    pdf_h = round(pdf_w * (img_h / img_w), 2)
+
+    objs = []
+    objs.append(b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n")
+    objs.append(b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n")
+    objs.append(
+        (
+            f"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {pdf_w} {pdf_h}] "
+            f"/Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n"
+        ).encode("ascii")
+    )
+    img_head = (
+        f"4 0 obj\n<< /Type /XObject /Subtype /Image /Width {img_w} /Height {img_h} "
+        f"/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length {len(jpeg_bytes)} >>\nstream\n"
+    ).encode("ascii")
+    objs.append(img_head + jpeg_bytes + b"\nendstream\nendobj\n")
+
+    content_stream = f"q\n{pdf_w} 0 0 {pdf_h} 0 0 cm\n/Im0 Do\nQ\n".encode("ascii")
+    objs.append(
+        f"5 0 obj\n<< /Length {len(content_stream)} >>\nstream\n".encode("ascii")
+        + content_stream
+        + b"\nendstream\nendobj\n"
+    )
+
+    out = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
+    offsets = []
+    for o in objs:
+        offsets.append(len(out))
+        out.extend(o)
+
+    xref_pos = len(out)
+    out.extend(f"xref\n0 {len(objs) + 1}\n0000000000 65535 f \n".encode("ascii"))
+    for off in offsets:
+        out.extend(f"{off:010d} 00000 n \n".encode("ascii"))
+    out.extend(
+        f"trailer\n<< /Size {len(objs) + 1} /Root 1 0 R >>\nstartxref\n{xref_pos}\n%%EOF\n".encode("ascii")
+    )
+    return bytes(out)
 
 
 def _fmt_money(minor: int) -> str:
@@ -211,16 +271,69 @@ class Api:
                 out.append(d)
             return out
 
-    def user_pref_save(self, card_size=None):
-        """حفظ تفضيلات العرض الخاصة بالمستخدم الحالي (مثل حجم بلوك المنتجات في نقاط البيع)."""
+    def _row_to_user_dict(self, row) -> dict:
+        keys = row.keys()
+        return {
+            "id": row["id"],
+            "username": row["username"],
+            "name": row["name"],
+            "role": row["role"],
+            "permissions": db.parse_user_perms(row["role"], row["permissions"] if "permissions" in keys else None),
+            "card_size": row["card_size"] if "card_size" in keys else None,
+            "wallpaper": row["wallpaper"] if "wallpaper" in keys else None,
+            "custom_bg": row["custom_bg"] if "custom_bg" in keys else None,
+            "accent_color": row["accent_color"] if "accent_color" in keys else None,
+            "desktop_layout": row["desktop_layout"] if "desktop_layout" in keys else None,
+        }
+
+    def user_pref_save(self, card_size=None, wallpaper=None, custom_bg=None, accent_color=None, desktop_layout=None, reset_theme=False):
+        """حفظ تفضيلات العرض الخاصة بالمستخدم الحالي في قاعدة البيانات بشكل دائم لكل مستخدم."""
         u = self._user()
-        cs = _int(card_size, 0) if card_size not in (None, "") else None
-        if cs is not None and (cs < 110 or cs > 360):
-            raise ApiError("حجم البلوك يجب أن يكون بين 110 و 360")
+        uid = u["id"]
         with db.connect() as conn:
-            conn.execute("UPDATE users SET card_size=? WHERE id=?", (cs, u["id"]))
-        _STATE["user"]["card_size"] = cs
-        return {"card_size": cs}
+            if reset_theme:
+                conn.execute(
+                    "UPDATE users SET wallpaper=NULL, custom_bg=NULL, accent_color=NULL WHERE id=?",
+                    (uid,),
+                )
+            if card_size not in (None, ""):
+                cs = _int(card_size, 0)
+                if cs < 110 or cs > 360:
+                    raise ApiError("حجم البلوك يجب أن يكون بين 110 و 360")
+                conn.execute("UPDATE users SET card_size=? WHERE id=?", (cs, uid))
+            if wallpaper is not None:
+                wp = str(wallpaper).strip()[:60] or None
+                conn.execute("UPDATE users SET wallpaper=? WHERE id=?", (wp, uid))
+            if custom_bg is not None:
+                bg = str(custom_bg).strip()
+                if bg == "":
+                    conn.execute("UPDATE users SET custom_bg=NULL WHERE id=?", (uid,))
+                else:
+                    if not bg.startswith("data:image/"):
+                        raise ApiError("صيغة صورة الخلفية غير صالحة")
+                    if len(bg.encode("utf-8")) > 950 * 1024:
+                        raise ApiError("حجم صورة الخلفية كبير جداً (الحد الأقصى 950KB)")
+                    conn.execute("UPDATE users SET custom_bg=?, wallpaper='custom' WHERE id=?", (bg, uid))
+            if accent_color is not None:
+                ac = str(accent_color).strip()[:20] or None
+                conn.execute("UPDATE users SET accent_color=? WHERE id=?", (ac, uid))
+            if desktop_layout is not None:
+                if isinstance(desktop_layout, dict):
+                    dl = json.dumps(desktop_layout, ensure_ascii=False) if desktop_layout else None
+                else:
+                    dl = str(desktop_layout).strip() or None
+                conn.execute("UPDATE users SET desktop_layout=? WHERE id=?", (dl, uid))
+            conn.commit()
+            row = conn.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+            if row:
+                _STATE["user"] = self._row_to_user_dict(row)
+        return {
+            "card_size": _STATE["user"].get("card_size"),
+            "wallpaper": _STATE["user"].get("wallpaper"),
+            "custom_bg": _STATE["user"].get("custom_bg"),
+            "accent_color": _STATE["user"].get("accent_color"),
+            "desktop_layout": _STATE["user"].get("desktop_layout"),
+        }
 
     def user_save(self, username, name, role="cashier", pin=None, permissions=None, id=None):
         self._perm("settings_manage")
@@ -260,9 +373,9 @@ class Api:
                             (username, name, role, perms_json, uid),
                         )
                     if _STATE["user"] and _STATE["user"]["id"] == uid:
-                        _STATE["user"]["name"] = name
-                        _STATE["user"]["role"] = role
-                        _STATE["user"]["permissions"] = perms_dict
+                        row = conn.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+                        if row:
+                            _STATE["user"] = self._row_to_user_dict(row)
                     return {"id": uid}
                 else:
                     if not pin:
@@ -305,30 +418,15 @@ class Api:
             expect = db.hash_pin(pin, row["pin_salt"])
             if not hmac.compare_digest(expect, row["pin_hash"]):
                 raise ApiError("اسم المستخدم أو الرمز السري غير صحيح")
-            perms = db.parse_user_perms(row["role"], row["permissions"] if "permissions" in row.keys() else None)
-            _STATE["user"] = {
-                "id": row["id"],
-                "username": row["username"],
-                "name": row["name"],
-                "role": row["role"],
-                "permissions": perms,
-                "card_size": row["card_size"] if "card_size" in row.keys() else None,
-            }
+            _STATE["user"] = self._row_to_user_dict(row)
             return dict(_STATE["user"])
 
     def session(self):
         if _STATE["user"]:
             with db.connect() as conn:
-                row = conn.execute("SELECT id, username, name, role, permissions, card_size FROM users WHERE id=?", (_STATE["user"]["id"],)).fetchone()
+                row = conn.execute("SELECT * FROM users WHERE id=?", (_STATE["user"]["id"],)).fetchone()
                 if row:
-                    _STATE["user"] = {
-                        "id": row["id"],
-                        "username": row["username"],
-                        "name": row["name"],
-                        "role": row["role"],
-                        "permissions": db.parse_user_perms(row["role"], row["permissions"]),
-                        "card_size": row["card_size"],
-                    }
+                    _STATE["user"] = self._row_to_user_dict(row)
         return {"user": _STATE["user"]}
 
     def logout(self):
@@ -344,7 +442,8 @@ class Api:
     def settings_save(self, **kv):
         self._perm("settings_manage")
         allowed = {"store_name", "store_address", "store_phone", "currency", "tax_enabled", "tax_rate",
-                   "pos_card_size", "store_email", "store_cr", "store_vat", "receipt_thanks", "receipt_footer",
+                   "pos_card_size", "os_default_wallpaper", "os_default_custom_bg", "os_default_accent", "os_default_layout",
+                   "store_email", "store_cr", "store_vat", "receipt_thanks", "receipt_footer",
                    "receipt_logo", "receipt_show_logo", "receipt_show_barcode",
                    "receipt_show_tax", "receipt_show_payments"}
         show = {"tax_enabled", "receipt_show_logo", "receipt_show_barcode", "receipt_show_tax", "receipt_show_payments"}
@@ -353,7 +452,7 @@ class Api:
                 if k not in allowed or v is None:
                     continue
                 s = str(v)
-                if s == "" and k not in show:
+                if s == "" and k not in show and k not in ("os_default_custom_bg", "os_default_layout"):
                     continue
                 if k in show:
                     if s not in ("0", "1"):
@@ -1370,17 +1469,21 @@ class Api:
         L.append(sep("="))
         return "\n".join(line[:W] for line in L)
 
-    def whatsapp_send_invoice(self, sale_id, phone=None):
-        """فتح تطبيق واتساب على الجهاز مباشرة لإرسال تفاصيل الفاتورة لرقم العميل، مع حفظ نسخة محلية في مجلد data/receipts."""
+    def whatsapp_send_invoice(self, sale_id, phone=None, pdf_image=None, img_w=720, img_h=1050):
+        """إنشاء ملف الفاتورة PDF ونسخه للحافظة وفتح واتساب مع رسالة ترحيب باسم الشركة من الإعدادات وإرفاق الملف."""
+        import base64
+        import subprocess
         import urllib.parse
         import webbrowser
+
         d = self.sale(sale_id)
         with db.connect() as conn:
             st = self._settings(conn)
+
         raw_phone = (phone or d.get("customer_phone") or "").strip()
         digits = "".join(ch for ch in raw_phone if ch.isdigit())
         if not digits:
-            raise ApiError("يرجى إدخال رقم موبايل العميل (مثال: 010xxxxxxxx) لإرسال الفاتورة عبر واتساب")
+            raise ApiError("يرجى إدخال رقم موبايل العميل (مثال: 010xxxxxxxx) لإرسال ملف الـ PDF عبر واتساب")
         if digits.startswith("00"):
             digits = digits[2:]
         elif digits.startswith("01") and len(digits) == 11:
@@ -1388,57 +1491,114 @@ class Api:
         elif not digits.startswith("20") and len(digits) == 10:
             digits = "20" + digits
 
-        store_name = st.get("store_name", "تك زون للإلكترونيات")
-        cur = st.get("currency", "ج.م")
-        lines = [
-            f"*{store_name}*",
-            f"فاتورة رقم: *{d['invoice_no']}*",
+        # تجهيز رسالة الفاتورة باسم الشركة كما هو محفوظ في الإعدادات
+        store_name = (st.get("store_name") or "تك زون للإلكترونيات").strip()
+        cur = (st.get("currency") or "ج.م").strip()
+        cust_part = f" أ/ {d['customer_name']}" if d.get("customer_name") else ""
+        msg_lines = [
+            f"مرحباً{cust_part}،",
+            f"لديك فاتورة من *{store_name}*",
+            f"رقم الفاتورة: *{d['invoice_no']}*",
             f"التاريخ: {d['created_at'][:16]}",
+            f"الإجمالي: *{_fmt_money(d['total'])} {cur}*",
+            "مرفق ملف الفاتورة (PDF).",
         ]
-        if d.get("customer_name"):
-            lines.append(f"العميل: {d['customer_name']}")
-        if d.get("status") in ("partial_return", "returned"):
-            lines.append(f"الحالة: *{'مرتجع كلي' if d['status'] == 'returned' else 'مرتجع جزئي / معدلة'}*")
-        lines.append("───────────────")
-        for it in d["items"]:
-            rem = it.get("remaining_qty", it["qty"])
-            ret = it.get("returned_qty", 0)
-            ret_note = f" (مرتجع {ret})" if ret > 0 else ""
-            lines.append(f"• {it['name']} × {rem}{ret_note} = {_fmt_money(rem * it['unit_price'])} {cur}")
-        lines.append("───────────────")
-        if d.get("discount"):
-            lines.append(f"الخصم: -{_fmt_money(d['discount'])} {cur}")
-        if d.get("tax") and st.get("tax_enabled", "1") != "0":
-            lines.append(f"الضريبة: {_fmt_money(d['tax'])} {cur}")
-        lines.append(f"*الإجمالي المطلوب: {_fmt_money(d['total'])} {cur}*")
         if st.get("receipt_thanks"):
-            lines.append(st["receipt_thanks"])
+            msg_lines.append(st["receipt_thanks"])
+        msg_text = "\n".join(msg_lines)
+        encoded_text = urllib.parse.quote(msg_text)
 
-        msg_text = "\n".join(lines)
-        encoded = urllib.parse.quote(msg_text)
+        # 1) استخراج بيانات صورة الفاتورة المولدة من Canvas وتحويلها إلى ملف PDF حقيقي
+        jpeg_bytes = _FALLBACK_JPEG
+        if pdf_image and isinstance(pdf_image, str) and "," in pdf_image:
+            try:
+                b64_part = pdf_image.split(",", 1)[1]
+                decoded = base64.b64decode(b64_part)
+                if decoded.startswith(b"\xff\xd8"):
+                    jpeg_bytes = decoded
+            except Exception:
+                pass
 
-        # حفظ نسخة نصية/قابلة للطباعة من الإيصال داخل مجلد data/receipts لسهولة إرفاقها
-        receipts_dir = pathlib.Path(db.db_path()).parent / "receipts"
+        pdf_bytes = _jpeg_to_pdf_bytes(jpeg_bytes, _int(img_w, 720), _int(img_h, 1050))
+        receipts_dir = pathlib.Path(db.db_path()).resolve().parent / "receipts"
         receipts_dir.mkdir(parents=True, exist_ok=True)
+        pdf_file = receipts_dir / f"{d['invoice_no']}.pdf"
+        pdf_file.write_bytes(pdf_bytes)
+
+        # حفظ نسخة نصية احتياطية أيضاً
         txt_file = receipts_dir / f"{d['invoice_no']}.txt"
         txt_file.write_text(self.receipt_text(sale_id), encoding="utf-8")
 
-        wa_proto = f"whatsapp://send?phone={digits}&text={encoded}"
-        wa_web = f"https://wa.me/{digits}?text={encoded}"
+        pdf_abs = str(pdf_file.resolve())
+        wa_proto = f"whatsapp://send?phone={digits}&text={encoded_text}"
+        wa_web = f"https://web.whatsapp.com/send?phone={digits}&text={encoded_text}"
         opened = False
-        if hasattr(os, "startfile"):
+
+        # 2) على نظام ويندوز: نسخ ملف الـ PDF للحافظة + فتح المحادثة مع النص (مما يضع المؤشر داخل مربع الكتابة تلقائياً) + لصق المرفق (Ctrl+V)
+        if os.name == "nt":
             try:
-                os.startfile(wa_proto)
+                ps_pdf = pdf_abs.replace("'", "''")
+                ps_proto = wa_proto.replace("'", "''")
+                ps_web = wa_web.replace("'", "''")
+                ps_script = f"""
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public class Win32Focus {{
+    [DllImport("user32.dll")]
+    public static extern bool SetForegroundWindow(IntPtr hWnd);
+    [DllImport("user32.dll")]
+    public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
+}}
+"@
+
+$files = New-Object System.Collections.Specialized.StringCollection
+$files.Add('{ps_pdf}')
+[System.Windows.Forms.Clipboard]::SetFileDropList($files)
+try {{ Set-Clipboard -LiteralPath '{ps_pdf}' -ErrorAction SilentlyContinue }} catch {{}}
+
+try {{
+    Start-Process '{ps_proto}' -ErrorAction Stop
+}} catch {{
+    Start-Process '{ps_web}'
+}}
+
+Start-Sleep -Milliseconds 2600
+
+$procs = Get-Process | Where-Object {{ ($_.ProcessName -match 'WhatsApp' -or $_.MainWindowTitle -match 'WhatsApp|واتساب') -and $_.MainWindowHandle -ne 0 }}
+foreach ($p in $procs) {{
+    [Win32Focus]::ShowWindowAsync($p.MainWindowHandle, 9) | Out-Null
+    [Win32Focus]::SetForegroundWindow($p.MainWindowHandle) | Out-Null
+}}
+Start-Sleep -Milliseconds 500
+[System.Windows.Forms.SendKeys]::SendWait('^v')
+"""
+                creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+                subprocess.Popen(
+                    ["powershell", "-NoProfile", "-STA", "-WindowStyle", "Hidden", "-Command", ps_script],
+                    creationflags=creation_flags,
+                )
                 opened = True
-            except OSError:
+            except Exception:
                 opened = False
+
         if not opened:
             try:
                 webbrowser.open(wa_web)
                 opened = True
             except Exception:
                 pass
-        return {"phone": digits, "url": wa_web, "receipt_file": str(txt_file), "opened": opened}
+
+        return {
+            "phone": digits,
+            "store_name": store_name,
+            "message": msg_text,
+            "pdf_file": pdf_abs,
+            "pdf_name": pdf_file.name,
+            "receipt_file": pdf_abs,
+            "opened": opened,
+        }
 
     def sales(self, date=None, kind=None, q=None, limit=100, offset=0):
         u = self._user()

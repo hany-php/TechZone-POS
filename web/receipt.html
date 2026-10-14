@@ -111,13 +111,13 @@
 <div class="space-y-2" id="pays"></div>
 </div>
 <div class="mt-auto pt-6 border-t border-gray-100 dark:border-gray-800 flex flex-wrap gap-3">
-<button onclick="window.print()" class="flex-1 bg-primary hover:bg-primary-dark text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 transition-transform active:scale-[0.98]">
+<button onclick="if(window.parent&&window.parent!==window&&window.parent.TZOS&&window.parent.TZOS.printHtml){window.parent.TZOS.printHtml(document.getElementById('paper').innerHTML);}else{window.print();}" class="flex-1 bg-primary hover:bg-primary-dark text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 transition-transform active:scale-[0.98]">
 <span class="material-icons-outlined">print</span>
 طباعة الإيصال
 </button>
 <button id="btn-wa" type="button" class="px-5 py-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-2 transition-colors shadow-lg shadow-emerald-600/20">
 <span class="material-icons-outlined">send</span>
-إرسال عبر واتساب
+إرسال ملف PDF عبر واتساب
 </button>
 <button id="btn-text" class="px-5 py-4 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors">
 <span class="material-icons-outlined">receipt</span>
@@ -407,13 +407,7 @@
   renderPaper();
   document.getElementById('btn-wa').addEventListener('click', async () => {
     if (!sale) return;
-    let ph = sale.customer_phone || '';
-    if (!ph) {
-      ph = prompt('أدخل رقم موبايل العميل لإرسال الفاتورة عبر واتساب (مثال: 01012345678):', '');
-      if (!ph) return;
-    }
-    const r = await guard(() => api('whatsapp_send_invoice', { sale_id: sale.id, phone: ph }));
-    if (r) toast('تم فتح واتساب لإرسال الفاتورة للعميل');
+    await sendInvoicePdfToWhatsapp(sale.id, sale.customer_phone || '');
   });
   document.getElementById('btn-text').addEventListener('click', async () => {
     const t = await guard(() => api('receipt_text', { id: +id }));

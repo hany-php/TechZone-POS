@@ -49,9 +49,29 @@ r = call(a, "report_daily", {})
 check("cashier report rejected", (not r["ok"]) and "للمدير" in r["error"])
 
 # 2b) حفظ تفضيلات حجم البلوك للمستخدم (user_pref_save)
-r_pref = call(a, "user_pref_save", {"card_size": 180})
+sample_wp = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+r_pref = call(a, "user_pref_save", {
+    "card_size": 180,
+    "custom_bg": sample_wp,
+    "accent_color": "#7c3aed",
+    "desktop_layout": {"pos": {"x": 800, "y": 40}},
+})
+check("user custom_bg & accent & layout saved", r_pref["ok"] and r_pref["data"]["wallpaper"] == "custom" and r_pref["data"]["accent_color"] == "#7c3aed" and "pos" in r_pref["data"]["desktop_layout"])
 check("user card_size pref saved", r_pref["ok"] and r_pref["data"]["card_size"] == 180)
-check("session reflects user card_size", call(a, "session")["data"]["user"]["card_size"] == 180)
+# اختبار الخروج والدخول بمستخدم آخر ثم العودة لنفس المستخدم والتأكد أن session() يعيد كل التفضيلات المحفوظة
+call(a, "logout")
+call(a, "login", {"username": "admin", "pin": "1234"})
+admin_sess = call(a, "session")["data"]["user"]
+check("admin has own clean prefs", admin_sess["accent_color"] is None and admin_sess["custom_bg"] is None)
+call(a, "logout")
+call(a, "login", {"username": "cashier", "pin": "1111"})
+cashier_sess = call(a, "session")["data"]["user"]
+check("session persists custom_bg, accent_color, desktop_layout & card_size across logout/login",
+      cashier_sess["card_size"] == 180
+      and cashier_sess["wallpaper"] == "custom"
+      and cashier_sess["custom_bg"] == sample_wp
+      and cashier_sess["accent_color"] == "#7c3aed"
+      and "pos" in (cashier_sess["desktop_layout"] or ""))
 
 # 3) إضافة/تعديل منتج مع صورة وبحث (اسم/باركود/سيريال)
 call(a, "login", {"username": "admin", "pin": "1234"})
@@ -179,6 +199,16 @@ with db.connect() as c:
 t = call(a, "receipt_text", {"id": cw_sale_id})["data"]
 check("receipt 80 cols & includes wallet ref", all(len(line) <= 80 for line in t.splitlines()) and "VF-998877" in t)
 
+# 8b) فحص إرسال الفاتورة عبر واتساب (whatsapp_send_invoice) وحفظ ملف الإيصال بدون أخطاء pathlib
+import webbrowser
+_orig_wb_open = webbrowser.open
+webbrowser.open = lambda url, *a, **kw: True
+try:
+    r_wa = call(a, "whatsapp_send_invoice", {"sale_id": cw_sale_id, "phone": "01012345678"})
+    check("whatsapp_send_invoice ok & saves valid PDF file + company message", r_wa["ok"] and r_wa["data"]["phone"] == "201012345678" and "لديك فاتورة من" in r_wa["data"]["message"] and r_wa["data"]["pdf_file"].endswith(".pdf") and pathlib.Path(r_wa["data"]["pdf_file"]).read_bytes().startswith(b"%PDF-1.4"))
+finally:
+    webbrowser.open = _orig_wb_open
+
 # 9) شراء جهاز مستعمل يضيف سيريالاً للمخزون كمنتج متتبّع
 r = call(a, "used_create", {"seller_name": "بائع فحص", "model": "Test Phone X",
                             "serial": "SN-USED-SELF-1", "buy_price": 500, "resale_price": 900})
@@ -287,7 +317,8 @@ check("user delete ok", ru_del["ok"])
 
 # 14) تطابق العقد: كل api('NAME') في الواجهة موجود في Api
 names = set()
-for p in list((ROOT / "web").glob("*.html")) + [ROOT / "web" / "app.js"]:
+for p in list((ROOT / "web").glob("*.html")) + [ROOT / "web" / "desktop.html", ROOT / "web" / "app.js"]:
+    if not p.exists(): continue
     names |= set(re.findall(r"api\(\s*['\"]([A-Za-z_]+)", p.read_text(encoding="utf-8")))
 real = {n for n in dir(api_mod.Api) if not n.startswith("_") and callable(getattr(api_mod.Api, n)) and n != "call"}
 missing = names - real

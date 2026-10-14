@@ -132,7 +132,7 @@ function renderUsers() {
 async function submit() {
   if (PIN.length !== 4) { toast('الرمز السري مكوّن من 4 أرقام', 'warn'); return; }
   const u = await guard(() => api('login', { username: USERNAME, pin: PIN }));
-  if (u) location.href = 'pos.html';
+  if (u) location.href = 'desktop.html';
   PIN = ''; renderDots();
 }
 document.getElementById('keypad').addEventListener('click', (e) => {

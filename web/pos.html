@@ -335,6 +335,7 @@
       </div>
       <div class="flex items-center gap-3">
         <span class="font-bold font-num" id="lu-inv-total"></span>
+        <button id="lu-wa-btn" type="button" class="px-3 py-1 rounded-lg bg-emerald-600 text-white text-xs font-bold flex items-center gap-1"><span class="material-icons-outlined text-sm">picture_as_pdf</span>إرسال PDF واتساب</button>
         <button id="lu-print-btn" type="button" class="px-3 py-1 rounded-lg bg-primary/10 text-primary text-xs font-bold flex items-center gap-1"><span class="material-icons-outlined text-sm">print</span>طباعة الإيصال</button>
       </div>
     </div>
@@ -396,7 +397,7 @@
 </div>
 <label class="flex items-center gap-2 p-2.5 mb-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-xs font-bold text-emerald-800 dark:text-emerald-300 cursor-pointer">
   <input id="pay-whatsapp" type="checkbox" class="w-4 h-4 accent-blue-600"/>
-  <span>إرسال تفاصيل الفاتورة عبر واتساب لرقم العميل بعد الدفع</span>
+  <span>إنشاء ملف PDF للفاتورة وإرفاقه عبر واتساب لرقم العميل بعد الدفع</span>
 </label>
 <div class="flex gap-2">
 <button id="pay-add" type="button" class="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 text-sm font-medium">+ دفعة أخرى</button>
@@ -496,7 +497,7 @@ async function printSaleDirectly(saleId) {
     <div style="text-align:center;margin-top:8px;font-size:11px;font-weight:bold">${esc(SETTINGS.receipt_thanks || 'شكراً لزيارتكم')}</div>
     <div style="text-align:center;font-size:10px;color:#555">${esc(SETTINGS.receipt_footer || 'يرجى الاحتفاظ بالإيصال للاستبدال')}</div>
   `;
-  setTimeout(() => window.print(), 80);
+  if (window.parent && window.parent !== window && window.parent.TZOS && window.parent.TZOS.printHtml) { window.parent.TZOS.printHtml(paper.innerHTML); } else { setTimeout(() => window.print(), 80); }
 }
 
 /* ===== إدارة الوردية (فتح + تقرير إغلاق تفصيلي) ===== */
@@ -654,8 +655,7 @@ document.getElementById('btn-exit-edit').addEventListener('click', () => {
 document.getElementById('btn-edit-wa').addEventListener('click', async () => {
   if (!EDIT_SALE) return;
   const ph = document.getElementById('phone').value.trim() || EDIT_SALE.customer_phone || '';
-  const r = await guard(() => api('whatsapp_send_invoice', { sale_id: EDIT_SALE.id, phone: ph }));
-  if (r) toast('تم فتح واتساب لإرسال الفاتورة للعميل');
+  await sendInvoicePdfToWhatsapp(EDIT_SALE.id, ph);
 });
 
 async function addToCart(id) {
@@ -1074,6 +1074,9 @@ async function openLookupSale(saleId) {
   }).join('') : '<div class="text-center text-slate-400 py-4 text-xs">هذه الفاتورة تم استرجاع جميع أصنافها بالكامل</div>';
 }
 
+document.getElementById('lu-wa-btn').addEventListener('click', () => {
+  if (SELECTED_LOOKUP_SALE) sendInvoicePdfToWhatsapp(SELECTED_LOOKUP_SALE.id, SELECTED_LOOKUP_SALE.customer_phone || '');
+});
 document.getElementById('lu-print-btn').addEventListener('click', () => {
   if (SELECTED_LOOKUP_SALE) printSaleDirectly(SELECTED_LOOKUP_SALE.id);
 });
@@ -1358,8 +1361,8 @@ document.getElementById('pay-ok').addEventListener('click', async () => {
   const m = document.getElementById('pay-modal'); m.classList.add('hidden'); m.classList.remove('flex');
   await search();
   const sendWa = document.getElementById('pay-whatsapp') && document.getElementById('pay-whatsapp').checked;
-  if (sendWa && custPhone) {
-    await guard(() => api('whatsapp_send_invoice', { sale_id: res.sale_id, phone: custPhone }));
+  if (sendWa) {
+    await sendInvoicePdfToWhatsapp(res.sale_id, custPhone);
   }
   // فتح نافذة الطباعة مباشرة دون مغادرة شاشة نقاط البيع
   await printSaleDirectly(res.sale_id);
