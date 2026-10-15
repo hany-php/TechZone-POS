@@ -561,7 +561,7 @@ async function sendInvoicePdfToWhatsapp(saleId, phoneOverride = '') {
 }
 
 
-/* ===== محرك قوالب الفواتير (قالب شركة تقنية الموجي A4 + العصرى + الكلاسيكي + إيصال الكاشير الحراري) ===== */
+/* ===== محرك قوالب الفواتير (قالب شركة تقنية الموجي A4 + العصري + الكلاسيكي + إيصال الكاشير الحراري) ===== */
 const AR_MONTHS = [
   "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
   "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"
@@ -579,22 +579,30 @@ function formatArabicDate(dateStr) {
   return `${d} ${AR_MONTHS[m - 1]}، ${y}`;
 }
 
+function formatDocSeqClient(prefix, seqNum) {
+  const p = String(prefix || "").trim() || "INV-";
+  const n = Math.max(1, parseInt(seqNum, 10) || 1);
+  if (/\d$/.test(p)) {
+    return `${p}${n}`;
+  }
+  return `${p}${String(n).padStart(5, "0")}`;
+}
+
 function normalizeDocForA4(rawDoc, a4Cfg = {}) {
   const d = rawDoc || {};
   const isQuote = d.doc_type === "quote" && d.status !== "converted";
-  const docNo = d.quote_no || d.invoice_no || "الفات/2026/00001";
+  const docNo = d.quote_no || d.invoice_no || formatDocSeqClient(isQuote ? (a4Cfg.quote_prefix || "ع.س/2026/") : (a4Cfg.invoice_prefix || "الفات/2026/"), d.id || 1);
   const docDate = d.doc_date || d.invoice_date || (d.created_at ? d.created_at.slice(0, 10) : todayISO());
   const dueDate = d.due_date || d.valid_until || docDate;
-  const srcPrefix = a4Cfg.source_prefix || "تقنية - Technology/";
-  const sourceRef = d.source_ref || `${srcPrefix}${String(d.id || 1).padStart(4, "0")}`;
-  const signalRef = d.signal_ref || sourceRef;
-  const items = (d.items || []).map((it) => {
+
+  const rawItems = Array.isArray(d.items) ? d.items : [];
+  const items = rawItems.map((it) => {
     const qty = it.remaining_qty != null ? it.remaining_qty : (it.qty || 1);
     const unitPrice = it.unit_price != null ? it.unit_price : 0;
     const lineTotal = it.line_total != null ? it.line_total : (qty * unitPrice);
     return {
-      sku: it.sku || "",
-      name: it.name || "",
+      sku: (it.sku || "").trim(),
+      name: (it.name || "").trim(),
       qty,
       unit_price: unitPrice,
       tax_label: it.tax_label != null ? it.tax_label : (a4Cfg.default_tax_label || "Zero Rated 0%"),
@@ -602,30 +610,50 @@ function normalizeDocForA4(rawDoc, a4Cfg = {}) {
       line_total: lineTotal,
     };
   });
+
   const subtotal = d.subtotal != null ? d.subtotal : items.reduce((s, x) => s + x.line_total, 0);
   const discount = d.discount || 0;
   const tax = d.tax || 0;
   const total = d.total != null ? d.total : Math.max(0, subtotal - discount + tax);
-  let paidAmount = d.paid_amount;
-  if (paidAmount == null) {
-    if (Array.isArray(d.payments)) {
-      paidAmount = d.payments.filter((p) => p.method === "cash" || p.method === "wallet").reduce((s, p) => s + (p.amount || 0), 0);
-    } else {
-      paidAmount = isQuote ? 0 : total;
+
+  // في عرض السعر لا توجد مدفوعات إطلاقاً
+  let paymentsList = [];
+  if (!isQuote) {
+    if (Array.isArray(d.payments_list) && d.payments_list.length) {
+      paymentsList = d.payments_list.filter((p) => (p.amount || 0) > 0);
+    } else if (d.payments_json) {
+      try {
+        const parsed = JSON.parse(d.payments_json);
+        if (Array.isArray(parsed)) paymentsList = parsed.filter((p) => (p.amount || 0) > 0);
+      } catch (e) {}
     }
   }
-  const dueAmount = d.due_amount != null ? d.due_amount : Math.max(0, total - paidAmount);
-  const payMethodAr = d.payment_method === "wallet" ? "محفظة إلكترونية" : "نقدي";
+
+  let paidAmount = 0;
+  if (!isQuote) {
+    if (paymentsList.length > 0) {
+      paidAmount = paymentsList.reduce((s, p) => s + (p.amount || 0), 0);
+    } else if (d.paid_amount != null) {
+      paidAmount = d.paid_amount;
+    } else if (Array.isArray(d.payments)) {
+      paidAmount = d.payments.filter((p) => p.method === "cash" || p.method === "wallet").reduce((s, p) => s + (p.amount || 0), 0);
+    }
+  }
+  paidAmount = Math.max(0, Math.min(total, paidAmount));
+  const dueAmount = isQuote ? 0 : (d.due_amount != null ? d.due_amount : Math.max(0, total - paidAmount));
+
+  const payMethodLabel = (d.payment_method_label || "").trim()
+    || (d.payment_method === "wallet" ? "محفظة إلكترونية" : "نقدي");
   const payDate = d.payment_date || docDate;
+  const paymentPlanNote = (d.payment_plan_note || "").trim();
+
   return {
     isQuote,
     docNo,
     docDate,
     dueDate,
-    sourceRef,
-    signalRef,
-    customerName: d.customer_name || "عميل نقدي",
-    customerPhone: d.customer_phone || "",
+    customerName: (d.customer_name || "").trim(),
+    customerPhone: (d.customer_phone || "").trim(),
     items,
     subtotal,
     discount,
@@ -633,9 +661,11 @@ function normalizeDocForA4(rawDoc, a4Cfg = {}) {
     total,
     paidAmount,
     dueAmount,
-    payMethodAr,
+    payMethodLabel,
     payDate,
-    notes: d.notes || "",
+    paymentPlanNote,
+    paymentsList,
+    notes: (d.notes || "").trim(),
   };
 }
 
@@ -692,12 +722,16 @@ function buildA4InvoiceHtml(rawDoc, a4Cfg = {}) {
     ? `<img src="${esc(cfg.company_logo)}" alt="شعار الشركة" style="max-width:210px;max-height:115px;object-fit:contain;display:block"/>`
     : (cfg.show_logo !== false ? `<div style="padding:12px 20px;border-radius:14px;background:rgba(${pRgb.r},${pRgb.g},${pRgb.b},0.1);color:${primary};font-weight:800;font-size:20px">${esc(cfg.company_title)}</div>` : "");
 
-  const rowsHtml = info.items.map((it) => {
+  const displayItems = info.items.length ? info.items : [{ sku: "", name: "", qty: 1, unit_price: 0, tax_label: cfg.default_tax_label || "Zero Rated 0%", line_total: 0 }];
+  const rowsHtml = displayItems.map((it) => {
+    const hasName = !!it.name;
     const skuPart = (cfg.show_sku_brackets !== false && it.sku) ? `[${esc(it.sku)}] ` : "";
-    const desc = `${skuPart}${esc(it.name)}`;
+    const descHtml = hasName
+      ? `${skuPart}${esc(it.name)}`
+      : `<span style="color:#94a3b8;font-style:italic">${skuPart}اسم المنتج / البيان</span>`;
     return `
       <tr style="border-bottom:1px solid #e2e8f0">
-        <td style="padding:10px 14px;text-align:right;font-weight:500;color:#1e293b;border-left:1px solid #e2e8f0">${desc}</td>
+        <td style="padding:10px 14px;text-align:right;font-weight:500;color:#1e293b;border-left:1px solid #e2e8f0">${descHtml}</td>
         <td style="padding:10px 10px;text-align:center;font-family:monospace,sans-serif;color:#334155;border-left:1px solid #e2e8f0">${Number(it.qty || 0).toFixed(2)}</td>
         <td style="padding:10px 10px;text-align:center;font-family:monospace,sans-serif;color:#334155;border-left:1px solid #e2e8f0">${fmt(it.unit_price)}</td>
         ${cfg.show_tax_col !== false ? `<td style="padding:10px 10px;text-align:center;font-size:12px;color:#475569;border-left:1px solid #e2e8f0">${esc(it.tax_label || "")}</td>` : ""}
@@ -706,16 +740,51 @@ function buildA4InvoiceHtml(rawDoc, a4Cfg = {}) {
     `;
   }).join("");
 
+  const custNameHtml = info.customerName
+    ? `<div style="font-size:17px;font-weight:700;color:#0f172a">${esc(info.customerName)}</div>`
+    : `<div style="font-size:16px;font-weight:600;color:#94a3b8;font-style:italic">اسم العميل</div>`;
+  const custPhoneHtml = info.customerPhone
+    ? `<div style="font-size:12.5px;color:#64748b;font-family:monospace,sans-serif">${esc(info.customerPhone)}</div>`
+    : `<div style="font-size:12px;color:#cbd5e1;font-style:italic">رقم التليفون</div>`;
+
+  // أسطر الدفع الفعلية (تظهر فقط في فاتورة المبيعات وليس في عرض السعر، وعند وجود دفعة فعلية فقط > 0)
+  let paymentRowsHtml = "";
+  if (!info.isQuote && cfg.show_payments_detail !== false) {
+    if (info.paymentsList && info.paymentsList.length > 0) {
+      paymentRowsHtml += info.paymentsList.map((p) => `
+        <tr style="border-bottom:1px solid #cbd5e1">
+          <td style="padding:8px 12px;text-align:right;font-style:italic;color:#1e293b;border-left:1px solid #cbd5e1;line-height:1.45">
+            ${p.label ? `<b>${esc(p.label)}</b> — ` : ""}تم الدفع في ${esc(formatArabicDate(p.date || info.payDate))}<br/>باستخدام ${esc(p.method || info.payMethodLabel)}
+          </td>
+          <td style="padding:8px 12px;text-align:left;font-family:monospace,sans-serif;direction:ltr;vertical-align:top">${esc(fmtCur(p.amount))}</td>
+        </tr>
+      `).join("");
+    } else if (info.paidAmount > 0) {
+      paymentRowsHtml += `
+        <tr style="border-bottom:1px solid #cbd5e1">
+          <td style="padding:8px 12px;text-align:right;font-style:italic;color:#1e293b;border-left:1px solid #cbd5e1;line-height:1.45">
+            تم الدفع في ${esc(formatArabicDate(info.payDate))}<br/>باستخدام ${esc(info.payMethodLabel)}
+          </td>
+          <td style="padding:8px 12px;text-align:left;font-family:monospace,sans-serif;direction:ltr;vertical-align:top">${esc(fmtCur(info.paidAmount))}</td>
+        </tr>
+      `;
+    }
+    paymentRowsHtml += `
+      <tr>
+        <td style="padding:9px 12px;text-align:right;font-weight:800;color:#0f172a;border-left:1px solid #cbd5e1">المبلغ المستحق</td>
+        <td style="padding:9px 12px;text-align:left;font-family:monospace,sans-serif;font-weight:800;direction:ltr;color:#0f172a">${esc(fmtCur(info.dueAmount))}</td>
+      </tr>
+    `;
+  }
+
   return `
     <div class="tz-a4-sheet" dir="rtl" style="position:relative;width:100%;max-width:794px;min-height:1122px;margin:0 auto;background:#ffffff;color:#0f172a;font-family:'IBM Plex Sans Arabic','Cairo',sans-serif;padding:34px 40px 86px 40px;box-sizing:border-box;overflow:hidden;${isClassic ? "border:2px solid #0f172a;" : "box-shadow:0 10px 35px rgba(15,23,42,0.10);"}">
       ${topWaveSvg}
       <!-- ترويسة الشركة والشعار -->
       <div style="position:relative;z-index:2;display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:26px">
-        <!-- يمين: الشعار -->
         <div style="order:1;min-width:160px;display:flex;justify-content:flex-start">
           ${logoHtml}
         </div>
-        <!-- يسار: اسم وعنوان الشركة كما في قالب تقنية -->
         <div style="order:2;text-align:right;direction:rtl;font-size:13.5px;line-height:1.65;color:#1e293b;min-width:210px">
           <div style="font-weight:800;font-size:15px;color:#0f172a">${esc(cfg.company_title)}</div>
           ${addrLines.map((l) => `<div>${esc(l)}</div>`).join("")}
@@ -726,32 +795,28 @@ function buildA4InvoiceHtml(rawDoc, a4Cfg = {}) {
       <!-- صف اسم العميل وعنوان الفاتورة -->
       <div style="position:relative;z-index:2;display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:14px;gap:16px">
         <div style="order:1;text-align:right">
-          <div style="font-size:17px;font-weight:700;color:#0f172a">${esc(info.customerName)}</div>
-          ${info.customerPhone ? `<div style="font-size:12.5px;color:#64748b;font-family:monospace,sans-serif">${esc(info.customerPhone)}</div>` : ""}
+          ${custNameHtml}
+          ${custPhoneHtml}
         </div>
         <div style="order:2;text-align:left">
           <h1 style="margin:0;font-size:28px;font-weight:800;color:${primary};letter-spacing:0.2px">${esc(titleText)}</h1>
         </div>
       </div>
 
-      <!-- شريط معلومات الفاتورة ذو الإطار المنحني -->
+      <!-- شريط معلومات المستند (رقم الفاتورة كمرجع + تاريخ الفاتورة + تاريخ الاستحقاق فقط بدون المصدر أو رقم الإشارة) -->
       ${cfg.show_info_box !== false ? `
-      <div style="position:relative;z-index:2;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:12px 18px;margin-bottom:18px;border-radius:14px;border:1.6px solid ${accent};background:rgba(${aRgb.r},${aRgb.g},${aRgb.b},0.06)">
+      <div style="position:relative;z-index:2;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:12px 18px;margin-bottom:18px;border-radius:14px;border:1.6px solid ${accent};background:rgba(${aRgb.r},${aRgb.g},${aRgb.b},0.06)">
         <div style="text-align:right">
-          <div style="font-size:12.5px;font-weight:800;color:#0f172a;margin-bottom:3px">${info.isQuote ? "تاريخ عرض السعر" : "تاريخ فاتورة العميل"}</div>
+          <div style="font-size:12.5px;font-weight:800;color:#0f172a;margin-bottom:3px">${info.isQuote ? "رقم عرض السعر (المرجع)" : "رقم الفاتورة (المرجع)"}</div>
+          <div style="font-size:13px;font-weight:700;color:${primary};font-family:monospace,sans-serif">${esc(info.docNo)}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:12.5px;font-weight:800;color:#0f172a;margin-bottom:3px">${info.isQuote ? "تاريخ عرض السعر" : "تاريخ الفاتورة"}</div>
           <div style="font-size:13px;color:#334155">${esc(formatArabicDate(info.docDate))}</div>
         </div>
         <div style="text-align:right">
           <div style="font-size:12.5px;font-weight:800;color:#0f172a;margin-bottom:3px">${info.isQuote ? "صالح حتى تاريخ" : "تاريخ الاستحقاق"}</div>
           <div style="font-size:13px;color:#334155">${esc(formatArabicDate(info.dueDate))}</div>
-        </div>
-        <div style="text-align:right">
-          <div style="font-size:12.5px;font-weight:800;color:#0f172a;margin-bottom:3px">المصدر</div>
-          <div style="font-size:13px;color:#334155">${esc(info.sourceRef)}</div>
-        </div>
-        <div style="text-align:right">
-          <div style="font-size:12.5px;font-weight:800;color:#0f172a;margin-bottom:3px">رقم الإشارة</div>
-          <div style="font-size:13px;color:#334155">${esc(info.signalRef)}</div>
         </div>
       </div>` : ""}
 
@@ -768,23 +833,27 @@ function buildA4InvoiceHtml(rawDoc, a4Cfg = {}) {
             </tr>
           </thead>
           <tbody>
-            ${rowsHtml || `<tr><td colspan="5" style="padding:24px;text-align:center;color:#94a3b8">لا توجد أصناف مضافة</td></tr>`}
+            ${rowsHtml}
           </tbody>
         </table>
       </div>
 
-      <!-- قسم الإجماليات والتواصل بشأن الدفع -->
+      <!-- قسم الإجماليات والملاحظات وخطة الدفع -->
       <div style="position:relative;z-index:2;display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-top:8px">
-        <!-- يمين: التواصل بشأن الدفع والملاحظات -->
-        <div style="order:1;flex:1;padding-top:34px;text-align:right;font-size:13.5px;color:#1e293b">
-          ${cfg.show_payment_comm !== false ? `
-            <div style="margin-bottom:10px">التواصل بشأن الدفع: <b style="color:#0f172a">${esc(info.docNo)}</b></div>
+        <div style="order:1;flex:1;padding-top:18px;text-align:right;font-size:13.5px;color:#1e293b">
+          ${(!info.isQuote && cfg.show_payment_comm !== false) ? `
+            <div style="margin-bottom:8px">مرجع الفاتورة للسداد: <b style="color:#0f172a">${esc(info.docNo)}</b></div>
           ` : ""}
-          ${info.notes ? `<div style="margin-top:8px;padding:10px 12px;border-radius:10px;background:#f8fafc;border:1px solid #e2e8f0;font-size:12.5px;color:#334155"><b>ملاحظات:</b> ${esc(info.notes)}</div>` : ""}
+          ${(!info.isQuote && info.paymentPlanNote) ? `
+            <div style="margin-top:6px;padding:10px 12px;border-radius:10px;background:rgba(${pRgb.r},${pRgb.g},${pRgb.b},0.06);border:1px solid rgba(${pRgb.r},${pRgb.g},${pRgb.b},0.25);font-size:12.5px;color:#0f172a;white-space:pre-line"><b>نظام / خطة الدفع المتفق عليها:</b>
+${esc(info.paymentPlanNote)}</div>
+          ` : ""}
+          ${info.notes ? `<div style="margin-top:8px;padding:10px 12px;border-radius:10px;background:#f8fafc;border:1px solid #e2e8f0;font-size:12.5px;color:#334155;white-space:pre-line"><b>ملاحظات وشروط الدفع والتوريد:</b>
+${esc(info.notes)}</div>` : ""}
           ${cfg.custom_terms ? `<div style="margin-top:8px;font-size:12px;color:#475569;white-space:pre-line">${esc(cfg.custom_terms)}</div>` : ""}
         </div>
 
-        <!-- يسار: جدول ملخص المبالغ والمدفوعات والمبلغ المستحق -->
+        <!-- يسار: جدول ملخص المبالغ (في عرض السعر يظهر الخصم والإجمالي فقط بدون مدفوعات) -->
         <div style="order:2;width:320px;border:1.2px solid #cbd5e1;border-radius:6px;overflow:hidden;font-size:13.5px">
           <table style="width:100%;border-collapse:collapse">
             <tbody>
@@ -797,32 +866,21 @@ function buildA4InvoiceHtml(rawDoc, a4Cfg = {}) {
                 <td style="padding:8px 12px;text-align:right;color:#dc2626;border-left:1px solid #cbd5e1">الخصم</td>
                 <td style="padding:8px 12px;text-align:left;font-family:monospace,sans-serif;direction:ltr;color:#dc2626">- ${esc(fmtCur(info.discount))}</td>
               </tr>` : ""}
-              ${cfg.show_tax_col !== false ? `
+              ${(cfg.show_tax_col !== false && info.tax > 0) ? `
               <tr style="border-bottom:1px solid #cbd5e1">
-                <td style="padding:8px 12px;text-align:right;color:#475569;border-left:1px solid #cbd5e1">ضرائب اخرى</td>
+                <td style="padding:8px 12px;text-align:right;color:#475569;border-left:1px solid #cbd5e1">الضرائب</td>
                 <td style="padding:8px 12px;text-align:left;font-family:monospace,sans-serif;direction:ltr">${esc(fmtCur(info.tax))}</td>
               </tr>` : ""}
               <tr style="border-bottom:1px solid #cbd5e1;background:${primary};color:#ffffff;font-weight:800">
                 <td style="padding:9px 12px;text-align:right;border-left:1px solid rgba(255,255,255,0.3)">الإجمالي</td>
                 <td style="padding:9px 12px;text-align:left;font-family:monospace,sans-serif;direction:ltr">${esc(fmtCur(info.total))}</td>
               </tr>
-              ${(cfg.show_payments_detail !== false && (!info.isQuote || info.paidAmount > 0)) ? `
-              <tr style="border-bottom:1px solid #cbd5e1">
-                <td style="padding:8px 12px;text-align:right;font-style:italic;color:#1e293b;border-left:1px solid #cbd5e1;line-height:1.45">
-                  تم الدفع في ${esc(formatArabicDate(info.payDate))}<br/>باستخدام ${esc(info.payMethodAr)}
-                </td>
-                <td style="padding:8px 12px;text-align:left;font-family:monospace,sans-serif;direction:ltr;vertical-align:top">${esc(fmtCur(info.paidAmount))}</td>
-              </tr>
-              <tr>
-                <td style="padding:9px 12px;text-align:right;font-weight:800;color:#0f172a;border-left:1px solid #cbd5e1">المبلغ المستحق</td>
-                <td style="padding:9px 12px;text-align:left;font-family:monospace,sans-serif;font-weight:800;direction:ltr;color:#0f172a">${esc(fmtCur(info.dueAmount))}</td>
-              </tr>` : ""}
+              ${paymentRowsHtml}
             </tbody>
           </table>
         </div>
       </div>
 
-      <!-- تذييل الصفحة والموجة السفلية -->
       ${bottomWaveSvg}
       ${cfg.show_footer_page !== false ? `
       <div style="position:absolute;bottom:18px;left:0;right:0;z-index:2;text-align:center;font-size:13px;color:#334155">
@@ -867,7 +925,7 @@ async function renderA4DocumentToJpeg(rawDoc, a4Cfg = {}) {
   const aRgb = _hexToRgb(accent);
 
   const W = 1240;
-  const H = Math.max(1754, 920 + info.items.length * 64);
+  const H = Math.max(1754, 960 + info.items.length * 64);
   const canvas = document.createElement("canvas");
   canvas.width = W;
   canvas.height = H;
@@ -876,7 +934,6 @@ async function renderA4DocumentToJpeg(rawDoc, a4Cfg = {}) {
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, W, H);
 
-  // 1) الموجة العلوية الزرقاء الناعمة
   if (cfg.show_waves !== false && cfg.theme === "taqnia_wave") {
     ctx.fillStyle = `rgba(${pRgb.r}, ${pRgb.g}, ${pRgb.b}, 0.09)`;
     ctx.beginPath();
@@ -885,10 +942,7 @@ async function renderA4DocumentToJpeg(rawDoc, a4Cfg = {}) {
     ctx.bezierCurveTo(W * 0.50, 190, W * 0.28, 260, 0, 250);
     ctx.closePath();
     ctx.fill();
-  }
 
-  // 2) الموجة السفلية الوردية/العنابية الناعمة
-  if (cfg.show_waves !== false && cfg.theme === "taqnia_wave") {
     ctx.fillStyle = `rgba(${aRgb.r}, ${aRgb.g}, ${aRgb.b}, 0.11)`;
     ctx.beginPath();
     ctx.moveTo(0, H);
@@ -898,7 +952,6 @@ async function renderA4DocumentToJpeg(rawDoc, a4Cfg = {}) {
     ctx.fill();
   }
 
-  // 3) رسم الشعار أعلى اليمين
   if (cfg.show_logo !== false && cfg.company_logo) {
     try {
       await new Promise((resolve) => {
@@ -917,7 +970,6 @@ async function renderA4DocumentToJpeg(rawDoc, a4Cfg = {}) {
     } catch (e) {}
   }
 
-  // 4) بيانات وعنوان الشركة أعلى اليسار
   ctx.direction = "rtl";
   ctx.textAlign = "right";
   ctx.fillStyle = "#0f172a";
@@ -932,12 +984,11 @@ async function renderA4DocumentToJpeg(rawDoc, a4Cfg = {}) {
     ay += 29;
   }
 
-  // 5) اسم العميل يمين وعنوان الفاتورة يسار
   let y = Math.max(270, ay + 36);
-  ctx.fillStyle = "#0f172a";
+  ctx.fillStyle = info.customerName ? "#0f172a" : "#94a3b8";
   ctx.font = "bold 26px 'IBM Plex Sans Arabic', 'Cairo', sans-serif";
   ctx.textAlign = "right";
-  ctx.fillText(info.customerName, W - 64, y);
+  ctx.fillText(info.customerName || "اسم العميل", W - 64, y);
   if (info.customerPhone) {
     ctx.font = "19px monospace";
     ctx.fillStyle = "#64748b";
@@ -951,7 +1002,7 @@ async function renderA4DocumentToJpeg(rawDoc, a4Cfg = {}) {
   ctx.fillText(titleText, 64, y);
   y += 40;
 
-  // 6) شريط التواريخ والمصدر ورقم الإشارة
+  // شريط البيانات (3 أعمدة فقط: رقم المرجع + تاريخ الفاتورة + تاريخ الاستحقاق)
   if (cfg.show_info_box !== false) {
     const bx = 64, bw = W - 128, bh = 96;
     ctx.fillStyle = `rgba(${aRgb.r}, ${aRgb.g}, ${aRgb.b}, 0.06)`;
@@ -964,10 +1015,9 @@ async function renderA4DocumentToJpeg(rawDoc, a4Cfg = {}) {
     ctx.stroke();
 
     const cols = [
-      { lbl: info.isQuote ? "تاريخ عرض السعر" : "تاريخ فاتورة العميل", val: formatArabicDate(info.docDate), x: W - 92 },
-      { lbl: info.isQuote ? "صالح حتى تاريخ" : "تاريخ الاستحقاق", val: formatArabicDate(info.dueDate), x: W - 365 },
-      { lbl: "المصدر", val: info.sourceRef, x: W - 640 },
-      { lbl: "رقم الإشارة", val: info.signalRef, x: W - 915 },
+      { lbl: info.isQuote ? "رقم عرض السعر (المرجع)" : "رقم الفاتورة (المرجع)", val: info.docNo, x: W - 92 },
+      { lbl: info.isQuote ? "تاريخ عرض السعر" : "تاريخ الفاتورة", val: formatArabicDate(info.docDate), x: W - 470 },
+      { lbl: info.isQuote ? "صالح حتى تاريخ" : "تاريخ الاستحقاق", val: formatArabicDate(info.dueDate), x: W - 840 },
     ];
     for (const c of cols) {
       ctx.textAlign = "right";
@@ -981,7 +1031,6 @@ async function renderA4DocumentToJpeg(rawDoc, a4Cfg = {}) {
     y += bh + 26;
   }
 
-  // 7) جدول الأصناف
   const tx = 64, tw = W - 128, th = 56;
   ctx.fillStyle = primary;
   ctx.fillRect(tx, y, tw, th);
@@ -997,7 +1046,8 @@ async function renderA4DocumentToJpeg(rawDoc, a4Cfg = {}) {
   ctx.fillText("المبلغ", 84, y + 36);
   y += th;
 
-  for (const it of info.items) {
+  const displayItems = info.items.length ? info.items : [{ sku: "", name: "اسم المنتج / البيان", qty: 1, unit_price: 0, tax_label: "", line_total: 0 }];
+  for (const it of displayItems) {
     const rh = 56;
     ctx.strokeStyle = "#cbd5e1";
     ctx.lineWidth = 1.2;
@@ -1006,7 +1056,7 @@ async function renderA4DocumentToJpeg(rawDoc, a4Cfg = {}) {
     ctx.fillStyle = "#0f172a";
     ctx.font = "20px 'IBM Plex Sans Arabic', 'Cairo', sans-serif";
     ctx.textAlign = "right";
-    ctx.fillText(`${skuPart}${it.name}`.slice(0, 56), W - 84, y + 35);
+    ctx.fillText(`${skuPart}${it.name || "اسم المنتج / البيان"}`.slice(0, 56), W - 84, y + 35);
     ctx.textAlign = "center";
     ctx.font = "20px monospace";
     ctx.fillText(Number(it.qty || 0).toFixed(2), 545, y + 35);
@@ -1022,21 +1072,40 @@ async function renderA4DocumentToJpeg(rawDoc, a4Cfg = {}) {
   }
 
   y += 20;
-  // التواصل بشأن الدفع على اليمين
-  if (cfg.show_payment_comm !== false) {
+  let rightY = y + 40;
+  if (!info.isQuote && cfg.show_payment_comm !== false) {
     ctx.fillStyle = "#0f172a";
     ctx.font = "21px 'IBM Plex Sans Arabic', 'Cairo', sans-serif";
     ctx.textAlign = "right";
-    ctx.fillText(`التواصل بشأن الدفع: ${info.docNo}`, W - 64, y + 60);
+    ctx.fillText(`مرجع الفاتورة للسداد: ${info.docNo}`, W - 64, rightY);
+    rightY += 34;
+  }
+  if (!info.isQuote && info.paymentPlanNote) {
+    ctx.fillStyle = primary;
+    ctx.font = "bold 19px 'IBM Plex Sans Arabic', 'Cairo', sans-serif";
+    ctx.textAlign = "right";
+    ctx.fillText("نظام / خطة الدفع المتفق عليها:", W - 64, rightY);
+    rightY += 28;
+    ctx.fillStyle = "#1e293b";
+    ctx.font = "18px 'IBM Plex Sans Arabic', 'Cairo', sans-serif";
+    for (const ln of info.paymentPlanNote.split(/\r?\n/)) {
+      if (ln.trim()) { ctx.fillText(ln.trim().slice(0, 55), W - 64, rightY); rightY += 26; }
+    }
+    rightY += 8;
   }
   if (info.notes) {
-    ctx.fillStyle = "#475569";
-    ctx.font = "19px 'IBM Plex Sans Arabic', 'Cairo', sans-serif";
+    ctx.fillStyle = "#0f172a";
+    ctx.font = "bold 19px 'IBM Plex Sans Arabic', 'Cairo', sans-serif";
     ctx.textAlign = "right";
-    ctx.fillText(`ملاحظات: ${info.notes}`, W - 64, y + 98);
+    ctx.fillText("ملاحظات وشروط الدفع والتوريد:", W - 64, rightY);
+    rightY += 28;
+    ctx.fillStyle = "#475569";
+    ctx.font = "18px 'IBM Plex Sans Arabic', 'Cairo', sans-serif";
+    for (const ln of info.notes.split(/\r?\n/)) {
+      if (ln.trim()) { ctx.fillText(ln.trim().slice(0, 55), W - 64, rightY); rightY += 26; }
+    }
   }
 
-  // جدول الإجماليات على اليسار
   const sx = 64, sw = 480;
   const drawSumRow = (lbl, val, isPrimary = false, isBold = false) => {
     const sh = 50;
@@ -1059,14 +1128,19 @@ async function renderA4DocumentToJpeg(rawDoc, a4Cfg = {}) {
 
   drawSumRow("المبلغ دون الضريبة", fmtCur(info.subtotal));
   if (info.discount > 0) drawSumRow("الخصم", `- ${fmtCur(info.discount)}`);
-  if (cfg.show_tax_col !== false) drawSumRow("ضرائب اخرى", fmtCur(info.tax));
+  if (cfg.show_tax_col !== false && info.tax > 0) drawSumRow("الضرائب", fmtCur(info.tax));
   drawSumRow("الإجمالي", fmtCur(info.total), true, true);
-  if (cfg.show_payments_detail !== false && (!info.isQuote || info.paidAmount > 0)) {
-    drawSumRow(`تم الدفع (${info.payMethodAr})`, fmtCur(info.paidAmount));
+  if (!info.isQuote && cfg.show_payments_detail !== false) {
+    if (info.paymentsList && info.paymentsList.length > 0) {
+      for (const p of info.paymentsList) {
+        drawSumRow(`${p.label ? p.label + " - " : ""}تم الدفع (${p.method || info.payMethodLabel})`, fmtCur(p.amount));
+      }
+    } else if (info.paidAmount > 0) {
+      drawSumRow(`تم الدفع (${info.payMethodLabel})`, fmtCur(info.paidAmount));
+    }
     drawSumRow("المبلغ المستحق", fmtCur(info.dueAmount), false, true);
   }
 
-  // التذييل السفلي
   if (cfg.show_footer_page !== false) {
     ctx.textAlign = "center";
     ctx.fillStyle = "#1e293b";

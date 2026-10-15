@@ -267,6 +267,16 @@ def _fmt_money(minor: int) -> str:
     return f"{(minor / 100):,.2f}"
 
 
+def _format_doc_seq(prefix: str, seq_num: int) -> str:
+    """توليد رقم الفاتورة أو عرض السعر تلقائياً حسب البادئة المحددة من المدير (مثل N00 -> N001 أو الفات/2026/ -> الفات/2026/00001)."""
+    p = (prefix or "").strip()
+    if not p:
+        p = "INV-"
+    if p[-1].isdigit():
+        return f"{p}{seq_num}"
+    return f"{p}{seq_num:05d}"
+
+
 REPAIR_FLOW = {
     "received": ["in_review", "rejected"],
     "in_review": ["pending_approval", "repaired", "rejected"],
@@ -637,6 +647,50 @@ class Api:
                 )
             return self._settings(conn)
 
+    def _load_payment_methods(self, conn):
+        st = self._settings(conn)
+        if st.get("custom_payment_methods"):
+            try:
+                loaded = json.loads(st["custom_payment_methods"])
+                if isinstance(loaded, list) and loaded:
+                    return loaded
+            except Exception:
+                pass
+        return list(db.DEFAULT_PAYMENT_METHODS)
+
+    def payment_methods_get(self):
+        """جلب قائمة طرق وأنظمة الدفع المخصصة."""
+        self._user()
+        with db.connect() as conn:
+            return self._load_payment_methods(conn)
+
+    def payment_methods_save(self, methods=None):
+        """حفظ قائمة طرق وأنظمة الدفع المخصصة (نقدي، محافظ، خطط دفعات مقدمة وأقساط)."""
+        self._user()
+        if not (self._has_perm("pos_sell") or self._has_perm("settings_manage")):
+            raise ApiError("ليست لديك صلاحية لتعديل طرق الدفع")
+        cleaned = []
+        for idx, m in enumerate(methods or []):
+            if isinstance(m, str):
+                nm = m.strip()
+                if nm:
+                    cleaned.append({"id": f"pm_{idx+1}", "name": nm, "base_type": "cash"})
+            elif isinstance(m, dict):
+                nm = str(m.get("name") or "").strip()
+                if nm:
+                    bt = "wallet" if m.get("base_type") == "wallet" else "cash"
+                    mid = str(m.get("id") or f"pm_{idx+1}").strip()
+                    cleaned.append({"id": mid, "name": nm, "base_type": bt})
+        if not cleaned:
+            cleaned = list(db.DEFAULT_PAYMENT_METHODS)
+        with db.connect() as conn:
+            conn.execute(
+                "INSERT INTO settings(key, value) VALUES('custom_payment_methods', ?) "
+                "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                (json.dumps(cleaned, ensure_ascii=False),),
+            )
+            return cleaned
+
     def _load_templates(self, conn):
         st = self._settings(conn)
         a4 = dict(db.DEFAULT_A4_TEMPLATE)
@@ -655,7 +709,19 @@ class Api:
                     pos.update(loaded_pos)
             except Exception:
                 pass
-        return {"a4": a4, "pos": pos}
+        next_sale_seq = conn.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM sales").fetchone()[0]
+        next_quote_seq = conn.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM quotations").fetchone()[0]
+        inv_pref = a4.get("invoice_prefix") or "الفات/2026/"
+        q_pref = a4.get("quote_prefix") or "ع.س/2026/"
+        return {
+            "a4": a4,
+            "pos": pos,
+            "payment_methods": self._load_payment_methods(conn),
+            "next_invoice_no": _format_doc_seq(inv_pref, next_sale_seq),
+            "next_quote_no": _format_doc_seq(q_pref, next_quote_seq),
+            "next_sale_seq": next_sale_seq,
+            "next_quote_seq": next_quote_seq,
+        }
 
     def templates_get(self):
         """جلب إعدادات قوالب الفواتير (قالب A4 للمبيعات وعروض الأسعار + قالب إيصال الكاشير الحراري 80mm/58mm)."""
@@ -695,7 +761,7 @@ class Api:
                 "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
                 (json.dumps(new_pos, ensure_ascii=False),),
             )
-            return {"a4": new_a4, "pos": new_pos}
+            return self._load_templates(conn)
 
     # ---------------------------------------------------------- فئات
     def categories(self):
@@ -1941,7 +2007,7 @@ class Api:
         )
         return cur.lastrowid
 
-    def _convert_quote_to_sale_in_tx(self, conn, u, q_row, q_items, paid_amount=None, payment_method=None, payment_date=None):
+    def _convert_quote_to_sale_in_tx(self, conn, u, q_row, q_items, paid_amount=None, payment_method=None, payment_date=None, payment_method_label=None, payment_plan_note=None, payments_json=None):
         """تحويل عرض سعر أو مسودة فاتورة A4 إلى فاتورة مبيعات معتمدة في جدول sales مع خصم المخزون وتسجيل الدفعة والآجل."""
         s_shift = self._open_shift(conn, u["id"])
         shift_id = s_shift["id"] if s_shift else None
@@ -1974,10 +2040,15 @@ class Api:
         tpl_a4 = self._load_templates(conn)["a4"]
         inv_prefix = (tpl_a4.get("invoice_prefix") or "الفات/2026/").strip()
 
+        pm_lbl = (payment_method_label if payment_method_label is not None else (q_row["payment_method_label"] if "payment_method_label" in q_row.keys() else "")) or ("محفظة إلكترونية" if method == "wallet" else "نقدي")
+        pm_note = (payment_plan_note if payment_plan_note is not None else (q_row["payment_plan_note"] if "payment_plan_note" in q_row.keys() else "")) or None
+        pm_json = (payments_json if payments_json is not None else (q_row["payments_json"] if "payments_json" in q_row.keys() else None))
+
         cur = conn.execute(
             """INSERT INTO sales(invoice_no, shift_id, user_id, customer_id, created_at, customer_name, customer_phone,
-                                 subtotal, discount, tax, total, notes, doc_type, invoice_date, due_date, source_ref, signal_ref, quote_id)
-               VALUES('TMP-INV',?,?,?,?,?,?,?,?,?,?,?,'b2b',?,?,?,?,?)""",
+                                 subtotal, discount, tax, total, notes, doc_type, invoice_date, due_date, source_ref, signal_ref, quote_id,
+                                 payment_method_label, payment_plan_note, payments_json)
+               VALUES('TMP-INV',?,?,?,?,?,?,?,?,?,?,?,'b2b',?,?,?,?,?,?,?,?)""",
             (
                 shift_id,
                 u["id"],
@@ -1995,13 +2066,16 @@ class Api:
                 q_row["source_ref"],
                 q_row["signal_ref"],
                 q_row["id"],
+                pm_lbl,
+                pm_note,
+                pm_json,
             ),
         )
         sale_id = cur.lastrowid
-        invoice_no = f"{inv_prefix}{sale_id:05d}"
+        invoice_no = _format_doc_seq(inv_prefix, sale_id)
         # التأكد من عدم تكرار رقم الفاتورة
         if conn.execute("SELECT 1 FROM sales WHERE invoice_no=? AND id!=?", (invoice_no, sale_id)).fetchone():
-            invoice_no = f"{inv_prefix}{sale_id:05d}-{q_row['id']}"
+            invoice_no = f"{invoice_no}-{q_row['id']}"
         conn.execute("UPDATE sales SET invoice_no=? WHERE id=?", (invoice_no, sale_id))
 
         for it in q_items:
@@ -2052,9 +2126,10 @@ class Api:
 
         conn.execute(
             """UPDATE quotations
-               SET status='converted', doc_type='invoice', converted_sale_id=?, paid_amount=?, payment_method=?, payment_date=?, quote_no=?
+               SET status='converted', doc_type='invoice', converted_sale_id=?, paid_amount=?, payment_method=?, payment_date=?, quote_no=?,
+                   payment_method_label=?, payment_plan_note=?, payments_json=?
                WHERE id=?""",
-            (sale_id, paid, method, pay_dt, invoice_no, q_row["id"]),
+            (sale_id, paid, method, pay_dt, invoice_no, pm_lbl, pm_note, pm_json, q_row["id"]),
         )
         return sale_id, invoice_no
 
@@ -2073,6 +2148,9 @@ class Api:
         paid_amount=0,
         payment_method="cash",
         payment_date=None,
+        payment_method_label=None,
+        payment_plan_note=None,
+        payments_list=None,
         notes=None,
         auto_convert=False,
     ):
@@ -2150,11 +2228,37 @@ class Api:
             if disc < 0 or disc > subtotal:
                 raise ApiError("قيمة الخصم غير صالحة (يجب ألا تتجاوز المجموع الفرعي)")
             total = max(0, subtotal - disc + total_tax)
-            paid = _money(paid_amount, 0)
-            if paid < 0:
+            # عرض السعر لا يحتوي على مدفوعات (المدفوعات للفواتير فقط)
+            if doc_type == "quote" and not auto_convert:
                 paid = 0
-            if paid > total:
-                paid = total
+                pm_label = ""
+                pm_note = (payment_plan_note or "").strip() or None
+                pm_json = None
+            else:
+                cleaned_pms = []
+                if isinstance(payments_list, list) and payments_list:
+                    for p_it in payments_list:
+                        if isinstance(p_it, dict):
+                            p_amt = _money(p_it.get("amount"), 0)
+                            if p_amt > 0:
+                                cleaned_pms.append({
+                                    "label": str(p_it.get("label") or "").strip(),
+                                    "method": str(p_it.get("method") or payment_method_label or "نقدي").strip(),
+                                    "date": str(p_it.get("date") or payment_date or doc_date).strip(),
+                                    "amount": p_amt,
+                                })
+                if cleaned_pms:
+                    paid = sum(x["amount"] for x in cleaned_pms)
+                    pm_json = json.dumps(cleaned_pms, ensure_ascii=False)
+                else:
+                    paid = _money(paid_amount, 0)
+                    pm_json = None
+                if paid < 0:
+                    paid = 0
+                if paid > total:
+                    paid = total
+                pm_label = (payment_method_label or "").strip() or ("محفظة إلكترونية" if method == "wallet" else "نقدي")
+                pm_note = (payment_plan_note or "").strip() or None
 
             if id:
                 qid = _int(id)
@@ -2169,12 +2273,14 @@ class Api:
                     """UPDATE quotations
                        SET doc_type=?, customer_id=?, customer_name=?, customer_phone=?,
                            doc_date=?, due_date=?, source_ref=?, signal_ref=?,
-                           subtotal=?, discount=?, tax=?, total=?, paid_amount=?, payment_method=?, payment_date=?, notes=?
+                           subtotal=?, discount=?, tax=?, total=?, paid_amount=?, payment_method=?, payment_date=?,
+                           payment_method_label=?, payment_plan_note=?, payments_json=?, notes=?
                        WHERE id=?""",
                     (
                         doc_type, customer_id, cname, cphone,
-                        doc_date, due_date, src_val, sig_val,
+                        doc_date, due_date, "", "",
                         subtotal, disc, total_tax, total, paid, method, payment_date,
+                        pm_label, pm_note, pm_json,
                         (notes or "").strip() or None, qid,
                     ),
                 )
@@ -2183,24 +2289,24 @@ class Api:
                 cur = conn.execute(
                     """INSERT INTO quotations(quote_no, doc_type, user_id, customer_id, customer_name, customer_phone,
                                               created_at, doc_date, due_date, source_ref, signal_ref,
-                                              subtotal, discount, tax, total, paid_amount, payment_method, payment_date, status, notes)
-                       VALUES('TMP-Q',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'draft',?)""",
+                                              subtotal, discount, tax, total, paid_amount, payment_method, payment_date,
+                                              payment_method_label, payment_plan_note, payments_json, status, notes)
+                       VALUES('TMP-Q',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'draft',?)""",
                     (
                         doc_type, u["id"], customer_id, cname, cphone,
                         db.now(), doc_date, due_date, "", "",
                         subtotal, disc, total_tax, total, paid, method, payment_date,
+                        pm_label, pm_note, pm_json,
                         (notes or "").strip() or None,
                     ),
                 )
                 qid = cur.lastrowid
-                q_no = f"{inv_prefix if doc_type == 'invoice' else quote_prefix}{qid:05d}"
+                q_no = _format_doc_seq(inv_prefix if doc_type == 'invoice' else quote_prefix, qid)
                 if conn.execute("SELECT 1 FROM quotations WHERE quote_no=? AND id!=?", (q_no, qid)).fetchone():
                     q_no = f"{q_no}-{qid}"
-                src_val = (source_ref or "").strip() or f"{src_prefix}{qid:04d}"
-                sig_val = (signal_ref or "").strip() or src_val
                 conn.execute(
                     "UPDATE quotations SET quote_no=?, source_ref=?, signal_ref=? WHERE id=?",
-                    (q_no, src_val, sig_val, qid),
+                    (q_no, q_no, q_no, qid),
                 )
 
             for it in parsed_items:
@@ -2216,11 +2322,11 @@ class Api:
             if doc_type == "invoice" or auto_convert:
                 q_row = conn.execute("SELECT * FROM quotations WHERE id=?", (qid,)).fetchone()
                 q_items = conn.execute("SELECT * FROM quotation_items WHERE quote_id=?", (qid,)).fetchall()
-                self._convert_quote_to_sale_in_tx(conn, u, q_row, q_items, paid, method, payment_date)
+                self._convert_quote_to_sale_in_tx(conn, u, q_row, q_items, paid, method, payment_date, pm_label, pm_note, pm_json)
 
         return self.quotation(qid)
 
-    def quotation_convert_to_sale(self, id, paid_amount=None, payment_method="cash", payment_date=None):
+    def quotation_convert_to_sale(self, id, paid_amount=None, payment_method="cash", payment_date=None, payment_method_label=None, payment_plan_note=None):
         """تحويل عرض سعر قائم إلى فاتورة مبيعات رسمية معتمدة مع خصم المخزون وتسجيل الدفعة والمديونية."""
         u = self._perm("pos_sell")
         qid = _int(id)
@@ -2233,7 +2339,7 @@ class Api:
             q_items = conn.execute("SELECT * FROM quotation_items WHERE quote_id=?", (qid,)).fetchall()
             if not q_items:
                 raise ApiError("عرض السعر لا يحتوي على أصناف")
-            self._convert_quote_to_sale_in_tx(conn, u, q_row, q_items, paid_amount, payment_method, payment_date)
+            self._convert_quote_to_sale_in_tx(conn, u, q_row, q_items, paid_amount, payment_method, payment_date, payment_method_label, payment_plan_note)
         return self.quotation(qid)
 
     def quotation(self, id):
@@ -2267,6 +2373,13 @@ class Api:
                     d["paid_amount"] = min(d["total"], direct_paid + voucher_paid)
                     d["sale_invoice_no"] = s["invoice_no"]
             d["due_amount"] = max(0, d["total"] - (d.get("paid_amount") or 0))
+            if d.get("payments_json"):
+                try:
+                    d["payments_list"] = json.loads(d["payments_json"])
+                except Exception:
+                    d["payments_list"] = []
+            else:
+                d["payments_list"] = []
             return d
 
     def quotations(self, doc_type=None, status=None, q=None, limit=100, offset=0):

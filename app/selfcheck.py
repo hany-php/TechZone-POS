@@ -318,8 +318,15 @@ check("user delete ok", ru_del["ok"])
 # 13b) فحص قسم المبيعات وعروض الأسعار وقوالب الفواتير (A4 + POS Thermal)
 tpl_res = call(a, "templates_get", {})
 check("templates_get ok (a4 + pos)", tpl_res["ok"] and "a4" in tpl_res["data"] and "pos" in tpl_res["data"] and tpl_res["data"]["a4"]["theme"] == "taqnia_wave")
-tpl_save = call(a, "templates_save", {"a4": {"company_title": "تقنية -Technology", "currency_symbol": "LE"}, "pos": {"paper_width": "80mm"}})
-check("templates_save ok", tpl_save["ok"] and tpl_save["data"]["a4"]["currency_symbol"] == "LE")
+tpl_save = call(a, "templates_save", {"a4": {"company_title": "تقنية -Technology", "currency_symbol": "LE", "invoice_prefix": "N00", "quote_prefix": "Q00"}, "pos": {"paper_width": "80mm"}})
+check("templates_save ok & prefix N00 seq", tpl_save["ok"] and tpl_save["data"]["a4"]["currency_symbol"] == "LE" and tpl_save["data"]["next_invoice_no"].startswith("N00"))
+
+pm_save = call(a, "payment_methods_save", {"methods": [
+    {"id": "cash", "name": "نقدي", "base_type": "cash"},
+    {"id": "plan3", "name": "3 دفعات مع دفعة مقدمة", "base_type": "cash"},
+    {"id": "plan2", "name": "دفعتين", "base_type": "wallet"},
+]})
+check("payment_methods_save ok", pm_save["ok"] and any(m["name"] == "3 دفعات مع دفعة مقدمة" for m in pm_save["data"]))
 
 q_create = call(a, "quotation_save", {
     "doc_type": "quote",
@@ -341,8 +348,8 @@ q_create = call(a, "quotation_save", {
 check("quotation_save ok (total 6620.00)", q_create["ok"] and q_create["data"]["total"] == 662000 and q_create["data"]["status"] == "draft")
 qid = q_create["data"]["id"]
 
-q_conv = call(a, "quotation_convert_to_sale", {"id": qid, "paid_amount": 5000, "payment_method": "cash"})
-check("quotation_convert_to_sale ok (paid 5000, due 1620)", q_conv["ok"] and q_conv["data"]["status"] == "converted" and q_conv["data"]["paid_amount"] == 500000 and q_conv["data"]["due_amount"] == 162000)
+q_conv = call(a, "quotation_convert_to_sale", {"id": qid, "paid_amount": 5000, "payment_method": "cash", "payment_method_label": "3 دفعات مع دفعة مقدمة", "payment_plan_note": "دفعة مقدمة 5000 والباقي على دفعتين"})
+check("quotation_convert_to_sale ok (paid 5000, due 1620, prefix N00)", q_conv["ok"] and q_conv["data"]["status"] == "converted" and q_conv["data"]["paid_amount"] == 500000 and q_conv["data"]["due_amount"] == 162000 and q_conv["data"]["quote_no"].startswith("N00") and q_conv["data"]["payment_method_label"] == "3 دفعات مع دفعة مقدمة")
 
 q_list = call(a, "quotations", {})
 check("quotations list & summary ok", q_list["ok"] and q_list["data"]["summary"]["invoices_count"] >= 1)

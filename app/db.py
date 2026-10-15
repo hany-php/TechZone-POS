@@ -58,6 +58,16 @@ DEFAULT_A4_TEMPLATE = {
     "custom_terms": "",
 }
 
+
+DEFAULT_PAYMENT_METHODS = [
+    {"id": "cash", "name": "نقدي", "base_type": "cash"},
+    {"id": "wallet", "name": "محفظة إلكترونية", "base_type": "wallet"},
+    {"id": "instapay", "name": "إنستا باي (InstaPay)", "base_type": "wallet"},
+    {"id": "bank_transfer", "name": "تحويل بنكي", "base_type": "wallet"},
+    {"id": "two_payments", "name": "دفعتين (مقدم + عند الاستلام)", "base_type": "cash"},
+    {"id": "three_payments", "name": "3 دفعات مع دفعة مقدمة", "base_type": "cash"},
+]
+
 DEFAULT_POS_TEMPLATE = {
     "paper_width": "80mm",
     "font_scale": "normal",
@@ -293,6 +303,9 @@ CREATE TABLE IF NOT EXISTS quotations (
   paid_amount INTEGER NOT NULL DEFAULT 0,
   payment_method TEXT DEFAULT 'cash',
   payment_date TEXT,
+  payment_method_label TEXT,
+  payment_plan_note TEXT,
+  payments_json TEXT,
   status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','sent','converted','completed','cancelled')),
   converted_sale_id INTEGER REFERENCES sales(id) ON DELETE SET NULL,
   notes TEXT
@@ -430,6 +443,20 @@ def _ensure_schema_columns(conn: sqlite3.Connection):
             conn.execute("ALTER TABLE sale_items ADD COLUMN tax_label TEXT")
         if "tax_rate" not in si_cols:
             conn.execute("ALTER TABLE sale_items ADD COLUMN tax_rate INTEGER DEFAULT 0")
+        if "payment_method_label" not in sales_cols:
+            conn.execute("ALTER TABLE sales ADD COLUMN payment_method_label TEXT")
+        if "payment_plan_note" not in sales_cols:
+            conn.execute("ALTER TABLE sales ADD COLUMN payment_plan_note TEXT")
+        if "payments_json" not in sales_cols:
+            conn.execute("ALTER TABLE sales ADD COLUMN payments_json TEXT")
+
+        q_cols = {c["name"] for c in conn.execute("PRAGMA table_info(quotations)").fetchall()}
+        if "payment_method_label" not in q_cols:
+            conn.execute("ALTER TABLE quotations ADD COLUMN payment_method_label TEXT")
+        if "payment_plan_note" not in q_cols:
+            conn.execute("ALTER TABLE quotations ADD COLUMN payment_plan_note TEXT")
+        if "payments_json" not in q_cols:
+            conn.execute("ALTER TABLE quotations ADD COLUMN payments_json TEXT")
 
         pay_cols = {c["name"] for c in conn.execute("PRAGMA table_info(payments)").fetchall()}
         if "ref_no" not in pay_cols:
@@ -465,6 +492,9 @@ def _ensure_schema_columns(conn: sqlite3.Connection):
         t_pos = conn.execute("SELECT value FROM settings WHERE key='template_pos_config'").fetchone()
         if not t_pos:
             conn.execute("INSERT OR IGNORE INTO settings(key, value) VALUES('template_pos_config', ?)", (json.dumps(DEFAULT_POS_TEMPLATE, ensure_ascii=False),))
+        pm_cfg = conn.execute("SELECT value FROM settings WHERE key='custom_payment_methods'").fetchone()
+        if not pm_cfg:
+            conn.execute("INSERT OR IGNORE INTO settings(key, value) VALUES('custom_payment_methods', ?)", (json.dumps(DEFAULT_PAYMENT_METHODS, ensure_ascii=False),))
         conn.commit()
     except Exception as e:
         print(f"Schema upgrade error: {e}")
