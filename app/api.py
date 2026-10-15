@@ -433,9 +433,28 @@ class Api:
         ).fetchone()
 
     # ---------------------------------------------------------- جلسة ومستخدمون
+    def login_config(self):
+        """إعدادات شاشة تسجيل الدخول العامة (اسم المحل والشعار وطريقة الدخول وقائمة أسماء الموظفين دون كشف الدور)."""
+        with db.connect() as conn:
+            st = self._settings(conn)
+            rows = conn.execute("SELECT id, username, name, avatar FROM users ORDER BY id").fetchall()
+            return {
+                "store_name": (st.get("store_name") or "تك زون للإلكترونيات").strip() or "تك زون للإلكترونيات",
+                "store_address": st.get("store_address") or "",
+                "store_phone": st.get("store_phone") or "",
+                "receipt_logo": st.get("receipt_logo") or "",
+                "login_mode": st.get("login_mode") or "pin_only",
+                "default_start_page": st.get("default_start_page") or "pos",
+                "default_start_mode": st.get("default_start_mode") or "window",
+                "os_default_theme": st.get("os_default_theme") or "dark",
+                "users": [{"id": r["id"], "username": r["username"], "name": r["name"], "avatar": r["avatar"]} for r in rows],
+            }
+
     def users(self):
         with db.connect() as conn:
-            rows = conn.execute("SELECT id, username, name, role, permissions, card_size, created_at FROM users ORDER BY id").fetchall()
+            rows = conn.execute(
+                "SELECT id, username, name, role, permissions, card_size, start_page, start_mode, theme_mode, avatar, created_at FROM users ORDER BY id"
+            ).fetchall()
             out = []
             for r in rows:
                 d = dict(r)
@@ -456,16 +475,34 @@ class Api:
             "custom_bg": row["custom_bg"] if "custom_bg" in keys else None,
             "accent_color": row["accent_color"] if "accent_color" in keys else None,
             "desktop_layout": row["desktop_layout"] if "desktop_layout" in keys else None,
+            "start_page": row["start_page"] if "start_page" in keys else None,
+            "start_mode": row["start_mode"] if "start_mode" in keys else None,
+            "theme_mode": row["theme_mode"] if "theme_mode" in keys else None,
+            "avatar": row["avatar"] if "avatar" in keys else None,
         }
 
-    def user_pref_save(self, card_size=None, wallpaper=None, custom_bg=None, accent_color=None, desktop_layout=None, reset_theme=False):
-        """حفظ تفضيلات العرض الخاصة بالمستخدم الحالي في قاعدة البيانات بشكل دائم لكل مستخدم."""
+    def user_pref_save(
+        self,
+        card_size=None,
+        wallpaper=None,
+        custom_bg=None,
+        accent_color=None,
+        desktop_layout=None,
+        start_page=None,
+        start_mode=None,
+        theme_mode=None,
+        reset_theme=False,
+    ):
+        """حفظ تفضيلات العرض والفتح الخاصة بالمستخدم الحالي في قاعدة البيانات بشكل دائم لكل مستخدم."""
         u = self._user()
         uid = u["id"]
+        valid_pages = {"", "pos", "sales_quotes", "inventory", "customers", "repair", "history", "buy_used", "reports", "settings", "receipt", "desktop"}
+        valid_modes = {"", "window", "maximized", "direct"}
+        valid_themes = {"", "light", "dark"}
         with db.connect() as conn:
             if reset_theme:
                 conn.execute(
-                    "UPDATE users SET wallpaper=NULL, custom_bg=NULL, accent_color=NULL WHERE id=?",
+                    "UPDATE users SET wallpaper=NULL, custom_bg=NULL, accent_color=NULL, theme_mode=NULL WHERE id=?",
                     (uid,),
                 )
             if card_size not in (None, ""):
@@ -495,6 +532,21 @@ class Api:
                 else:
                     dl = str(desktop_layout).strip() or None
                 conn.execute("UPDATE users SET desktop_layout=? WHERE id=?", (dl, uid))
+            if start_page is not None:
+                sp = str(start_page).strip()
+                if sp not in valid_pages:
+                    raise ApiError("الصفحة الافتراضية المختارة غير صالحة")
+                conn.execute("UPDATE users SET start_page=? WHERE id=?", (sp or None, uid))
+            if start_mode is not None:
+                sm = str(start_mode).strip()
+                if sm not in valid_modes:
+                    raise ApiError("وضع فتح الصفحة غير صالح")
+                conn.execute("UPDATE users SET start_mode=? WHERE id=?", (sm or None, uid))
+            if theme_mode is not None:
+                tm = str(theme_mode).strip()
+                if tm not in valid_themes:
+                    raise ApiError("وضع المظهر غير صالح")
+                conn.execute("UPDATE users SET theme_mode=? WHERE id=?", (tm or None, uid))
             conn.commit()
             row = conn.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
             if row:
@@ -505,9 +557,98 @@ class Api:
             "custom_bg": _STATE["user"].get("custom_bg"),
             "accent_color": _STATE["user"].get("accent_color"),
             "desktop_layout": _STATE["user"].get("desktop_layout"),
+            "start_page": _STATE["user"].get("start_page"),
+            "start_mode": _STATE["user"].get("start_mode"),
+            "theme_mode": _STATE["user"].get("theme_mode"),
+            "avatar": _STATE["user"].get("avatar"),
         }
 
-    def user_save(self, username, name, role="cashier", pin=None, permissions=None, id=None):
+    def profile_save(
+        self,
+        name=None,
+        username=None,
+        current_pin=None,
+        new_pin=None,
+        avatar=None,
+        start_page=None,
+        start_mode=None,
+        theme_mode=None,
+        card_size=None,
+        accent_color=None,
+        wallpaper=None,
+        custom_bg=None,
+    ):
+        """تحديث الملف الشخصي للموظف الحالي (الاسم، معرف الدخول، الصورة الشخصية، كلمة السر/الرمز السري، وإعدادات الفتح والمظهر)."""
+        u = self._user()
+        uid = u["id"]
+        with db.connect() as conn:
+            row = conn.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+            if not row:
+                raise ApiError("المستخدم غير موجود")
+
+            final_name = (name if name is not None else row["name"]).strip()
+            final_username = (username if username is not None else row["username"]).strip()
+            if not final_name or not final_username:
+                raise ApiError("الاسم الكامل ومعرف الدخول مطلوبان")
+
+            dup_u = conn.execute("SELECT id FROM users WHERE username=? AND id!=?", (final_username, uid)).fetchone()
+            if dup_u:
+                raise ApiError("معرف الدخول مسجل لموظف آخر مسبقاً")
+
+            if new_pin is not None and str(new_pin).strip() != "":
+                np = str(new_pin).strip()
+                if len(np) < 4 or len(np) > 24:
+                    raise ApiError("كلمة المرور / الرمز السري الجديد يجب أن يتكون من 4 خانات على الأقل")
+                if current_pin is not None and str(current_pin).strip() != "":
+                    cp = str(current_pin).strip()
+                    if not hmac.compare_digest(db.hash_pin(cp, row["pin_salt"]), row["pin_hash"]):
+                        raise ApiError("الرمز السري الحالي غير صحيح")
+                for other in conn.execute("SELECT id, pin_salt, pin_hash FROM users WHERE id!=?", (uid,)).fetchall():
+                    if hmac.compare_digest(db.hash_pin(np, other["pin_salt"]), other["pin_hash"]):
+                        raise ApiError("الرمز السري الجديد مستخدم بالفعل لموظف آخر — يرجى اختيار رمز فريد")
+                salt = os.urandom(16)
+                conn.execute(
+                    "UPDATE users SET pin_salt=?, pin_hash=? WHERE id=?",
+                    (salt, db.hash_pin(np, salt), uid),
+                )
+
+            if avatar is not None:
+                av = str(avatar).strip()
+                if av == "":
+                    conn.execute("UPDATE users SET avatar=NULL WHERE id=?", (uid,))
+                else:
+                    if not av.startswith("data:image/"):
+                        raise ApiError("صيغة الصورة الشخصية غير صالحة")
+                    if len(av.encode("utf-8")) > 450 * 1024:
+                        raise ApiError("حجم الصورة الشخصية كبير جداً (الحد الأقصى 450KB)")
+                    conn.execute("UPDATE users SET avatar=? WHERE id=?", (av, uid))
+
+            conn.execute(
+                "UPDATE users SET name=?, username=? WHERE id=?",
+                (final_name, final_username, uid),
+            )
+            conn.commit()
+
+        if any(x is not None for x in (start_page, start_mode, theme_mode, card_size, accent_color, wallpaper, custom_bg)):
+            self.user_pref_save(
+                card_size=card_size,
+                wallpaper=wallpaper,
+                custom_bg=custom_bg,
+                accent_color=accent_color,
+                start_page=start_page,
+                start_mode=start_mode,
+                theme_mode=theme_mode,
+            )
+
+        with db.connect() as conn:
+            st = self._settings(conn)
+            updated = conn.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+            _STATE["user"] = self._row_to_user_dict(updated)
+            _STATE["user"]["effective_start_page"] = _STATE["user"].get("start_page") or st.get("default_start_page") or "pos"
+            _STATE["user"]["effective_start_mode"] = _STATE["user"].get("start_mode") or st.get("default_start_mode") or "window"
+        return dict(_STATE["user"])
+
+    def user_save(self, username, name, role="cashier", pin=None, permissions=None, id=None, start_page=None, start_mode=None, avatar=None):
         self._perm("settings_manage")
         username = (username or "").strip()
         name = (name or "").strip()
@@ -517,10 +658,19 @@ class Api:
             raise ApiError("دور المستخدم غير صالح")
         if pin is not None and str(pin).strip() != "":
             pin = str(pin).strip()
-            if len(pin) != 4 or not pin.isdigit():
-                raise ApiError("الرمز السري يجب أن يتكون من 4 أرقام")
+            if len(pin) < 4 or len(pin) > 24:
+                raise ApiError("الرمز السري / كلمة المرور يجب أن يتكون من 4 خانات على الأقل")
         else:
             pin = None
+
+        valid_pages = {"", "pos", "sales_quotes", "inventory", "customers", "repair", "history", "buy_used", "reports", "settings", "receipt", "desktop"}
+        valid_modes = {"", "window", "maximized", "direct"}
+        sp_val = str(start_page).strip() if start_page is not None else None
+        if sp_val is not None and sp_val not in valid_pages:
+            sp_val = None
+        sm_val = str(start_mode).strip() if start_mode is not None else None
+        if sm_val is not None and sm_val not in valid_modes:
+            sm_val = None
 
         perms_dict = dict(db.ALL_ADMIN_PERMS) if role == "admin" else dict(db.DEFAULT_CASHIER_PERMS)
         if role != "admin" and isinstance(permissions, dict):
@@ -530,19 +680,33 @@ class Api:
         perms_json = json.dumps(perms_dict, ensure_ascii=False)
 
         with db.connect() as conn:
+            # التأكد من عدم تكرار الرمز السري بين المستخدمين لتمييز كل مستخدم تلقائياً من الرمز السري فقط
+            if pin:
+                target_uid = _int(id) if id else 0
+                for other in conn.execute("SELECT id, name, pin_salt, pin_hash FROM users").fetchall():
+                    if other["id"] == target_uid:
+                        continue
+                    if hmac.compare_digest(db.hash_pin(pin, other["pin_salt"]), other["pin_hash"]):
+                        raise ApiError("الرمز السري مستخدم بالفعل لموظف آخر — يجب أن يكون لكل مستخدم رمز سري فريد")
             try:
                 if id:
                     uid = _int(id)
+                    cur_u = conn.execute("SELECT start_page, start_mode, avatar FROM users WHERE id=?", (uid,)).fetchone()
+                    final_sp = (sp_val or None) if start_page is not None else (cur_u["start_page"] if cur_u else None)
+                    final_sm = (sm_val or None) if start_mode is not None else (cur_u["start_mode"] if cur_u else None)
+                    final_av = (str(avatar).strip() or None) if avatar is not None else (cur_u["avatar"] if cur_u else None)
+                    if final_av and not final_av.startswith("data:image/"):
+                        raise ApiError("صيغة صورة الموظف غير صالحة")
                     if pin:
                         salt = os.urandom(16)
                         conn.execute(
-                            "UPDATE users SET username=?, name=?, role=?, pin_salt=?, pin_hash=?, permissions=? WHERE id=?",
-                            (username, name, role, salt, db.hash_pin(pin, salt), perms_json, uid),
+                            "UPDATE users SET username=?, name=?, role=?, pin_salt=?, pin_hash=?, permissions=?, start_page=?, start_mode=?, avatar=? WHERE id=?",
+                            (username, name, role, salt, db.hash_pin(pin, salt), perms_json, final_sp, final_sm, final_av, uid),
                         )
                     else:
                         conn.execute(
-                            "UPDATE users SET username=?, name=?, role=?, permissions=? WHERE id=?",
-                            (username, name, role, perms_json, uid),
+                            "UPDATE users SET username=?, name=?, role=?, permissions=?, start_page=?, start_mode=?, avatar=? WHERE id=?",
+                            (username, name, role, perms_json, final_sp, final_sm, final_av, uid),
                         )
                     if _STATE["user"] and _STATE["user"]["id"] == uid:
                         row = conn.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
@@ -554,8 +718,8 @@ class Api:
                         raise ApiError("الرمز السري (4 أرقام) مطلوب للمستخدم الجديد")
                     salt = os.urandom(16)
                     cur = conn.execute(
-                        "INSERT INTO users(username, name, role, pin_salt, pin_hash, permissions, created_at) VALUES(?,?,?,?,?,?,?)",
-                        (username, name, role, salt, db.hash_pin(pin, salt), perms_json, db.now()),
+                        "INSERT INTO users(username, name, role, pin_salt, pin_hash, permissions, start_page, start_mode, avatar, created_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
+                        (username, name, role, salt, db.hash_pin(pin, salt), perms_json, sp_val or None, sm_val or None, (str(avatar).strip() or None) if avatar else None, db.now()),
                     )
                     return {"id": cur.lastrowid}
             except sqlite3.IntegrityError:
@@ -581,24 +745,47 @@ class Api:
                 raise ApiError("لا يمكن حذف مستخدم مرتبط بعمليات بيع أو صيانة سابقة")
             return True
 
-    def login(self, username, pin):
+    def login(self, username=None, pin=None):
+        """تسجيل الدخول: يدعم الدخول بالرمز السري فقط (يكتشف المستخدم ودوره مدير/كاشير تلقائياً) أو باسم المستخدم والرمز السري."""
+        pin = str(pin or "").strip()
+        username = str(username or "").strip()
+        if len(pin) < 4:
+            raise ApiError("اسم المستخدم أو الرمز السري غير صحيح")
         with db.connect() as conn:
-            row = conn.execute("SELECT * FROM users WHERE username=?", (username,)).fetchone()
-            pin = str(pin or "")
-            if not row or len(pin) != 4:
-                raise ApiError("اسم المستخدم أو الرمز السري غير صحيح")
-            expect = db.hash_pin(pin, row["pin_salt"])
-            if not hmac.compare_digest(expect, row["pin_hash"]):
-                raise ApiError("اسم المستخدم أو الرمز السري غير صحيح")
+            st = self._settings(conn)
+            if username:
+                row = conn.execute("SELECT * FROM users WHERE username=? OR name=?", (username, username)).fetchone()
+                if not row:
+                    raise ApiError("اسم المستخدم أو الرمز السري غير صحيح")
+                expect = db.hash_pin(pin, row["pin_salt"])
+                if not hmac.compare_digest(expect, row["pin_hash"]):
+                    raise ApiError("اسم المستخدم أو الرمز السري غير صحيح")
+            else:
+                rows = conn.execute("SELECT * FROM users ORDER BY id").fetchall()
+                matched = None
+                for r in rows:
+                    expect = db.hash_pin(pin, r["pin_salt"])
+                    if hmac.compare_digest(expect, r["pin_hash"]):
+                        matched = r
+                        break
+                if not matched:
+                    raise ApiError("الرمز السري غير صحيح")
+                row = matched
             _STATE["user"] = self._row_to_user_dict(row)
-            return dict(_STATE["user"])
+            out = dict(_STATE["user"])
+            out["effective_start_page"] = out.get("start_page") or st.get("default_start_page") or "pos"
+            out["effective_start_mode"] = out.get("start_mode") or st.get("default_start_mode") or "window"
+            return out
 
     def session(self):
         if _STATE["user"]:
             with db.connect() as conn:
+                st = self._settings(conn)
                 row = conn.execute("SELECT * FROM users WHERE id=?", (_STATE["user"]["id"],)).fetchone()
                 if row:
                     _STATE["user"] = self._row_to_user_dict(row)
+                    _STATE["user"]["effective_start_page"] = _STATE["user"].get("start_page") or st.get("default_start_page") or "pos"
+                    _STATE["user"]["effective_start_mode"] = _STATE["user"].get("start_mode") or st.get("default_start_mode") or "window"
         return {"user": _STATE["user"]}
 
     def logout(self):
@@ -615,27 +802,43 @@ class Api:
         self._perm("settings_manage")
         allowed = {"store_name", "store_address", "store_phone", "currency", "tax_enabled", "tax_rate",
                    "pos_card_size", "os_default_wallpaper", "os_default_custom_bg", "os_default_accent", "os_default_layout",
+                   "os_default_theme", "login_mode", "default_start_page", "default_start_mode",
                    "store_email", "store_cr", "store_vat", "receipt_thanks", "receipt_footer",
                    "receipt_logo", "receipt_show_logo", "receipt_show_barcode",
                    "receipt_show_tax", "receipt_show_payments",
                    "template_a4_config", "template_pos_config"}
         show = {"tax_enabled", "receipt_show_logo", "receipt_show_barcode", "receipt_show_tax", "receipt_show_payments"}
+        valid_login_modes = {"pin_only", "select_user_pin", "username_password"}
+        valid_start_pages = {"pos", "sales_quotes", "inventory", "customers", "repair", "history", "buy_used", "reports", "settings", "receipt", "desktop"}
+        valid_start_modes = {"window", "maximized", "direct"}
         with db.connect() as conn:
             for k, v in kv.items():
                 if k not in allowed or v is None:
                     continue
                 s = str(v)
-                if s == "" and k not in show and k not in ("os_default_custom_bg", "os_default_layout"):
+                if s == "" and k not in show and k not in ("os_default_custom_bg", "os_default_layout", "receipt_logo"):
                     continue
                 if k in show:
                     if s not in ("0", "1"):
                         raise ApiError("قيمة عرض غير صالحة (استخدم 0 أو 1)")
+                elif k == "login_mode":
+                    if s not in valid_login_modes:
+                        raise ApiError("طريقة تسجيل الدخول غير صالحة")
+                elif k == "default_start_page":
+                    if s not in valid_start_pages:
+                        raise ApiError("الصفحة الافتراضية غير صالحة")
+                elif k == "default_start_mode":
+                    if s not in valid_start_modes:
+                        raise ApiError("وضع فتح الصفحة الافتراضية غير صالح")
+                elif k == "os_default_theme":
+                    if s not in ("light", "dark"):
+                        raise ApiError("وضع المظهر الافتراضي غير صالح")
                 elif k == "pos_card_size":
                     cs = _int(s, 200)
                     if cs < 110 or cs > 360:
                         raise ApiError("حجم البلوك الافتراضي يجب أن يكون بين 110 و 360")
                     s = str(cs)
-                elif k == "receipt_logo":
+                elif k == "receipt_logo" and s != "":
                     if not s.startswith("data:image/"):
                         raise ApiError("صيغة الشعار غير صالحة (يجب أن تكون صورة data:image/)")
                     if len(s.encode("utf-8")) > 200 * 1024:
@@ -729,8 +932,8 @@ class Api:
         with db.connect() as conn:
             return self._load_templates(conn)
 
-    def templates_save(self, a4=None, pos=None, reset_a4=False, reset_pos=False):
-        """حفظ تخصيص قوالب الفواتير (شكل الفاتورة A4، الألوان، الشعار، البيانات، وقالب الكاشير الحراري)."""
+    def templates_save(self, a4=None, pos=None, reset_a4=False, reset_pos=False, sync_receipt_settings=True):
+        """حفظ تخصيص قوالب الفواتير (شكل الفاتورة A4، الألوان، الشعار، البيانات، وقالب الكاشير الحراري وجميع إيصالات البرنامج)."""
         self._perm("settings_manage")
         with db.connect() as conn:
             cur = self._load_templates(conn)
@@ -761,6 +964,21 @@ class Api:
                 "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
                 (json.dumps(new_pos, ensure_ascii=False),),
             )
+            if sync_receipt_settings and isinstance(pos, dict) and not reset_pos:
+                sync_pairs = [
+                    ("receipt_thanks", str(new_pos.get("thanks_text") or "شكراً لزيارتكم")),
+                    ("receipt_footer", str(new_pos.get("footer_text") or "يرجى الاحتفاظ بالإيصال للاستبدال خلال 14 يوماً")),
+                    ("receipt_show_logo", "1" if new_pos.get("show_logo", True) else "0"),
+                    ("receipt_show_barcode", "1" if new_pos.get("show_barcode", True) else "0"),
+                    ("receipt_show_tax", "1" if new_pos.get("show_tax", True) else "0"),
+                    ("receipt_show_payments", "1" if new_pos.get("show_payments", True) else "0"),
+                ]
+                for sk, sv in sync_pairs:
+                    conn.execute(
+                        "INSERT INTO settings(key, value) VALUES(?, ?) "
+                        "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                        (sk, sv),
+                    )
             return self._load_templates(conn)
 
     # ---------------------------------------------------------- فئات

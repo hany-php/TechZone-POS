@@ -2,7 +2,7 @@
 <html dir="rtl" lang="ar"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>الإيصال والإعدادات - تك زون للإلكترونيات</title>
+<title>معاينة وطباعة الإيصال - تك زون للإلكترونيات</title>
 <link href="app.css" rel="stylesheet"/>
 <script>if(localStorage.getItem('tz-theme')==='dark')document.documentElement.classList.add('dark');</script>
 <style>
@@ -25,17 +25,23 @@
 <main class="flex-1 min-w-0 p-4 md:p-8">
 <div class="w-full">
 <!-- Header -->
-<div class="flex justify-between items-center mb-6">
+<div class="flex flex-wrap justify-between items-center gap-3 mb-6">
 <div>
-<h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">معاينة الإيصال وإعدادات المتجر</h1>
-<p class="text-gray-500 dark:text-gray-400 text-sm" id="inv-line">اختر فاتورة لعرضها</p>
+<h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">معاينة وطباعة الإيصال</h1>
+<p class="text-gray-500 dark:text-gray-400 text-sm" id="inv-line">اختر فاتورة لعرضها وطباعتها</p>
 </div>
-<button onclick="toggleTheme()" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition-colors">
-<span class="material-icons-outlined dark:hidden">dark_mode</span>
-<span class="material-icons-outlined hidden dark:inline">light_mode</span>
+<div class="flex items-center gap-2 no-print">
+<a href="settings.html?tab=invoices" class="px-4 py-2 rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-white text-xs font-bold flex items-center gap-1.5 transition-colors">
+  <span class="material-icons-round text-base">settings</span>
+  <span>تعديل إعدادات المتجر وتصميم الفاتورة</span>
+</a>
+<button onclick="toggleTheme()" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition-colors" title="تبديل الوضع الليلي / النهاري">
+  <span class="material-icons-outlined dark:hidden">dark_mode</span>
+  <span class="material-icons-outlined hidden dark:inline">light_mode</span>
 </button>
 </div>
-<div id="no-id" class="hidden mb-6 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-sm font-medium">لا توجد فاتورة محددة للعرض — افتح الإيصال من سجل المبيعات أو نقاط البيع، أو خصص شكل الإيصال وإعدادات المتجر والضريبة أدناه.</div>
+</div>
+<div id="no-id" class="hidden mb-6 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-sm font-medium">لا توجد فاتورة محددة للعرض — افتح الإيصال من سجل المبيعات أو نقاط البيع، أو انتقل إلى «إعدادات النظام» لتخصيص شكل الفواتير.</div>
 <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
 <!-- Preview column -->
 <section class="xl:col-span-1">
@@ -43,60 +49,13 @@
 <div class="absolute inset-0 opacity-[0.03] pointer-events-none" style="background-image: radial-gradient(#000 1px, transparent 1px); background-size: 20px 20px;"></div>
 <h2 class="text-sm uppercase tracking-wider text-gray-500 font-semibold mb-4 flex items-center gap-2">
 <span class="material-icons-outlined text-base">receipt_long</span>
-معاينة الإيصال
+معاينة الإيصال الحراري
 </h2>
-<div id="paper" class="bg-white text-black shadow-lg rounded-sm w-full flex flex-col relative overflow-y-auto font-mono text-sm leading-tight pb-8">
-<div class="h-2 w-full bg-gradient-to-b from-gray-100 to-white"></div>
-<div class="p-5 flex-1 flex flex-col items-center">
-<div id="r-logo" class="w-16 h-16 bg-black rounded-full flex items-center justify-center text-white mb-3 overflow-hidden">
-<span class="material-icons-outlined text-3xl">memory</span>
-</div>
-<h3 class="font-bold text-lg mb-1" id="r-store">تك زون للإلكترونيات</h3>
-<p class="text-xs text-gray-500 text-center mb-1" id="r-addr"></p>
-<p class="text-xs text-gray-500 mb-1" id="r-phone"></p>
-<p class="text-xs text-gray-500 mb-1" id="r-email"></p>
-<p class="text-xs text-gray-500 mb-1" id="r-cr"></p>
-<p class="text-xs text-gray-500 mb-4" id="r-vat"></p>
-<div class="w-full border-b border-dashed border-gray-300 mb-4"></div>
-<div class="w-full flex justify-between text-xs text-gray-600 mb-4">
-<div class="text-right">
-<p>رقم الفاتورة: <span class="font-numbers" id="r-inv"></span></p>
-<p>الكاشير: <span id="r-user"></span></p>
-</div>
-<div class="text-left" dir="ltr">
-<p class="font-numbers" id="r-date"></p>
-<p class="font-numbers" id="r-time"></p>
-</div>
-</div>
-<div class="w-full grid grid-cols-4 gap-2 text-xs font-bold border-b border-black pb-2 mb-2">
-<div class="col-span-2">الصنف</div>
-<div class="text-center">الكمية</div>
-<div class="text-left">السعر</div>
-</div>
-<div class="w-full flex flex-col gap-3 mb-4" id="r-items"></div>
-<div class="w-full border-b border-dashed border-gray-300 mb-3"></div>
-<div class="w-full space-y-1 mb-4" id="r-totals"></div>
-<div class="w-full border-t border-black pt-2 mb-4">
-<div class="flex justify-between items-center text-lg font-bold">
-<span>الإجمالي</span>
-<span class="font-numbers" id="r-total"></span>
-</div>
-</div>
-<div class="w-full space-y-1 mb-4 text-xs text-gray-600" id="r-pays"></div>
-<div class="w-full flex-col items-center mb-4" id="r-barwrap" style="display:flex">
-<div class="h-12 w-48 bg-black opacity-80" style="background: repeating-linear-gradient(90deg, #000 0 2px, transparent 2px 4px, #000 4px 5px, transparent 5px 9px);"></div>
-<span class="text-[10px] mt-1 font-numbers tracking-widest" id="r-bar">0000000000</span>
-</div>
-<p class="text-xs text-gray-500 font-bold mb-1" id="r-thanks">شكراً لزيارتكم</p>
-<p class="text-[10px] text-gray-400" id="r-footer">يرجى الاحتفاظ بالإيصال للاستبدال</p>
-</div>
-<div class="h-4 w-full bg-white relative" style="background: linear-gradient(-45deg, transparent 8px, white 8px) 0 100%, linear-gradient(45deg, transparent 8px, white 8px) 0 100%; background-size: 16px 16px; background-repeat: repeat-x;"></div>
-</div>
+<div id="paper" class="bg-white text-black shadow-lg rounded-sm w-full flex flex-col relative overflow-y-auto font-mono text-sm leading-tight pb-6 p-5"></div>
 </div>
 </section>
-<!-- Editor columns -->
+<!-- Invoice Details & Print Actions column -->
 <div class="xl:col-span-2 flex flex-col gap-6 no-print">
-<!-- Card 1: invoice data -->
 <section class="bg-white dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-gray-800 p-6 md:p-8">
 <div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-6 mb-6 flex justify-between items-center border border-blue-100 dark:border-blue-800">
 <span class="text-gray-600 dark:text-gray-300 font-medium text-lg">المبلغ الإجمالي</span>
@@ -113,11 +72,11 @@
 <div class="mt-auto pt-6 border-t border-gray-100 dark:border-gray-800 flex flex-wrap gap-3">
 <button id="btn-print-thermal" type="button" class="flex-1 bg-primary hover:bg-primary-dark text-white py-4 px-4 rounded-xl font-bold text-base shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 transition-transform active:scale-[0.98]">
 <span class="material-icons-outlined">print</span>
-طباعة إيصال كاشير حراري (80mm)
+طباعة إيصال كاشير حراري
 </button>
 <button id="btn-print-a4" type="button" class="px-5 py-4 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold flex items-center gap-2 transition-colors shadow-lg">
 <span class="material-icons-outlined">description</span>
-طباعة فاتورة A4 (قالب تقنية)
+طباعة فاتورة A4 رسمية
 </button>
 <button id="btn-wa" type="button" class="px-5 py-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-2 transition-colors shadow-lg shadow-emerald-600/20">
 <span class="material-icons-outlined">send</span>
@@ -127,96 +86,8 @@
 <span class="material-icons-outlined">receipt</span>
 نص حراري
 </button>
-<a href="sales_quotes.html" class="px-4 py-4 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30 font-bold text-sm flex items-center gap-1.5 hover:bg-amber-500/20">
-<span class="material-icons-outlined text-base">palette</span>
-مصمم قوالب الفواتير وعروض الأسعار
-</a>
 </div>
 <pre id="raw" dir="ltr" class="hidden mt-4 text-[10px] leading-tight bg-slate-900 text-green-100 p-4 rounded-xl overflow-x-auto"></pre>
-</section>
-<!-- Card 2: customization (settings_manage permission) -->
-<section class="bg-white dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-gray-800 p-6 md:p-8">
-<h2 class="text-lg font-bold text-gray-900 dark:text-white mb-1 flex items-center gap-2">
-<span class="material-icons-outlined">tune</span>
-إعدادات المتجر والضريبة وتخصيص الإيصال
-</h2>
-<p class="text-gray-500 dark:text-gray-400 text-sm mb-6">إعدادات مهيأة لمصر (ج.م) مع إمكانية تشغيل أو إيقاف الضريبة في الفواتير.</p>
-<div id="custom-gate" class="hidden p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-sm font-medium">تعديل الإعدادات متاح للمدير أو لمن يملك صلاحية إدارة الإعدادات فقط</div>
-<form id="custom-form" class="grid grid-cols-1 md:grid-cols-2 gap-4" onsubmit="return false">
-<div>
-<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">اسم المحل</label>
-<input id="f-name" class="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 outline-none focus:ring-2 focus:ring-primary"/>
-</div>
-<div>
-<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">العنوان</label>
-<input id="f-addr" class="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 outline-none focus:ring-2 focus:ring-primary" placeholder="مثال: شارع جامعة الدول العربية، الجيزة"/>
-</div>
-<div>
-<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">رقم الموبايل / الهاتف</label>
-<input id="f-phone" class="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 outline-none focus:ring-2 focus:ring-primary font-numbers" placeholder="010xxxxxxxx"/>
-</div>
-<div>
-<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">البريد الإلكتروني</label>
-<input id="f-email" dir="ltr" class="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 outline-none focus:ring-2 focus:ring-primary"/>
-</div>
-<div>
-<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">رقم السجل التجاري</label>
-<input id="f-cr" class="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 outline-none focus:ring-2 focus:ring-primary"/>
-</div>
-<div>
-<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">رقم التسجيل الضريبي</label>
-<input id="f-vat" class="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 outline-none focus:ring-2 focus:ring-primary"/>
-</div>
-<div>
-<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">سطر الشكر</label>
-<input id="f-thanks" class="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 outline-none focus:ring-2 focus:ring-primary"/>
-</div>
-<div>
-<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">سطر التذييل (سياسة الاستبدال والاسترجاع)</label>
-<input id="f-footer" class="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 outline-none focus:ring-2 focus:ring-primary"/>
-</div>
-<div>
-<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">العملة (الافتراضي لمصر: ج.م)</label>
-<input id="f-currency" class="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 outline-none focus:ring-2 focus:ring-primary"/>
-</div>
-<div>
-<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">نسبة الضريبة عند التفعيل (%)</label>
-<input id="f-taxrate" type="number" min="0" max="100" step="1" class="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 outline-none focus:ring-2 focus:ring-primary font-numbers" placeholder="14"/>
-</div>
-<!-- Tax Enable / Disable Banner -->
-<div class="md:col-span-2 p-4 rounded-xl bg-blue-50/70 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 flex items-center justify-between">
-  <div>
-    <p class="font-bold text-sm text-gray-900 dark:text-white">تفعيل احتساب الضريبة في الفواتير ونقاط البيع</p>
-    <p class="text-xs text-gray-500 dark:text-gray-400">قم بإلغاء التفعيل إذا كان المحل يعمل بدون ضريبة قيمة مضافة على الفواتير (تصبح الضريبة 0% تلقائياً)</p>
-  </div>
-  <input id="c-tax-enabled" type="checkbox" class="w-6 h-6 accent-blue-600 cursor-pointer"/>
-</div>
-<div class="md:col-span-2">
-<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الشعار</label>
-<div class="flex items-center gap-3">
-<img id="logo-thumb" class="hidden w-12 h-12 rounded-full object-cover border border-gray-200 dark:border-gray-700" alt="الشعار"/>
-<input id="f-logo" type="file" accept="image/*" class="text-sm text-gray-600 dark:text-gray-300"/>
-<button id="btn-logo-rm" type="button" class="px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 text-sm font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20">إزالة</button>
-</div>
-<p class="text-xs text-gray-400 mt-1">الحد الأقصى 200KB — الملف الأكبر يُرفض قبل الإرسال.</p>
-</div>
-<div class="md:col-span-2 grid grid-cols-2 md:grid-cols-4 gap-2">
-<label class="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 p-3 rounded-xl border border-slate-200 dark:border-slate-700"><input id="c-logo" type="checkbox" class="w-4 h-4"/> إظهار الشعار</label>
-<label class="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 p-3 rounded-xl border border-slate-200 dark:border-slate-700"><input id="c-barcode" type="checkbox" class="w-4 h-4"/> إظهار الباركود</label>
-<label class="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 p-3 rounded-xl border border-slate-200 dark:border-slate-700"><input id="c-tax" type="checkbox" class="w-4 h-4"/> إظهار الضريبة بالإيصال</label>
-<label class="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 p-3 rounded-xl border border-slate-200 dark:border-slate-700"><input id="c-pays" type="checkbox" class="w-4 h-4"/> إظهار المدفوعات</label>
-</div>
-<div class="md:col-span-2 flex gap-3">
-<button id="btn-save" class="flex-1 bg-primary hover:bg-primary-dark text-white py-3 rounded-xl font-bold shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 transition-transform active:scale-[0.98]">
-<span class="material-icons-outlined">save</span>
-حفظ الإعدادات والتخصيص
-</button>
-<button id="btn-reset" type="button" class="px-6 py-3 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2">
-<span class="material-icons-outlined">restart_alt</span>
-استعادة افتراضي مصر
-</button>
-</div>
-</form>
 </section>
 </div>
 </div>
@@ -227,163 +98,29 @@
 (async () => {
   const user = await pageInit('receipt');
   if (!user) return;
-  const canManageSettings = hasPerm('settings_manage');
-  const $ = (id) => document.getElementById(id);
-  const show = (k) => (SETTINGS[k] == null || SETTINGS[k] === '') ? true : SETTINGS[k] !== '0';
-  const DEFAULTS = { store_name: 'تك زون للإلكترونيات', store_address: 'شارع جامعة الدول العربية، الجيزة، مصر', store_phone: '01000000000', store_email: '', store_cr: '', store_vat: '', receipt_thanks: 'شكراً لزيارتكم', receipt_footer: 'يرجى الاحتفاظ بالإيصال للاستبدال خلال 14 يوماً', currency: 'ج.م', tax_enabled: '0', tax_rate: '14' };
-  let sale = null, pendingLogo = null;
+  let sale = null;
   let id = new URLSearchParams(location.search).get('id');
-  function fillForm() {
-    $('f-name').value = SETTINGS.store_name || '';
-    $('f-addr').value = SETTINGS.store_address || '';
-    $('f-phone').value = SETTINGS.store_phone || '';
-    $('f-email').value = SETTINGS.store_email || '';
-    $('f-cr').value = SETTINGS.store_cr || '';
-    $('f-vat').value = SETTINGS.store_vat || '';
-    $('f-thanks').value = SETTINGS.receipt_thanks || DEFAULTS.receipt_thanks;
-    $('f-footer').value = SETTINGS.receipt_footer || DEFAULTS.receipt_footer;
-    $('f-currency').value = SETTINGS.currency || 'ج.م';
-    $('f-taxrate').value = SETTINGS.tax_rate != null ? SETTINGS.tax_rate : '14';
-    $('c-tax-enabled').checked = show('tax_enabled');
-    $('c-logo').checked = show('receipt_show_logo');
-    $('c-barcode').checked = show('receipt_show_barcode');
-    $('c-tax').checked = show('receipt_show_tax');
-    $('c-pays').checked = show('receipt_show_payments');
-    pendingLogo = null; $('f-logo').value = ''; drawThumb();
+  let tplsLoaded = null;
+  try { tplsLoaded = await api('templates_get'); } catch (e) {}
+  const posCfg = (tplsLoaded && tplsLoaded.pos) || {};
+  const a4Cfg = (tplsLoaded && tplsLoaded.a4) || {};
+
+  if (posCfg.paper_width === '58mm') {
+    document.getElementById('paper').style.maxWidth = '58mm';
+    document.getElementById('paper').style.margin = '0 auto';
   }
-  function formVals() {
-    return {
-      name: $('f-name').value, addr: $('f-addr').value, phone: $('f-phone').value,
-      email: $('f-email').value, cr: $('f-cr').value, vat: $('f-vat').value,
-      thanks: $('f-thanks').value || DEFAULTS.receipt_thanks,
-      footer: $('f-footer').value || DEFAULTS.receipt_footer,
-      taxEnabled: $('c-tax-enabled').checked,
-      showLogo: $('c-logo').checked, showBarcode: $('c-barcode').checked,
-      showTax: $('c-tax').checked, showPays: $('c-pays').checked,
-      logo: pendingLogo || SETTINGS.receipt_logo || ''
-    };
-  }
-  function setLine(idEl, text) { const el = $(idEl); el.textContent = text || ''; el.style.display = text ? '' : 'none'; }
+
   function renderPaper() {
-    const v = canManageSettings ? formVals() : {
-      name: SETTINGS.store_name, addr: SETTINGS.store_address, phone: SETTINGS.store_phone,
-      email: SETTINGS.store_email, cr: SETTINGS.store_cr, vat: SETTINGS.store_vat,
-      thanks: SETTINGS.receipt_thanks || DEFAULTS.receipt_thanks,
-      footer: SETTINGS.receipt_footer || DEFAULTS.receipt_footer,
-      taxEnabled: show('tax_enabled'),
-      showLogo: show('receipt_show_logo'), showBarcode: show('receipt_show_barcode'),
-      showTax: show('receipt_show_tax'), showPays: show('receipt_show_payments'),
-      logo: SETTINGS.receipt_logo || ''
-    };
-    const lg = $('r-logo');
-    if (v.showLogo && v.logo) { lg.innerHTML = ''; const im = document.createElement('img'); im.src = v.logo; im.alt = 'الشعار'; im.className = 'w-full h-full object-cover'; lg.appendChild(im); }
-    else if (v.showLogo) { lg.innerHTML = '<span class="material-icons-outlined text-3xl">memory</span>'; }
-    lg.style.display = v.showLogo ? '' : 'none';
-    $('r-store').textContent = v.name || DEFAULTS.store_name;
-    setLine('r-addr', v.addr);
-    setLine('r-phone', v.phone ? 'هاتف: ' + v.phone : '');
-    setLine('r-email', v.email);
-    setLine('r-cr', v.cr ? 'سجل تجاري: ' + v.cr : '');
-    setLine('r-vat', v.vat ? 'الرقم الضريبي: ' + v.vat : '');
-    if (!sale) {
-      $('r-inv').textContent = ''; $('r-user').textContent = '';
-      $('r-date').textContent = ''; $('r-time').textContent = '';
-      $('r-items').innerHTML = '<p class="text-xs text-gray-400 text-center">— لا توجد فاتورة —</p>';
-      $('r-totals').innerHTML = ''; $('r-total').textContent = '';
-      $('r-pays').innerHTML = ''; $('r-bar').textContent = '0000000000';
-    } else {
-      $('r-inv').textContent = '#' + sale.invoice_no;
-      $('r-user').textContent = sale.user_name;
-      $('r-date').textContent = sale.created_at.slice(0, 10);
-      $('r-time').textContent = sale.created_at.slice(11, 16);
-      $('r-items').innerHTML = sale.items.map((it) => `
-      <div class="grid grid-cols-4 gap-2 text-xs">
-        <div class="col-span-2"><p class="font-bold">${esc(it.name)}</p></div>
-        <div class="text-center font-numbers">${n(it.qty)}</div>
-        <div class="text-left font-numbers">${fmt(it.line_total)}</div>
-      </div>`).join('');
-      $('r-totals').innerHTML = `
-      <div class="flex justify-between text-xs text-gray-600"><span>المجموع الفرعي</span><span class="font-numbers">${fmt(sale.subtotal)}</span></div>
-      ${sale.discount ? `<div class="flex justify-between text-xs text-gray-600"><span>الخصم</span><span class="font-numbers" style="color:red">- ${fmt(sale.discount)}</span></div>` : ''}
-      ${(v.taxEnabled && v.showTax && sale.tax) ? `<div class="flex justify-between text-xs text-gray-600"><span>ضريبة القيمة المضافة</span><span class="font-numbers">${fmt(sale.tax)}</span></div>` : ''}`;
-      $('r-total').textContent = fmt(sale.total) + ' ' + CURRENCY;
-      const AR = { cash: 'نقدي', wallet: 'محفظة', credit: 'آجل' };
-      $('r-pays').innerHTML = v.showPays ? sale.payments.map((p) => `
-      <div class="flex justify-between">
-        <span>الدفع: ${AR[p.method] || p.method}${p.ref_no ? ` (${esc(p.ref_no)})` : ''}</span>
-        <span class="font-numbers">${fmt(p.amount)}</span>
-      </div>`).join('') : '';
-      $('r-bar').textContent = String(sale.id).padStart(10, '0');
-    }
-    $('r-barwrap').style.display = v.showBarcode ? 'flex' : 'none';
-    $('r-thanks').textContent = v.thanks;
-    $('r-footer').textContent = v.footer;
+    document.getElementById('paper').innerHTML = buildPosThermalReceiptHtml(sale || {}, posCfg, SETTINGS);
   }
-  function drawThumb() {
-    const src = pendingLogo || SETTINGS.receipt_logo || '';
-    const th = $('logo-thumb');
-    if (src) { th.src = src; th.classList.remove('hidden'); } else th.classList.add('hidden');
-  }
-  if (!canManageSettings) { $('custom-form').classList.add('hidden'); $('custom-gate').classList.remove('hidden'); }
-  else {
-    fillForm();
-    $('custom-form').addEventListener('input', renderPaper);
-    $('f-logo').addEventListener('change', (e) => {
-      const f = e.target.files[0];
-      if (!f) return;
-      if (f.size > 200 * 1024) { toast('حجم الشعار يتجاوز 200KB — اختر صورة أصغر', 'error'); e.target.value = ''; return; }
-      const r = new FileReader();
-      r.onload = () => { pendingLogo = r.result; drawThumb(); renderPaper(); };
-      r.readAsDataURL(f);
-    });
-    $('btn-logo-rm').addEventListener('click', () => {
-      pendingLogo = null; $('f-logo').value = ''; $('c-logo').checked = false;
-      drawThumb(); renderPaper(); toast('أُخفي الشعار من المعاينة — احفظ لتثبيت ذلك');
-    });
-    $('btn-save').addEventListener('click', async () => {
-      const payload = {
-        store_name: $('f-name').value, store_address: $('f-addr').value,
-        store_phone: $('f-phone').value, store_email: $('f-email').value,
-        store_cr: $('f-cr').value, store_vat: $('f-vat').value,
-        receipt_thanks: $('f-thanks').value, receipt_footer: $('f-footer').value,
-        currency: $('f-currency').value,
-        tax_enabled: $('c-tax-enabled').checked ? '1' : '0',
-        tax_rate: $('f-taxrate').value,
-        receipt_show_logo: $('c-logo').checked ? '1' : '0',
-        receipt_show_barcode: $('c-barcode').checked ? '1' : '0',
-        receipt_show_tax: $('c-tax').checked ? '1' : '0',
-        receipt_show_payments: $('c-pays').checked ? '1' : '0'
-      };
-      if (pendingLogo) payload.receipt_logo = pendingLogo;
-      const st = await guard(() => api('settings_save', payload));
-      if (!st) return;
-      SETTINGS = st; pendingLogo = null; $('f-logo').value = '';
-      CURRENCY = SETTINGS.currency || 'ج.م';
-      $('cur').textContent = CURRENCY;
-      syncTitle('الإيصال والإعدادات');
-      const sb = document.getElementById('tz-store');
-      if (sb) sb.textContent = (SETTINGS.store_name || 'تك زون').trim() || 'تك زون';
-      drawThumb(); renderPaper(); toast('حُفظت الإعدادات والتخصيص بنجاح');
-    });
-    $('btn-reset').addEventListener('click', () => {
-      $('f-name').value = DEFAULTS.store_name; $('f-addr').value = DEFAULTS.store_address;
-      $('f-phone').value = DEFAULTS.store_phone; $('f-email').value = DEFAULTS.store_email;
-      $('f-cr').value = DEFAULTS.store_cr; $('f-vat').value = DEFAULTS.store_vat;
-      $('f-thanks').value = DEFAULTS.receipt_thanks; $('f-footer').value = DEFAULTS.receipt_footer;
-      $('f-currency').value = DEFAULTS.currency; $('f-taxrate').value = DEFAULTS.tax_rate;
-      $('c-tax-enabled').checked = false;
-      $('c-logo').checked = $('c-barcode').checked = $('c-tax').checked = $('c-pays').checked = true;
-      pendingLogo = null; $('f-logo').value = ''; drawThumb(); renderPaper();
-      toast('أُعيدت الحقول لافتراضي مصر (ج.م وبدون ضريبة) — اضغط حفظ لتثبيتها', 'warn');
-    });
-  }
+
   renderPaper();
   if (!id) {
     const latest = await guard(() => api('sales', { kind: 'sale', limit: 1, offset: 0 }));
     if (latest && latest.rows && latest.rows.length) {
       id = latest.rows[0].id;
     } else {
-      $('no-id').classList.remove('hidden');
+      document.getElementById('no-id').classList.remove('hidden');
       return;
     }
   }
@@ -413,14 +150,6 @@
       <span class="font-numeric font-bold">${fmt(p.amount)} ${CURRENCY}${p.change ? ` <span class="text-xs text-green-600">(الباقي ${fmt(p.change)})</span>` : ''}</span>
     </div>`).join('');
   renderPaper();
-  let tplsLoaded = null;
-  try { tplsLoaded = await api('templates_get'); } catch (e) {}
-  const posCfg = (tplsLoaded && tplsLoaded.pos) || {};
-  const a4Cfg = (tplsLoaded && tplsLoaded.a4) || {};
-  if (posCfg.paper_width === '58mm') {
-    document.getElementById('paper').style.maxWidth = '58mm';
-    document.getElementById('paper').style.margin = '0 auto';
-  }
 
   document.getElementById('btn-print-thermal').addEventListener('click', () => {
     const mode = posCfg.paper_width === '58mm' ? '58mm' : 'thermal';

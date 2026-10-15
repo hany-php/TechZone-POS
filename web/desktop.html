@@ -17,7 +17,7 @@
     font-family: 'IBM Plex Sans Arabic', 'Cairo', sans-serif;
   }
 
-  /* ===== خلفيات سطح المكتب المدمجة + المرفوعة ===== */
+  /* ===== خلفيات سطح المكتب المدمجة + المرفوعة (تتفاعل بالكامل مع الوضع النهاري والليلي) ===== */
   #os-root {
     position: relative;
     width: 100vw;
@@ -25,12 +25,54 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    transition: background 0.4s ease;
+    transition: background 0.35s ease, color 0.25s ease;
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
   }
-  #os-root[data-wp="win11-bloom"] {
+
+  /* الوضع النهاري (Light Mode) للخلفيات المدمجة */
+  html:not(.dark) #os-root[data-wp="win11-bloom"] {
+    background-image:
+      radial-gradient(circle at 18% 22%, rgba(56, 189, 248, 0.40) 0%, transparent 45%),
+      radial-gradient(circle at 78% 28%, rgba(59, 130, 246, 0.35) 0%, transparent 50%),
+      radial-gradient(circle at 52% 75%, rgba(99, 102, 241, 0.28) 0%, transparent 52%),
+      linear-gradient(135deg, #e0f2fe 0%, #dbeafe 48%, #eff6ff 100%);
+  }
+  html:not(.dark) #os-root[data-wp="macos-sonoma"] {
+    background-image:
+      radial-gradient(circle at 15% 80%, rgba(244, 114, 182, 0.32) 0%, transparent 46%),
+      radial-gradient(circle at 50% 25%, rgba(167, 139, 250, 0.36) 0%, transparent 50%),
+      radial-gradient(circle at 85% 65%, rgba(34, 211, 238, 0.32) 0%, transparent 46%),
+      linear-gradient(160deg, #fae8ff 0%, #ede9fe 50%, #e0f2fe 100%);
+  }
+  html:not(.dark) #os-root[data-wp="macos-sequoia"] {
+    background-image:
+      radial-gradient(circle at 22% 75%, rgba(251, 146, 60, 0.32) 0%, transparent 46%),
+      radial-gradient(circle at 75% 25%, rgba(96, 165, 250, 0.32) 0%, transparent 48%),
+      linear-gradient(145deg, #fef3c7 0%, #ffedd5 48%, #e0f2fe 100%);
+  }
+  html:not(.dark) #os-root[data-wp="ubuntu-aurora"] {
+    background-image:
+      radial-gradient(circle at 25% 30%, rgba(232, 121, 249, 0.30) 0%, transparent 46%),
+      radial-gradient(circle at 78% 70%, rgba(251, 113, 133, 0.30) 0%, transparent 46%),
+      linear-gradient(135deg, #fce7f3 0%, #fae8ff 52%, #ffe4e6 100%);
+  }
+  html:not(.dark) #os-root[data-wp="emerald-studio"] {
+    background-image:
+      radial-gradient(circle at 20% 25%, rgba(16, 185, 129, 0.30) 0%, transparent 45%),
+      radial-gradient(circle at 80% 75%, rgba(20, 184, 166, 0.28) 0%, transparent 48%),
+      linear-gradient(145deg, #d1fae5 0%, #ecfdf5 50%, #e0f2fe 100%);
+  }
+  html:not(.dark) #os-root[data-wp="daylight-glass"] {
+    background-image:
+      radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.28) 0%, transparent 45%),
+      radial-gradient(circle at 80% 75%, rgba(16, 185, 129, 0.24) 0%, transparent 45%),
+      linear-gradient(135deg, #dbeafe 0%, #f8fafc 50%, #e0f2fe 100%);
+  }
+
+  /* الوضع الليلي (Dark Mode) للخلفيات المدمجة */
+  html.dark #os-root[data-wp="win11-bloom"] {
     background-image:
       radial-gradient(circle at 18% 22%, rgba(56, 189, 248, 0.48) 0%, transparent 42%),
       radial-gradient(circle at 78% 28%, rgba(59, 130, 246, 0.55) 0%, transparent 48%),
@@ -38,37 +80,37 @@
       radial-gradient(circle at 85% 82%, rgba(14, 165, 233, 0.35) 0%, transparent 40%),
       linear-gradient(135deg, #071126 0%, #0c234a 48%, #0f172a 100%);
   }
-  #os-root[data-wp="macos-sonoma"] {
+  html.dark #os-root[data-wp="macos-sonoma"] {
     background-image:
       radial-gradient(circle at 15% 80%, rgba(236, 72, 153, 0.45) 0%, transparent 45%),
       radial-gradient(circle at 50% 25%, rgba(139, 92, 246, 0.52) 0%, transparent 50%),
       radial-gradient(circle at 85% 65%, rgba(6, 182, 212, 0.48) 0%, transparent 46%),
       linear-gradient(160deg, #130924 0%, #1e1b4b 50%, #09223a 100%);
   }
-  #os-root[data-wp="macos-sequoia"] {
+  html.dark #os-root[data-wp="macos-sequoia"] {
     background-image:
       radial-gradient(circle at 22% 75%, rgba(249, 115, 22, 0.50) 0%, transparent 46%),
       radial-gradient(circle at 75% 25%, rgba(59, 130, 246, 0.44) 0%, transparent 48%),
       radial-gradient(circle at 55% 55%, rgba(234, 179, 8, 0.28) 0%, transparent 45%),
       linear-gradient(145deg, #0f172a 0%, #1e293b 45%, #431407 100%);
   }
-  #os-root[data-wp="ubuntu-aurora"] {
+  html.dark #os-root[data-wp="ubuntu-aurora"] {
     background-image:
       radial-gradient(circle at 25% 30%, rgba(217, 70, 239, 0.42) 0%, transparent 46%),
       radial-gradient(circle at 78% 70%, rgba(244, 63, 94, 0.42) 0%, transparent 46%),
       linear-gradient(135deg, #1a0626 0%, #3b0764 52%, #4c0519 100%);
   }
-  #os-root[data-wp="emerald-studio"] {
+  html.dark #os-root[data-wp="emerald-studio"] {
     background-image:
       radial-gradient(circle at 20% 25%, rgba(16, 185, 129, 0.42) 0%, transparent 45%),
       radial-gradient(circle at 80% 75%, rgba(20, 184, 166, 0.40) 0%, transparent 48%),
       linear-gradient(145deg, #041f1a 0%, #063930 50%, #0f172a 100%);
   }
-  #os-root[data-wp="daylight-glass"] {
+  html.dark #os-root[data-wp="daylight-glass"] {
     background-image:
-      radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.28) 0%, transparent 45%),
-      radial-gradient(circle at 80% 75%, rgba(16, 185, 129, 0.24) 0%, transparent 45%),
-      linear-gradient(135deg, #dbeafe 0%, #eff6ff 50%, #e0f2fe 100%);
+      radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.35) 0%, transparent 45%),
+      radial-gradient(circle at 80% 75%, rgba(16, 185, 129, 0.30) 0%, transparent 45%),
+      linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0c4a6e 100%);
   }
 
   .os-ambient-orb {
@@ -76,25 +118,33 @@
     border-radius: 9999px;
     filter: blur(70px);
     pointer-events: none;
-    opacity: 0.30;
+    opacity: 0.25;
     z-index: 0;
   }
 
-  /* ===== الشريط العلوي (macOS Menu Bar) ===== */
+  /* ===== الشريط العلوي (macOS Menu Bar) — متجاوب مع الوضع النهاري والليلي ===== */
   #os-topbar {
     position: relative;
     z-index: 60;
-    height: 36px;
+    height: 38px;
     padding: 0 14px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: rgba(15, 23, 42, 0.65);
+    background: rgba(255, 255, 255, 0.84);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-    color: #f8fafc;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.10);
+    color: #0f172a;
     font-size: 12px;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
+    transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+  }
+  html.dark #os-topbar {
+    background: rgba(15, 23, 42, 0.72);
+    border-bottom-color: rgba(255, 255, 255, 0.12);
+    color: #f8fafc;
+    box-shadow: none;
   }
   .top-btn {
     display: inline-flex;
@@ -102,16 +152,31 @@
     gap: 5px;
     padding: 4px 10px;
     border-radius: 7px;
-    color: #e2e8f0;
+    color: #1e293b;
     font-weight: 600;
-    transition: background 0.15s;
+    transition: background 0.15s, color 0.15s;
     cursor: pointer;
     border: 0;
     background: transparent;
   }
   .top-btn:hover {
+    background: rgba(15, 23, 42, 0.08);
+    color: #0f172a;
+  }
+  html.dark .top-btn {
+    color: #e2e8f0;
+  }
+  html.dark .top-btn:hover {
     background: rgba(255, 255, 255, 0.14);
     color: #ffffff;
+  }
+  .os-top-pill {
+    background: rgba(15, 23, 42, 0.07);
+    color: #0f172a;
+  }
+  html.dark .os-top-pill {
+    background: rgba(255, 255, 255, 0.10);
+    color: #f8fafc;
   }
 
   /* ===== مساحة سطح المكتب (Desktop Workspace) ===== */
@@ -123,7 +188,7 @@
     z-index: 1;
   }
 
-  /* أيقونات سطح المكتب القابلة للسحب والترتيب الحر (Draggable Desktop Icons) */
+  /* أيقونات سطح المكتب القابلة للسحب والترتيب الحر */
   #os-desktop-icons {
     position: absolute;
     inset: 0;
@@ -146,17 +211,25 @@
     text-align: center;
   }
   .desk-icon:hover {
+    background: rgba(255, 255, 255, 0.55);
+    border-color: rgba(15, 23, 42, 0.16);
+    backdrop-filter: blur(10px);
+  }
+  html.dark .desk-icon:hover {
     background: rgba(255, 255, 255, 0.16);
     border-color: rgba(255, 255, 255, 0.28);
-    backdrop-filter: blur(10px);
   }
   .desk-icon.icon-dragging {
     cursor: grabbing;
-    background: rgba(255, 255, 255, 0.24);
-    border-color: rgba(255, 255, 255, 0.5);
-    box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.55);
+    background: rgba(255, 255, 255, 0.75);
+    border-color: rgba(37, 99, 235, 0.5);
+    box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.35);
     transform: scale(1.06);
     z-index: 50 !important;
+  }
+  html.dark .desk-icon.icon-dragging {
+    background: rgba(255, 255, 255, 0.24);
+    border-color: rgba(255, 255, 255, 0.5);
   }
   .desk-icon-box {
     width: 52px;
@@ -166,24 +239,25 @@
     align-items: center;
     justify-content: center;
     color: #fff;
-    box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.35);
+    box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.28), inset 0 1px 1px rgba(255, 255, 255, 0.35);
     position: relative;
     pointer-events: none;
   }
   .desk-icon-label {
     font-size: 12px;
     font-weight: 700;
-    color: #ffffff;
-    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+    color: #0f172a;
+    text-shadow: 0 1px 3px rgba(255, 255, 255, 0.95);
     line-height: 1.25;
     pointer-events: none;
   }
-  #os-root[data-wp="daylight-glass"] .desk-icon-label {
-    color: #0f172a;
-    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.9);
+  html.dark .desk-icon-label,
+  #os-root[data-wp="custom"] .desk-icon-label {
+    color: #ffffff;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.92);
   }
 
-  /* ودجت سطح المكتب الذكي على اليسار */
+  /* ودجت سطح المكتب الذكي على اليسار — متجاوب مع النهاري والليلي */
   #os-widgets {
     position: absolute;
     top: 20px;
@@ -195,14 +269,31 @@
     z-index: 4;
   }
   .os-widget-card {
-    background: rgba(15, 23, 42, 0.62);
+    background: rgba(255, 255, 255, 0.86);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.16);
+    border: 1px solid rgba(148, 163, 184, 0.35);
     border-radius: 22px;
     padding: 18px;
+    color: #0f172a;
+    box-shadow: 0 20px 35px -10px rgba(15, 23, 42, 0.12);
+    transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+  }
+  html.dark .os-widget-card {
+    background: rgba(15, 23, 42, 0.65);
+    border-color: rgba(255, 255, 255, 0.16);
     color: #f8fafc;
     box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.35);
+  }
+  .os-widget-stat {
+    padding: 10px;
+    border-radius: 12px;
+    background: rgba(241, 245, 249, 0.85);
+    border: 1px solid rgba(203, 213, 225, 0.7);
+  }
+  html.dark .os-widget-stat {
+    background: rgba(255, 255, 255, 0.09);
+    border-color: rgba(255, 255, 255, 0.10);
   }
 
   /* ===== طبقة النوافذ العائمة (Multi-Window Manager) ===== */
@@ -220,7 +311,7 @@
     background: #ffffff;
     border-radius: 16px;
     border: 1px solid rgba(148, 163, 184, 0.35);
-    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.1);
+    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.1);
     overflow: hidden;
     transition: opacity 0.18s ease, transform 0.18s ease;
     min-width: 360px;
@@ -229,9 +320,10 @@
   html.dark .tz-os-window {
     background: #0f172a;
     border-color: rgba(71, 85, 105, 0.55);
+    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.1);
   }
   .tz-os-window.win-active {
-    box-shadow: 0 30px 70px -12px rgba(0, 0, 0, 0.6), 0 0 0 2px rgba(19, 127, 236, 0.65);
+    box-shadow: 0 30px 70px -12px rgba(0, 0, 0, 0.45), 0 0 0 2px rgba(19, 127, 236, 0.65);
   }
   .tz-os-window.win-maximized {
     top: 0 !important;
@@ -349,7 +441,7 @@
     cursor: grabbing;
   }
 
-  /* ===== شريط المهام السفلي الهجين ===== */
+  /* ===== شريط المهام السفلي الهجين — متجاوب مع النهاري والليلي ===== */
   #os-taskbar-wrap {
     position: absolute;
     bottom: 8px;
@@ -361,11 +453,17 @@
     align-items: center;
     justify-content: space-between;
     padding: 0 12px;
-    background: rgba(15, 23, 42, 0.72);
+    background: rgba(255, 255, 255, 0.86);
     backdrop-filter: blur(22px);
     -webkit-backdrop-filter: blur(22px);
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    border: 1px solid rgba(148, 163, 184, 0.35);
     border-radius: 18px;
+    box-shadow: 0 15px 35px -5px rgba(15, 23, 42, 0.16);
+    transition: background 0.25s ease, border-color 0.25s ease;
+  }
+  html.dark #os-taskbar-wrap {
+    background: rgba(15, 23, 42, 0.76);
+    border-color: rgba(255, 255, 255, 0.18);
     box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.5);
   }
   #os-start-btn {
@@ -399,9 +497,9 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    color: #e2e8f0;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #1e293b;
+    background: rgba(15, 23, 42, 0.05);
+    border: 1px solid rgba(15, 23, 42, 0.08);
     cursor: pointer;
     transition: all 0.18s ease;
     font-size: 12px;
@@ -409,15 +507,33 @@
     white-space: nowrap;
   }
   .dock-item:hover {
-    background: rgba(255, 255, 255, 0.16);
+    background: rgba(15, 23, 42, 0.11);
     transform: translateY(-3px);
-    color: #fff;
+    color: #0f172a;
   }
   .dock-item.dock-running {
+    background: rgba(15, 23, 42, 0.09);
+    border-color: rgba(15, 23, 42, 0.18);
+  }
+  .dock-item.dock-active {
+    background: rgba(37, 99, 235, 0.16);
+    border-color: rgba(37, 99, 235, 0.55);
+    color: #1d4ed8;
+  }
+  html.dark .dock-item {
+    color: #e2e8f0;
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+  html.dark .dock-item:hover {
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+  }
+  html.dark .dock-item.dock-running {
     background: rgba(255, 255, 255, 0.13);
     border-color: rgba(255, 255, 255, 0.24);
   }
-  .dock-item.dock-active {
+  html.dark .dock-item.dock-active {
     background: rgba(37, 99, 235, 0.35);
     border-color: rgba(96, 165, 250, 0.65);
     color: #ffffff;
@@ -432,23 +548,29 @@
     border-radius: 9999px;
   }
 
-  /* ===== قائمة ابدأ (Windows 11 Start Menu) ===== */
+  /* ===== قائمة ابدأ (Windows 11 Start Menu) — متجاوبة مع النهاري والليلي ===== */
   #os-start-menu {
     position: absolute;
     bottom: 74px;
     right: 16px;
-    width: 540px;
+    width: 560px;
     max-width: calc(100vw - 32px);
-    background: rgba(15, 23, 42, 0.88);
+    background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(28px);
     -webkit-backdrop-filter: blur(28px);
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    border: 1px solid rgba(148, 163, 184, 0.35);
     border-radius: 24px;
     padding: 22px;
-    color: #f8fafc;
+    color: #0f172a;
     z-index: 80;
-    box-shadow: 0 30px 70px -10px rgba(0, 0, 0, 0.65);
+    box-shadow: 0 30px 70px -10px rgba(15, 23, 42, 0.25);
     transition: all 0.2s ease;
+  }
+  html.dark #os-start-menu {
+    background: rgba(15, 23, 42, 0.90);
+    border-color: rgba(255, 255, 255, 0.18);
+    color: #f8fafc;
+    box-shadow: 0 30px 70px -10px rgba(0, 0, 0, 0.65);
   }
   #os-start-menu.hidden { display: none; }
   .start-app-card {
@@ -459,30 +581,46 @@
     gap: 8px;
     padding: 14px 8px;
     border-radius: 16px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(15, 23, 42, 0.04);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    color: #0f172a;
     cursor: pointer;
     transition: all 0.16s;
     text-align: center;
   }
   .start-app-card:hover {
+    background: rgba(37, 99, 235, 0.09);
+    border-color: rgba(37, 99, 235, 0.28);
+    transform: translateY(-2px);
+  }
+  html.dark .start-app-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: #f8fafc;
+  }
+  html.dark .start-app-card:hover {
     background: rgba(255, 255, 255, 0.14);
     border-color: rgba(255, 255, 255, 0.25);
-    transform: translateY(-2px);
   }
 
   #os-ctx-menu {
     position: fixed;
     z-index: 90;
-    width: 250px;
-    background: rgba(15, 23, 42, 0.92);
+    width: 260px;
+    background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    border: 1px solid rgba(148, 163, 184, 0.35);
     border-radius: 14px;
     padding: 6px;
+    color: #0f172a;
+    box-shadow: 0 20px 40px -10px rgba(15, 23, 42, 0.25);
+    font-size: 12px;
+  }
+  html.dark #os-ctx-menu {
+    background: rgba(15, 23, 42, 0.92);
+    border-color: rgba(255, 255, 255, 0.18);
     color: #f8fafc;
     box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.55);
-    font-size: 12px;
   }
   .ctx-item {
     width: 100%;
@@ -491,14 +629,21 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    color: #e2e8f0;
+    color: #1e293b;
     background: transparent;
     border: 0;
     cursor: pointer;
     text-align: right;
     font-weight: 600;
   }
+  html.dark .ctx-item {
+    color: #e2e8f0;
+  }
   .ctx-item:hover {
+    background: rgba(37, 99, 235, 0.15);
+    color: #1d4ed8;
+  }
+  html.dark .ctx-item:hover {
     background: rgba(37, 99, 235, 0.45);
     color: #fff;
   }
@@ -563,20 +708,26 @@
       </button>
     </div>
 
-    <button id="os-shift-pill" class="top-btn px-3 py-1 rounded-full bg-white/10 text-xs font-bold">
-      <span id="os-shift-dot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+    <button id="os-shift-pill" class="top-btn os-top-pill px-3 py-1 rounded-full text-xs font-bold">
+      <span id="os-shift-dot" class="w-2 h-2 rounded-full bg-emerald-500"></span>
       <span id="os-shift-text">جاري فحص الوردية...</span>
     </button>
 
     <div class="flex items-center gap-2">
-      <button onclick="toggleTheme()" class="top-btn" title="تبديل الوضع الليلي / النهاري في جميع النوافذ">
-        <span class="material-icons-round text-sm">contrast</span>
-        <span class="hidden md:inline">ليلي / نهاري</span>
+      <button onclick="TZOS.openApp('settings')" class="top-btn" title="فتح صفحة إعدادات النظام الشاملة">
+        <span class="material-icons-round text-sm text-primary">settings</span>
+        <span class="hidden md:inline">الإعدادات</span>
       </button>
-      <div class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/10 text-xs">
-        <span class="material-icons-round text-sm text-blue-400">person</span>
+      <button id="top-theme-btn" onclick="toggleTheme()" class="top-btn os-top-pill px-2.5 py-1 rounded-full" title="تبديل الوضع الليلي / النهاري لسطح المكتب وجميع النوافذ">
+        <span id="top-theme-icon" class="material-icons-round text-sm text-amber-500 dark:text-sky-300">dark_mode</span>
+        <span id="top-theme-label" class="hidden md:inline text-xs font-bold">الوضع النهاري</span>
+      </button>
+      <button type="button" onclick="TZOS.openApp('profile')" class="top-btn os-top-pill px-2.5 py-0.5 rounded-full text-xs flex items-center gap-1.5" title="اضغط لفتح ملفك الشخصي وتغيير اسمك أو صورتك أو كلمة السر أو صفحة الدخول">
+        <span id="os-user-avatar-wrap" class="w-5 h-5 rounded-full bg-primary/20 text-primary flex items-center justify-center overflow-hidden shrink-0">
+          <span class="material-icons-round text-sm text-primary">person</span>
+        </span>
         <span id="os-user-name" class="font-bold">...</span>
-      </div>
+      </button>
       <span id="os-clock" class="font-num font-bold text-xs px-2">00:00</span>
     </div>
   </header>
@@ -590,30 +741,30 @@
     <div id="os-widgets" class="hidden lg:flex">
       <div class="os-widget-card">
         <div class="flex items-center justify-between mb-2">
-          <span class="text-xs text-blue-300 font-bold uppercase tracking-wider">نظام تشغيل تك زون</span>
-          <button id="w-refresh" class="text-xs text-slate-300 hover:text-white flex items-center gap-1" title="تحديث الأرقام">
+          <span id="w-os-brand" class="text-xs text-primary dark:text-blue-300 font-bold uppercase tracking-wider">نظام التشغيل</span>
+          <button id="w-refresh" class="text-xs text-slate-500 dark:text-slate-300 hover:text-primary dark:hover:text-white flex items-center gap-1" title="تحديث الأرقام">
             <span class="material-icons-outlined text-sm">refresh</span>
             <span>تحديث</span>
           </button>
         </div>
         <div id="w-big-time" class="text-3xl font-bold font-num mb-0.5">00:00</div>
-        <div id="w-big-date" class="text-xs text-slate-300 mb-4">...</div>
+        <div id="w-big-date" class="text-xs text-slate-500 dark:text-slate-300 mb-4">...</div>
         <div class="grid grid-cols-2 gap-2.5 text-xs">
-          <div class="p-2.5 rounded-xl bg-white/10 border border-white/10">
-            <div class="text-slate-300 text-[11px]">مبيعات اليوم</div>
-            <div id="w-sales-today" class="font-num font-bold text-sm text-emerald-300 mt-0.5">0.00</div>
+          <div class="os-widget-stat">
+            <div class="text-slate-500 dark:text-slate-300 text-[11px]">مبيعات اليوم</div>
+            <div id="w-sales-today" class="font-num font-bold text-sm text-emerald-600 dark:text-emerald-300 mt-0.5">0.00</div>
           </div>
-          <div class="p-2.5 rounded-xl bg-white/10 border border-white/10">
-            <div class="text-slate-300 text-[11px]">عدد الفواتير</div>
-            <div id="w-sales-cnt" class="font-num font-bold text-sm text-blue-300 mt-0.5">0</div>
+          <div class="os-widget-stat">
+            <div class="text-slate-500 dark:text-slate-300 text-[11px]">عدد الفواتير</div>
+            <div id="w-sales-cnt" class="font-num font-bold text-sm text-blue-600 dark:text-blue-300 mt-0.5">0</div>
           </div>
-          <div class="p-2.5 rounded-xl bg-white/10 border border-white/10">
-            <div class="text-slate-300 text-[11px]">نواقص المخزون</div>
-            <div id="w-low-stock" class="font-num font-bold text-sm text-amber-300 mt-0.5">0</div>
+          <div class="os-widget-stat">
+            <div class="text-slate-500 dark:text-slate-300 text-[11px]">نواقص المخزون</div>
+            <div id="w-low-stock" class="font-num font-bold text-sm text-amber-600 dark:text-amber-300 mt-0.5">0</div>
           </div>
-          <div class="p-2.5 rounded-xl bg-white/10 border border-white/10">
-            <div class="text-slate-300 text-[11px]">صيانة قيد العمل</div>
-            <div id="w-repairs" class="font-num font-bold text-sm text-purple-300 mt-0.5">0</div>
+          <div class="os-widget-stat">
+            <div class="text-slate-500 dark:text-slate-300 text-[11px]">صيانة قيد العمل</div>
+            <div id="w-repairs" class="font-num font-bold text-sm text-purple-600 dark:text-purple-300 mt-0.5">0</div>
           </div>
         </div>
         <button onclick="TZOS.openApp('pos')" class="w-full mt-3 py-2.5 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-primary/30 transition-all">
@@ -643,7 +794,7 @@
 
       <div class="relative mb-4">
         <span class="material-icons-outlined absolute right-3 top-2.5 text-slate-400 text-base">search</span>
-        <input id="start-search" type="text" class="w-full bg-white/10 border border-white/15 rounded-xl py-2 pr-10 pl-4 text-xs text-white placeholder:text-slate-400 focus:outline-none focus:border-blue-400" placeholder="ابحث عن قسم (نقاط البيع، المخزون، العملاء، التقارير...)"/>
+        <input id="start-search" type="text" class="w-full bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/15 rounded-xl py-2 pr-10 pl-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-blue-400" placeholder="ابحث عن قسم (نقاط البيع، الإعدادات، المخزون، العملاء، التقارير...)"/>
       </div>
 
       <div id="start-apps-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-2.5 mb-4 max-h-60 overflow-y-auto"></div>
@@ -668,13 +819,13 @@
       </div>
 
       <div class="border-t border-white/15 pt-3 flex items-center justify-between">
-        <div class="flex items-center gap-2.5">
-          <div id="start-user-init" class="w-9 h-9 rounded-full bg-primary text-white font-bold flex items-center justify-center text-sm">م</div>
+        <button type="button" onclick="TZOS.openApp('profile'); TZOS.closeStart();" class="flex items-center gap-2.5 text-right hover:opacity-90 transition-opacity cursor-pointer bg-transparent border-0 p-1 rounded-xl" title="اضغط لفتح ملفك الشخصي وإعداداتك الخاصة">
+          <div id="start-user-init" class="w-9 h-9 rounded-full bg-primary text-white font-bold flex items-center justify-center text-sm overflow-hidden shrink-0">م</div>
           <div>
             <div id="start-user-name" class="font-bold text-xs">...</div>
             <div id="start-user-role" class="text-[11px] text-slate-400">...</div>
           </div>
-        </div>
+        </button>
         <div class="flex items-center gap-2">
           <a href="index.html" class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold flex items-center gap-1">
             <span class="material-icons-round text-sm">switch_account</span>
@@ -726,7 +877,8 @@
   <button class="ctx-item" onclick="TZOS.resetIconsLayout(true); TZOS.hideCtx();"><span class="material-icons-outlined text-base text-blue-300">grid_on</span><span>إعادة ترتيب أيقونات سطح المكتب</span></button>
   <button class="ctx-item" onclick="TZOS.refreshWidgets(); TZOS.hideCtx();"><span class="material-icons-outlined text-base text-emerald-400">refresh</span><span>تحديث بيانات سطح المكتب</span></button>
   <div class="my-1 border-t border-white/10"></div>
-  <button class="ctx-item" onclick="TZOS.openWallpaperModal(); TZOS.hideCtx();"><span class="material-icons-outlined text-base text-pink-400">palette</span><span>تخصيص الخلفية وألوان النظام</span></button>
+  <button class="ctx-item" onclick="TZOS.openApp('settings'); TZOS.hideCtx();"><span class="material-icons-round text-base text-blue-500">settings</span><span>إعدادات النظام وتصميم الفواتير</span></button>
+  <button class="ctx-item" onclick="TZOS.openWallpaperModal(); TZOS.hideCtx();"><span class="material-icons-outlined text-base text-pink-500">palette</span><span>تخصيص الخلفية وألوان النظام</span></button>
   <button class="ctx-item" onclick="toggleTheme(); TZOS.hideCtx();"><span class="material-icons-outlined text-base text-yellow-400">contrast</span><span>تبديل الوضع الليلي / النهاري</span></button>
 </div>
 
@@ -817,8 +969,11 @@ const OS_APPS = [
   { id: 'history', title: 'سجل المبيعات والمرتجعات', url: 'history.html', icon: 'receipt_long', color: 'linear-gradient(135deg,#ea580c,#f97316)' },
   { id: 'repair', title: 'مركز الصيانة', url: 'repair.html', icon: 'build', color: 'linear-gradient(135deg,#d97706,#f59e0b)', perm: ['repair_view', 'repair_edit'] },
   { id: 'buy_used', title: 'شراء أجهزة مستعملة', url: 'buy_used.html', icon: 'phonelink_setup', color: 'linear-gradient(135deg,#0d9488,#14b8a6)', perm: 'used_manage' },
-  { id: 'reports', title: 'التقارير والموظفون', url: 'reports.html', icon: 'bar_chart', color: 'linear-gradient(135deg,#4f46e5,#6366f1)', perm: ['reports_view', 'settings_manage'] },
-  { id: 'receipt', title: 'الإيصال وإعدادات المتجر', url: 'receipt.html', icon: 'print', color: 'linear-gradient(135deg,#475569,#64748b)' },
+  { id: 'reports', title: 'التقارير والتحليلات', url: 'reports.html', icon: 'bar_chart', color: 'linear-gradient(135deg,#4f46e5,#6366f1)', perm: 'reports_view' },
+  { id: 'staff', title: 'الموظفون والصلاحيات', url: 'staff.html', icon: 'manage_accounts', color: 'linear-gradient(135deg,#0284c7,#2563eb)', perm: 'settings_manage' },
+  { id: 'settings', title: 'إعدادات النظام', url: 'settings.html', icon: 'settings', color: 'linear-gradient(135deg,#0f172a,#3b82f6)', perm: 'settings_manage' },
+  { id: 'profile', title: 'ملفي الشخصي وإعداداتي', url: 'profile.html', icon: 'account_circle', color: 'linear-gradient(135deg,#8b5cf6,#ec4899)' },
+  { id: 'receipt', title: 'معاينة وطباعة الإيصال', url: 'receipt.html', icon: 'print', color: 'linear-gradient(135deg,#475569,#64748b)' },
 ];
 
 const WALLPAPERS = [
@@ -985,7 +1140,11 @@ const TZOS = {
         if (iframe.contentWindow) {
           iframe.contentWindow.pywebview = window.pywebview;
           iframe.contentWindow.addEventListener('mousedown', () => this.focusWindow(appId));
-          if (iframe.contentDocument) applyAccentToDoc(iframe.contentDocument, CURRENT_ACCENT);
+          if (iframe.contentDocument) {
+            const isDark = document.documentElement.classList.contains('dark');
+            iframe.contentDocument.documentElement.classList.toggle('dark', isDark);
+            applyAccentToDoc(iframe.contentDocument, CURRENT_ACCENT);
+          }
         }
       } catch (e) {}
     });
@@ -1324,7 +1483,7 @@ const TZOS = {
         <div class="w-11 h-11 rounded-2xl flex items-center justify-center text-white shadow-md" style="background:${a.color}">
           <span class="material-icons-round text-2xl">${a.icon}</span>
         </div>
-        <span class="text-xs font-bold text-slate-100 leading-tight">${esc(a.title)}</span>
+        <span class="text-xs font-bold text-slate-800 dark:text-slate-100 leading-tight">${esc(a.title)}</span>
       </div>
     `).join('');
     grid.querySelectorAll('[data-start-app]').forEach((el) => {
@@ -1461,6 +1620,33 @@ const TZOS = {
 
   hideCtx() {
     document.getElementById('os-ctx-menu').classList.add('hidden');
+  },
+
+  onThemeChanged(isDark) {
+    const ic = document.getElementById('top-theme-icon');
+    const lb = document.getElementById('top-theme-label');
+    if (ic) ic.textContent = isDark ? 'dark_mode' : 'light_mode';
+    if (lb) lb.textContent = isDark ? 'الوضع الليلي' : 'الوضع النهاري';
+  },
+
+  refreshUserHeader(u) {
+    if (!u) return;
+    CURRENT_USER = u;
+    const uName = document.getElementById('os-user-name');
+    if (uName) uName.textContent = u.name || '';
+    const sName = document.getElementById('start-user-name');
+    if (sName) sName.textContent = u.name || '';
+    const sRole = document.getElementById('start-user-role');
+    if (sRole) sRole.textContent = (u.role === 'admin' ? 'مدير النظام' : 'موظف / كاشير') + ' — اضغط للملف الشخصي';
+    const topAv = document.getElementById('os-user-avatar-wrap');
+    const startAv = document.getElementById('start-user-init');
+    if (u.avatar && u.avatar.startsWith('data:image/')) {
+      if (topAv) topAv.innerHTML = `<img src="${esc(u.avatar)}" class="w-full h-full object-cover" alt=""/>`;
+      if (startAv) startAv.innerHTML = `<img src="${esc(u.avatar)}" class="w-full h-full object-cover" alt=""/>`;
+    } else {
+      if (topAv) topAv.innerHTML = `<span class="material-icons-round text-sm text-primary">person</span>`;
+      if (startAv) startAv.textContent = (u.name || 'م').slice(0, 1);
+    }
   },
 
   async refreshWidgets() {
@@ -1615,11 +1801,12 @@ document.getElementById('os-workspace').addEventListener('contextmenu', (e) => {
   const user = await pageInit('desktop');
   if (!user) return;
 
-  document.getElementById('os-store-name').textContent = SETTINGS.store_name || 'تك زون للإلكترونيات';
-  document.getElementById('os-user-name').textContent = user.name;
-  document.getElementById('start-user-name').textContent = user.name;
-  document.getElementById('start-user-role').textContent = user.role === 'admin' ? 'مدير النظام (صلاحيات كاملة)' : 'موظف / كاشير';
-  document.getElementById('start-user-init').textContent = (user.name || 'م').slice(0, 1);
+  const stName = (SETTINGS.store_name || 'تك زون للإلكترونيات').trim() || 'تك زون للإلكترونيات';
+  document.getElementById('os-store-name').textContent = stName;
+  const wBrand = document.getElementById('w-os-brand');
+  if (wBrand) wBrand.textContent = stName;
+  TZOS.refreshUserHeader(user);
+  TZOS.onThemeChanged(document.documentElement.classList.contains('dark'));
 
   // تحميل الخلفية الخاصة بالمستخدم من قاعدة البيانات أولاً، وإلا فافتراضي المدير
   let wp = 'win11-bloom';
@@ -1651,8 +1838,14 @@ document.getElementById('os-workspace').addEventListener('contextmenu', (e) => {
   TZOS.renderTaskbar();
   await TZOS.refreshWidgets();
 
-  // فتح نافذة نقاط البيع تلقائياً عند بدء التشغيل لسرعة العمل
-  TZOS.openApp('pos', null, false);
+  // فتح الصفحة التي حددها المستخدم في إعداداته الخاصة، أو الصفحة الافتراضية المحددة من الأدمن
+  const urlApp = new URLSearchParams(location.search).get('app');
+  const targetApp = urlApp || user.effective_start_page || user.start_page || SETTINGS.default_start_page || 'pos';
+  const targetMode = user.effective_start_mode || user.start_mode || SETTINGS.default_start_mode || 'window';
+  if (targetApp && targetApp !== 'desktop' && targetApp !== 'none') {
+    const allowedTarget = PERMITTED_APPS.some((a) => a.id === targetApp) ? targetApp : 'pos';
+    TZOS.openApp(allowedTarget, null, targetMode === 'maximized');
+  }
 })();
 </script>
 </body>

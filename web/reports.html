@@ -1,9 +1,8 @@
 <!DOCTYPE html>
-
 <html class="scroll-smooth" dir="rtl" lang="ar"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>التقارير والموظفون والصلاحيات - تك زون للإلكترونيات</title>
+<title>التقارير والتحليلات المالية - تك زون للإلكترونيات</title>
 <link href="app.css" rel="stylesheet"/>
 <script>if(localStorage.getItem('tz-theme')==='dark')document.documentElement.classList.add('dark');</script>
 </head>
@@ -13,12 +12,12 @@
 <!-- Top Header -->
 <header class="h-16 bg-background-light dark:bg-background-dark/95 backdrop-blur-sm sticky top-0 z-10 px-6 sm:px-8 flex items-center justify-between border-b border-gray-200/50 dark:border-gray-800/50">
 <div class="hidden lg:block">
-<h2 class="text-xl font-bold text-gray-800 dark:text-white">التقارير وإدارة الموظفين والصلاحيات</h2>
-<p class="text-xs text-gray-500">ملخص الأداء المالي، سجل الورديات، وتخصيص صلاحيات كل موظف</p>
+<h2 class="text-xl font-bold text-gray-800 dark:text-white">التقارير والتحليلات المالية</h2>
+<p class="text-xs text-gray-500">ملخص الأداء المالي، الأرباح الصافية، الأكثر مبيعاً، النواقص، وسجل الورديات وحركة الصندوق</p>
 </div>
 <div class="flex items-center gap-3">
 <input id="f-date" type="date" class="bg-white dark:bg-card-dark rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm shadow-sm font-num"/>
-<button onclick="toggleTheme()" class="p-2 text-gray-500 hover:text-primary transition-colors relative">
+<button onclick="toggleTheme()" class="p-2 text-gray-500 hover:text-primary transition-colors relative" title="تبديل الوضع الليلي / النهاري">
 <span class="material-icons-round dark:hidden">dark_mode</span>
 <span class="material-icons-round hidden dark:inline">light_mode</span>
 </button>
@@ -27,14 +26,14 @@
 <!-- Scrollable Content -->
 <div class="flex-1 overflow-y-auto p-6 sm:p-8">
 <div class="max-w-7xl mx-auto space-y-8">
-<!-- Reports Section (visible if reports_view) -->
+<!-- Reports Section -->
 <div id="reports-zone" class="space-y-8">
 <!-- Quick Actions & Period -->
 <div class="flex flex-wrap items-center justify-between gap-4">
 <div class="flex gap-2">
 <button onclick="window.print()" class="flex items-center gap-2 bg-white dark:bg-card-dark border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
 <span class="material-icons-round text-lg">print</span>
-<span>طباعة</span>
+<span>طباعة التقرير</span>
 </button>
 <select id="f-month" class="bg-white dark:bg-card-dark border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm"></select>
 </div>
@@ -84,109 +83,14 @@
   <div class="divide-y divide-gray-100 dark:divide-gray-800 max-h-80 overflow-y-auto" id="shifts-list"></div>
 </div>
 </div>
-
-<!-- Staff & Custom Granular Permissions Management -->
-<div id="staff-zone" class="bg-card-light dark:bg-card-dark rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden p-6">
-  <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
-    <div>
-      <h3 class="font-bold text-lg text-gray-800 dark:text-white" id="u-form-title">إدارة الموظفين وتخصيص الصلاحيات لكل مستخدم</h3>
-      <p class="text-xs text-gray-500">حدد لكل موظف الصلاحيات المسموحة له بدقة (البيع، خصم الأصناف %، استرجاع الفواتير، المخزون، التعديل، الحذف، التقارير...)</p>
-    </div>
-    <button id="u-reset" type="button" class="text-xs px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">تفريغ النموذج (موظف جديد)</button>
-  </div>
-  <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-4">
-    <input id="u-user" class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm" placeholder="معرف الدخول بالإنجليزية (مثال: ali)"/>
-    <input id="u-name" class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm" placeholder="اسم الموظف الكامل"/>
-    <input id="u-pin" maxlength="4" class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-num" placeholder="الرمز السري PIN (4 أرقام)"/>
-    <select id="u-role" class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm">
-      <option value="cashier">موظف / كاشير (صلاحيات مخصصة)</option>
-      <option value="admin">مدير كامل الصلاحيات (Admin)</option>
-    </select>
-  </div>
-  <!-- Granular Permissions Checkboxes -->
-  <div id="perms-box" class="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 mb-4">
-    <div class="flex justify-between items-center mb-3">
-      <span class="text-xs font-bold text-gray-700 dark:text-gray-300">الصلاحيات المخصصة للموظف في كافة أقسام البرنامج:</span>
-      <div class="flex gap-2">
-        <button type="button" id="perms-all" class="text-xs text-primary hover:underline">تحديد الكل</button>
-        <span class="text-gray-300">|</span>
-        <button type="button" id="perms-default" class="text-xs text-gray-500 hover:underline">الافتراضي للكاشير</button>
-      </div>
-    </div>
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 text-xs" id="perms-grid"></div>
-  </div>
-  <div class="flex justify-end mb-6">
-    <button id="u-add" class="px-6 py-2.5 rounded-xl bg-primary text-white text-sm font-bold shadow-lg shadow-primary/20">حفظ بيانات وصلاحيات الموظف</button>
-  </div>
-  <div class="divide-y divide-gray-100 dark:divide-gray-800 text-sm" id="users-list"></div>
-</div>
 </div>
 <div class="h-8"></div>
 </div>
 </main>
 <script src="app.js"></script>
 <script>
-let PERIOD = 'day', EDIT_USER_ID = null;
-
-const PERM_LABELS = [
-  { key: 'pos_sell', label: 'البيع وإنشاء الفواتير (نقاط البيع)', def: true },
-  { key: 'pos_item_discount', label: 'خصم على منتج معين في السلة (% أو مبلغ)', def: false },
-  { key: 'pos_price', label: 'تعديل أسعار البيع بحرية في السلة', def: false },
-  { key: 'sales_return', label: 'عرض فاتورة مدفوعة وعمل مرتجع أو خصم عليها', def: false },
-  { key: 'sales_all', label: 'رؤية فواتير كل الموظفين في السجل', def: false },
-  { key: 'inventory_view', label: 'دخول صفحة المخزون (عرض فقط)', def: false },
-  { key: 'inventory_edit', label: 'إضافة وتعديل وحذف المنتجات والصور والفئات', def: false },
-  { key: 'cost_view', label: 'رؤية أسعار الشراء (التكلفة)', def: false },
-  { key: 'customers_view', label: 'دخول صفحة العملاء وعرض كشف الحساب', def: true },
-  { key: 'customers_edit', label: 'إضافة/تعديل العملاء وإصدار سندات قبض', def: true },
-  { key: 'customers_delete', label: 'حذف العملاء وسندات القبض', def: false },
-  { key: 'repair_view', label: 'دخول الصيانة وإنشاء التذاكر وتغيير حالتها', def: true },
-  { key: 'repair_edit', label: 'إضافة قطع غيار لتذاكر الصيانة', def: true },
-  { key: 'used_manage', label: 'شراء الأجهزة المستعملة', def: false },
-  { key: 'reports_view', label: 'دخول التقارير وسجل الورديات', def: false },
-  { key: 'settings_manage', label: 'إدارة إعدادات المتجر والموظفين والصلاحيات', def: false },
-];
-
+let PERIOD = 'day';
 const AR = { cash: 'نقدي', wallet: 'محفظة', credit: 'آجل' };
-
-function renderPermsGrid(permsObj = null) {
-  const grid = document.getElementById('perms-grid');
-  grid.innerHTML = PERM_LABELS.map((p) => {
-    const checked = permsObj ? !!permsObj[p.key] : p.def;
-    return `
-      <label class="flex items-center gap-2 p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 cursor-pointer">
-        <input type="checkbox" data-perm="${p.key}" ${checked ? 'checked' : ''} class="w-4 h-4 accent-blue-600"/>
-        <span class="font-medium">${esc(p.label)}</span>
-      </label>`;
-  }).join('');
-}
-
-function getSelectedPerms() {
-  const out = {};
-  document.querySelectorAll('[data-perm]').forEach((ch) => {
-    out[ch.dataset.perm] = ch.checked;
-  });
-  return out;
-}
-
-document.getElementById('u-role').addEventListener('change', (e) => {
-  document.getElementById('perms-box').classList.toggle('hidden', e.target.value === 'admin');
-});
-document.getElementById('perms-all').addEventListener('click', () => {
-  document.querySelectorAll('[data-perm]').forEach((ch) => { ch.checked = true; });
-});
-document.getElementById('perms-default').addEventListener('click', () => {
-  renderPermsGrid(null);
-});
-document.getElementById('u-reset').addEventListener('click', () => {
-  EDIT_USER_ID = null;
-  document.getElementById('u-form-title').textContent = 'إدارة الموظفين وتخصيص الصلاحيات لكل مستخدم';
-  ['u-user', 'u-name', 'u-pin'].forEach((id) => document.getElementById(id).value = '');
-  document.getElementById('u-role').value = 'cashier';
-  document.getElementById('perms-box').classList.remove('hidden');
-  document.getElementById('u-pin').placeholder = 'الرمز السري PIN (4 أرقام)';
-  renderPermsGrid(null);
-});
 
 function card(title, val, unit, icon, bg) {
   return `<div class="bg-card-light dark:bg-card-dark rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 relative overflow-hidden group">
@@ -207,17 +111,6 @@ function barRow(label, val, max) {
 }
 
 async function load() {
-  const canReports = hasPerm('reports_view');
-  const canSettings = hasPerm('settings_manage');
-  document.getElementById('reports-zone').classList.toggle('hidden', !canReports);
-  document.getElementById('staff-zone').classList.toggle('hidden', !canSettings);
-
-  if (canSettings) {
-    const users = await guard(() => api('users'));
-    renderUsersList(users || []);
-  }
-  if (!canReports) return;
-
   const date = document.getElementById('f-date').value || todayISO();
   const [y, m] = document.getElementById('f-month').value.split('-').map(Number);
   let d;
@@ -295,60 +188,6 @@ async function load() {
   }).join('') || '<div class="p-6 text-center text-gray-400">لا ورديات مسجلة</div>';
 }
 
-let CACHED_USERS = [];
-function renderUsersList(users) {
-  CACHED_USERS = users;
-  document.getElementById('users-list').innerHTML = users.map((u) => {
-    const activePermsCount = Object.values(u.permissions || {}).filter(Boolean).length;
-    return `
-    <div class="flex flex-wrap items-center justify-between py-3 gap-2">
-      <div>
-        <span class="font-bold">${esc(u.name)}</span>
-        <span class="text-xs text-gray-400 font-num mr-1">(@${esc(u.username)})</span>
-        <span class="text-xs px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-900/30 text-blue-600 font-medium mr-1">${u.role === 'admin' ? 'مدير كامل الصلاحيات' : `موظف (${activePermsCount} صلاحية مفعلة)`}</span>
-      </div>
-      <div class="flex gap-3">
-        <button data-uedit="${u.id}" class="text-xs font-bold text-primary hover:underline">تعديل الصلاحيات / PIN</button>
-        <button data-udel="${u.id}" class="text-xs text-red-500 hover:underline">حذف</button>
-      </div>
-    </div>`;
-  }).join('');
-  document.querySelectorAll('[data-uedit]').forEach((b) => b.addEventListener('click', () => {
-    const u = CACHED_USERS.find((x) => x.id === +b.dataset.uedit);
-    if (!u) return;
-    EDIT_USER_ID = u.id;
-    document.getElementById('u-form-title').textContent = `تعديل بيانات وصلاحيات: ${u.name}`;
-    document.getElementById('u-user').value = u.username;
-    document.getElementById('u-name').value = u.name;
-    document.getElementById('u-role').value = u.role;
-    document.getElementById('u-pin').value = '';
-    document.getElementById('u-pin').placeholder = 'PIN جديد (اتركه فارغاً للإبقاء على الحالي)';
-    document.getElementById('perms-box').classList.toggle('hidden', u.role === 'admin');
-    renderPermsGrid(u.permissions || null);
-  }));
-  document.querySelectorAll('[data-udel]').forEach((b) => b.addEventListener('click', async () => {
-    if (!confirm('حذف هذا الموظف؟')) return;
-    if (await guard(() => api('user_delete', { id: +b.dataset.udel }))) { toast('تم حذف الموظف'); load(); }
-  }));
-}
-
-document.getElementById('u-add').addEventListener('click', async () => {
-  const role = document.getElementById('u-role').value;
-  const ok = await guard(() => api('user_save', {
-    id: EDIT_USER_ID,
-    username: document.getElementById('u-user').value,
-    name: document.getElementById('u-name').value,
-    role,
-    pin: document.getElementById('u-pin').value || null,
-    permissions: role === 'admin' ? null : getSelectedPerms(),
-  }));
-  if (ok) {
-    toast(EDIT_USER_ID ? 'تم تحديث بيانات وصلاحيات الموظف' : 'تمت إضافة الموظف مع صلاحياته');
-    document.getElementById('u-reset').click();
-    load();
-  }
-});
-
 document.querySelectorAll('#tabs button').forEach((b) => b.addEventListener('click', () => {
   PERIOD = b.dataset.p;
   document.querySelectorAll('#tabs button').forEach((x) => x.className = 'px-4 py-2 rounded-lg bg-white dark:bg-card-dark border border-gray-200 dark:border-gray-700 font-medium');
@@ -359,8 +198,7 @@ document.getElementById('f-date').addEventListener('change', load);
 document.getElementById('f-month').addEventListener('change', load);
 
 (async () => {
-  if (!(await pageInit('reports', { perm: ['reports_view', 'settings_manage'] }))) return;
-  renderPermsGrid(null);
+  if (!(await pageInit('reports', { perm: 'reports_view' }))) return;
   const d = new Date();
   document.getElementById('f-date').value = todayISO();
   let opts = '';

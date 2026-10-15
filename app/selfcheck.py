@@ -354,9 +354,82 @@ check("quotation_convert_to_sale ok (paid 5000, due 1620, prefix N00)", q_conv["
 q_list = call(a, "quotations", {})
 check("quotations list & summary ok", q_list["ok"] and q_list["data"]["summary"]["invoices_count"] >= 1)
 
+# 13c) فحص الدخول بالرمز السري فقط (التعرف التلقائي على المدير أو الكاشير) وإعدادات الدخول والصفحة الافتراضية لكل مستخدم
+call(a, "login", {"username": "admin", "pin": "1234"})
+call(a, "settings_save", {"store_name": "متجر النور للكمبيوتر", "login_mode": "pin_only", "default_start_page": "sales_quotes", "default_start_mode": "window", "os_default_theme": "light"})
+lcfg = call(a, "login_config")
+check("login_config returns dynamic store_name, login_mode & sanitized users without role",
+      lcfg["ok"] and lcfg["data"]["store_name"] == "متجر النور للكمبيوتر"
+      and lcfg["data"]["login_mode"] == "pin_only"
+      and all("role" not in u for u in lcfg["data"]["users"]))
+
+call(a, "logout")
+# دخول المدير بالرمز السري فقط بدون اسم مستخدم
+r_pin_admin = call(a, "login", {"pin": "1234"})
+check("PIN-only login auto-detects admin & falls back to admin default_start_page",
+      r_pin_admin["ok"] and r_pin_admin["data"]["username"] == "admin"
+      and r_pin_admin["data"]["role"] == "admin"
+      and r_pin_admin["data"]["effective_start_page"] == "sales_quotes")
+
+# رفض تكرار نفس الرمز السري لمستخدم آخر
+r_dup_pin = call(a, "user_save", {"username": "dupuser", "name": "مستخدم مكرر", "role": "cashier", "pin": "1111"})
+check("duplicate PIN across users rejected", (not r_dup_pin["ok"]) and "رمز سري فريد" in r_dup_pin["error"])
+
+# دخول الكاشير بالرمز السري فقط وتخصيص صفحة البداية والوضع الليلي/النهاري الخاص به
+call(a, "logout")
+r_pin_cashier = call(a, "login", {"pin": "1111"})
+check("PIN-only login auto-detects cashier", r_pin_cashier["ok"] and r_pin_cashier["data"]["username"] == "cashier" and r_pin_cashier["data"]["role"] == "cashier")
+r_upref = call(a, "user_pref_save", {"start_page": "repair", "start_mode": "maximized", "theme_mode": "dark"})
+check("user start_page & theme_mode saved", r_upref["ok"] and r_upref["data"]["start_page"] == "repair" and r_upref["data"]["theme_mode"] == "dark")
+
+call(a, "logout")
+r_pin_cashier2 = call(a, "login", {"pin": "1111"})
+check("cashier login uses personal start_page over admin default",
+      r_pin_cashier2["ok"] and r_pin_cashier2["data"]["effective_start_page"] == "repair"
+      and r_pin_cashier2["data"]["effective_start_mode"] == "maximized"
+      and r_pin_cashier2["data"]["theme_mode"] == "dark")
+
+# فحص صفحة الملف الشخصي للموظف (profile_save: تغيير الاسم، الصورة الشخصية، الرمز السري، وصفحة البداية)
+sample_av = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+r_prof = call(a, "profile_save", {
+    "name": "أحمد محمد المعدل",
+    "current_pin": "1111",
+    "new_pin": "5566",
+    "avatar": sample_av,
+    "start_page": "customers",
+    "start_mode": "window",
+})
+check("profile_save updates name, avatar, PIN & start_page",
+      r_prof["ok"] and r_prof["data"]["name"] == "أحمد محمد المعدل"
+      and r_prof["data"]["avatar"] == sample_av
+      and r_prof["data"]["effective_start_page"] == "customers")
+
+call(a, "logout")
+r_new_pin_login = call(a, "login", {"pin": "5566"})
+check("login with new employee PIN works & returns avatar",
+      r_new_pin_login["ok"] and r_new_pin_login["data"]["name"] == "أحمد محمد المعدل"
+      and r_new_pin_login["data"]["avatar"] == sample_av)
+# إعادة الرمز السري الافتراضي للكاشير
+call(a, "profile_save", {"name": "أحمد محمد", "current_pin": "5566", "new_pin": "1111"})
+
+# التحقق من وجود صفحات settings.html و staff.html و profile.html وفصل الإعدادات عن reports.html و receipt.html
+check("settings.html, staff.html & profile.html exist",
+      (ROOT / "web" / "settings.html").exists()
+      and (ROOT / "web" / "staff.html").exists()
+      and (ROOT / "web" / "profile.html").exists())
+check("reports.html is dedicated to reports only (no staff-zone)",
+      "staff-zone" not in (ROOT / "web" / "reports.html").read_text(encoding="utf-8"))
+check("receipt.html is dedicated to receipt preview only (no custom-form)",
+      "custom-form" not in (ROOT / "web" / "receipt.html").read_text(encoding="utf-8"))
+
+# إعادة اسم المحل الافتراضي بعد الفحص
+call(a, "logout")
+call(a, "login", {"pin": "1234"})
+call(a, "settings_save", {"store_name": "تك زون للإلكترونيات"})
+
 # 14) تطابق العقد: كل api('NAME') في الواجهة موجود في Api
 names = set()
-for p in list((ROOT / "web").glob("*.html")) + [ROOT / "web" / "desktop.html", ROOT / "web" / "sales_quotes.html", ROOT / "web" / "app.js"]:
+for p in list((ROOT / "web").glob("*.html")) + [ROOT / "web" / "desktop.html", ROOT / "web" / "sales_quotes.html", ROOT / "web" / "settings.html", ROOT / "web" / "staff.html", ROOT / "web" / "profile.html", ROOT / "web" / "app.js"]:
     if not p.exists(): continue
     names |= set(re.findall(r"api\(\s*['\"]([A-Za-z_]+)", p.read_text(encoding="utf-8")))
 real = {n for n in dir(api_mod.Api) if not n.startswith("_") and callable(getattr(api_mod.Api, n)) and n != "call"}

@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ملفي الشخصي وإعداداتي - تك زون</title>
+<link href="app.css" rel="stylesheet"/>
+<script>if(localStorage.getItem('tz-theme')==='dark')document.documentElement.classList.add('dark');</script>
+</head>
+<body id="shell" class="bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-100 font-display min-h-screen flex flex-col md:flex-row">
+<main class="flex-1 min-w-0 p-4 md:p-6 flex flex-col gap-5">
+  <!-- الرأس -->
+  <div class="bg-white dark:bg-surface-dark p-4 md:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-wrap items-center justify-between gap-3">
+    <div class="flex items-center gap-3.5">
+      <div id="hdr-avatar" class="w-14 h-14 rounded-full bg-primary text-white font-bold flex items-center justify-center text-xl overflow-hidden shadow-md shrink-0">م</div>
+      <div>
+        <h1 class="text-xl md:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span id="hdr-name">ملفي الشخصي وإعداداتي</span>
+        </h1>
+        <p class="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-0.5" id="hdr-role">تحكم في اسمك، صورتك الشخصية، الرمز السري، الصفحة التي تفتح بعد تسجيل الدخول، ومظهر النظام الخاص بك</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="toggleTheme()" type="button" class="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold flex items-center gap-1.5 hover:border-primary transition-colors">
+        <span class="material-icons-round text-base text-amber-500 dark:hidden">dark_mode</span>
+        <span class="material-icons-round text-base text-sky-400 hidden dark:inline">light_mode</span>
+        <span>تبديل الوضع الليلي / النهاري</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
+    <!-- الكارت الأيمن: البيانات الشخصية والصورة وتغيير كلمة السر / الرمز السري -->
+    <section class="xl:col-span-6 bg-white dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-slate-800 p-5 md:p-6 shadow-sm flex flex-col gap-4">
+      <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
+        <h2 class="text-base md:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="material-icons-round text-primary">badge</span>
+          <span>البيانات الشخصية والصورة والرمز السري</span>
+        </h2>
+        <p class="text-xs text-slate-500 mt-0.5">يمكنك تغيير اسمك الظاهر، أو رفع صورة شخصية لحسابك، أو تغيير رمزك السري (كلمة المرور)</p>
+      </div>
+
+      <!-- الصورة الشخصية -->
+      <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3.5">
+          <div id="pf-avatar-box" class="w-16 h-16 rounded-full bg-primary/15 text-primary font-bold flex items-center justify-center text-2xl overflow-hidden border-2 border-primary/40 shrink-0">
+            <span class="material-icons-round text-3xl">person</span>
+          </div>
+          <div>
+            <h4 class="text-xs md:text-sm font-bold text-slate-900 dark:text-white">صورتي الشخصية</h4>
+            <p class="text-[11px] text-slate-500">تظهر في شريط سطح المكتب العلوي وقائمة ابدأ والقائمة الجانبية</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="px-3.5 py-2 rounded-xl bg-primary text-white text-xs font-bold cursor-pointer hover:bg-primary-dark transition-colors flex items-center gap-1">
+            <span class="material-icons-round text-sm">photo_camera</span>
+            <span>اختيار صورة</span>
+            <input id="pf-avatar-file" type="file" accept="image/*" class="hidden"/>
+          </label>
+          <button id="pf-avatar-remove" type="button" class="px-3 py-2 rounded-xl border border-red-200 text-red-600 text-xs font-bold hover:bg-red-50">حذف</button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">الاسم الكامل الظاهر في النظام والفواتير</label>
+          <input id="pf-name" type="text" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-sm font-bold focus:outline-none focus:border-primary"/>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">معرف الدخول (Username)</label>
+          <input id="pf-username" type="text" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-sm font-mono focus:outline-none focus:border-primary"/>
+        </div>
+      </div>
+
+      <div class="p-4 rounded-xl bg-blue-50/50 dark:bg-slate-800/40 border border-blue-100 dark:border-slate-700 flex flex-col gap-3">
+        <div class="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+          <span class="material-icons-round text-primary text-base">lock_reset</span>
+          <span>تغيير الرمز السري / كلمة المرور (اتركه فارغاً إذا لا تريد تغييره)</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">الرمز السري الحالي</label>
+            <input id="pf-cur-pin" type="password" maxlength="16" dir="ltr" class="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-num text-center tracking-widest" placeholder="••••"/>
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">الرمز السري الجديد (4 أرقام أو أكثر)</label>
+            <input id="pf-new-pin" type="password" maxlength="16" dir="ltr" class="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-num text-center tracking-widest" placeholder="أدخل الرمز الجديد"/>
+          </div>
+        </div>
+      </div>
+
+      <!-- إعدادات الفتح بعد تسجيل الدخول -->
+      <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex flex-col gap-3">
+        <div class="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+          <span class="material-icons-round text-primary text-base">rocket_launch</span>
+          <span>إعدادات الفتح التلقائي بعد تسجيل الدخول</span>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">ما هي الصفحة التي تفتح أولاً فور تسجيل دخولك؟</label>
+          <select id="pf-start-page" class="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs font-bold"></select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">طريقة عرض صفحة البداية عند الدخول</label>
+          <select id="pf-start-mode" class="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs font-bold">
+            <option value="">اتباع الافتراضي المحدد من الأدمن</option>
+            <option value="window">فتح كنافذة عائمة داخل سطح المكتب</option>
+            <option value="maximized">فتح كنافذة مكبرة لملء الشاشة داخل سطح المكتب</option>
+            <option value="direct">فتح الصفحة مباشرة بملء الشاشة</option>
+          </select>
+        </div>
+      </div>
+
+      <button id="btn-save-profile" type="button" class="w-full py-3.5 px-5 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold text-sm shadow-lg shadow-primary/20 flex items-center justify-center gap-2">
+        <span class="material-icons-round text-lg">save</span>
+        <span>حفظ بياناتي الشخصية وإعدادات الدخول</span>
+      </button>
+    </section>
+
+    <!-- الكارت الأيسر: المظهر الشخصي (الوضع الليلي/النهاري، الألوان، الخلفية، وحجم بطاقات الكاشير) -->
+    <section class="xl:col-span-6 bg-white dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-slate-800 p-5 md:p-6 shadow-sm flex flex-col gap-4">
+      <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
+        <h2 class="text-base md:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="material-icons-round text-primary">palette</span>
+          <span>تخصيص المظهر وسطح المكتب الخاص بي</span>
+        </h2>
+        <p class="text-xs text-slate-500 mt-0.5">تُحفظ هذه الخيارات لحسابك الشخصي وتُطبّق تلقائياً بمجرد دخولك</p>
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">الوضع المفضل للمظهر (يطبق على سطح المكتب وجميع النوافذ)</label>
+        <div class="grid grid-cols-2 gap-3">
+          <button type="button" id="pf-theme-light" class="p-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 flex items-center justify-center gap-2 text-xs font-bold hover:border-primary transition-all">
+            <span class="material-icons-round text-amber-500">light_mode</span>
+            <span>الوضع النهاري (Light)</span>
+          </button>
+          <button type="button" id="pf-theme-dark" class="p-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 flex items-center justify-center gap-2 text-xs font-bold hover:border-primary transition-all">
+            <span class="material-icons-round text-sky-400">dark_mode</span>
+            <span>الوضع الليلي (Dark)</span>
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-bold text-slate-700 dark:text-slate-300">لون النظام والأزرار المفضل:</span>
+          <input id="pf-accent-picker" type="color" value="#137fec" class="w-8 h-8 rounded-lg cursor-pointer border-0 bg-transparent"/>
+        </div>
+        <div id="pf-accent-swatches" class="flex flex-wrap gap-2"></div>
+      </div>
+
+      <div>
+        <span class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">خلفية سطح المكتب المفضلة:</span>
+        <div id="pf-wp-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2.5"></div>
+      </div>
+
+      <div>
+        <div class="flex items-center justify-between mb-1">
+          <label class="text-xs font-bold text-slate-700 dark:text-slate-300">حجم بطاقات المنتجات في شاشة الكاشير</label>
+          <span id="pf-card-size-val" class="text-xs font-num font-bold text-primary">200px</span>
+        </div>
+        <input id="pf-card-size" type="range" min="120" max="320" step="10" value="200" class="w-full accent-blue-600 cursor-pointer"/>
+      </div>
+    </section>
+  </div>
+</main>
+<script src="app.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+
+const ALL_START_PAGES = [
+  { id: 'pos', label: 'نقاط البيع السريعة (الكاشير)', perm: 'pos_sell' },
+  { id: 'sales_quotes', label: 'قسم المبيعات وعروض الأسعار وفواتير A4', perm: 'pos_sell' },
+  { id: 'inventory', label: 'إدارة المخزون والمنتجات', perm: ['inventory_view', 'inventory_edit'] },
+  { id: 'customers', label: 'العملاء والمديونيات وكشف الحساب', perm: ['customers_view', 'customers_edit'] },
+  { id: 'repair', label: 'مركز الصيانة وتذاكر الإصلاح', perm: ['repair_view', 'repair_edit'] },
+  { id: 'history', label: 'سجل المبيعات والمرتجعات' },
+  { id: 'buy_used', label: 'شراء الأجهزة المستعملة', perm: 'used_manage' },
+  { id: 'reports', label: 'التقارير والتحليلات المالية', perm: 'reports_view' },
+  { id: 'staff', label: 'إدارة الموظفين والصلاحيات', perm: 'settings_manage' },
+  { id: 'settings', label: 'إعدادات النظام', perm: 'settings_manage' },
+  { id: 'desktop', label: 'سطح المكتب فقط (بدون فتح نافذة تلقائياً)' },
+];
+
+const START_PAGE_NAMES = Object.fromEntries(ALL_START_PAGES.map((p) => [p.id, p.label]));
+
+const WP_OPTIONS = [
+  { id: 'win11-bloom', name: 'Windows 11 Bloom', preview: 'linear-gradient(135deg,#071126,#2563eb,#0ea5e9)' },
+  { id: 'macos-sonoma', name: 'macOS Sonoma', preview: 'linear-gradient(135deg,#130924,#7c3aed,#06b6d4)' },
+  { id: 'macos-sequoia', name: 'macOS Sequoia', preview: 'linear-gradient(135deg,#0f172a,#ea580c,#eab308)' },
+  { id: 'ubuntu-aurora', name: 'Linux Aurora', preview: 'linear-gradient(135deg,#1a0626,#c026d3,#e11d48)' },
+  { id: 'emerald-studio', name: 'Emerald Studio', preview: 'linear-gradient(135deg,#041f1a,#059669,#0f172a)' },
+  { id: 'daylight-glass', name: 'Daylight Breeze', preview: 'linear-gradient(135deg,#dbeafe,#93c5fd,#e0f2fe)' },
+];
+
+const ACCENT_OPTIONS = [
+  { hex: '#137fec', name: 'أزرق ملكي' },
+  { hex: '#7c3aed', name: 'بنفسجي عصري' },
+  { hex: '#059669', name: 'زمردي فاخر' },
+  { hex: '#ea580c', name: 'برتقالي دافئ' },
+  { hex: '#db2777', name: 'وردي عصري' },
+  { hex: '#0891b2', name: 'سماوي هادئ' },
+  { hex: '#d97706', name: 'ذهبي كهرماني' },
+  { hex: '#dc2626', name: 'أحمر ياقوتي' },
+];
+
+let PENDING_AVATAR = undefined;
+
+function compressAvatar(file, maxW = 240, maxH = 240, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onerror = () => reject(new Error('تعذر قراءة الصورة'));
+    r.onload = () => {
+      const im = new Image();
+      im.onerror = () => reject(new Error('ملف الصورة غير صالح'));
+      im.onload = () => {
+        const ratio = Math.min(maxW / (im.width || 1), maxH / (im.height || 1), 1);
+        const c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(im.width * ratio));
+        c.height = Math.max(1, Math.round(im.height * ratio));
+        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+        resolve(c.toDataURL('image/jpeg', quality));
+      };
+      im.src = r.result;
+    };
+    r.readAsDataURL(file);
+  });
+}
+
+function drawAvatarPreview(src, nameFallback = 'م') {
+  const box = $('pf-avatar-box');
+  const hdr = $('hdr-avatar');
+  if (src && src.startsWith('data:image/')) {
+    box.innerHTML = `<img src="${esc(src)}" class="w-full h-full object-cover" alt=""/>`;
+    hdr.innerHTML = `<img src="${esc(src)}" class="w-full h-full object-cover" alt=""/>`;
+  } else {
+    box.innerHTML = `<span class="material-icons-round text-3xl">person</span>`;
+    hdr.textContent = (nameFallback || 'م').slice(0, 1);
+  }
+}
+
+$('pf-avatar-file').addEventListener('change', async (e) => {
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  try {
+    PENDING_AVATAR = await compressAvatar(f);
+    drawAvatarPreview(PENDING_AVATAR, $('pf-name').value);
+    toast('تم تجهيز صورتك الشخصية — اضغط حفظ لتثبيتها');
+  } catch (err) {
+    toast(err.message || 'تعذر رفع الصورة', 'error');
+  }
+  e.target.value = '';
+});
+
+$('pf-avatar-remove').addEventListener('click', () => {
+  PENDING_AVATAR = '';
+  drawAvatarPreview('', $('pf-name').value);
+});
+
+function populateProfileUI(user) {
+  $('hdr-name').textContent = `ملفي الشخصي — ${user.name || ''}`;
+  $('hdr-role').textContent = `${user.role === 'admin' ? 'مدير النظام (صلاحيات كاملة)' : 'موظف / كاشير'} · معرف الدخول: @${user.username}`;
+  $('pf-name').value = user.name || '';
+  $('pf-username').value = user.username || '';
+  $('pf-cur-pin').value = '';
+  $('pf-new-pin').value = '';
+  drawAvatarPreview(PENDING_AVATAR !== undefined ? PENDING_AVATAR : (user.avatar || ''), user.name);
+
+  const allowedPages = ALL_START_PAGES.filter((p) => !p.perm || hasPerm(p.perm, user));
+  const defPageLbl = START_PAGE_NAMES[SETTINGS.default_start_page || 'pos'] || 'نقاط البيع';
+  $('pf-start-page').innerHTML =
+    `<option value="">اتباع الافتراضي المحدد من الأدمن (${esc(defPageLbl)})</option>` +
+    allowedPages.map((p) => `<option value="${p.id}">${esc(p.label)}</option>`).join('');
+  $('pf-start-page').value = user.start_page || '';
+  $('pf-start-mode').value = user.start_mode || '';
+
+  const cs = user.card_size || +(SETTINGS.pos_card_size || 200) || 200;
+  $('pf-card-size').value = cs;
+  $('pf-card-size-val').textContent = cs + 'px';
+
+  const curAcc = user.accent_color || SETTINGS.os_default_accent || '#137fec';
+  $('pf-accent-picker').value = curAcc;
+  $('pf-accent-swatches').innerHTML = ACCENT_OPTIONS.map((ac) => `
+    <button type="button" data-pf-acc="${ac.hex}" class="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 text-xs font-bold bg-slate-50 dark:bg-slate-800 hover:scale-105 transition-all" style="color:${ac.hex}">
+      <span class="w-3.5 h-3.5 rounded-full inline-block" style="background:${ac.hex}"></span>
+      <span>${esc(ac.name)}</span>
+    </button>
+  `).join('');
+  $('pf-accent-swatches').querySelectorAll('[data-pf-acc]').forEach((b) => {
+    b.addEventListener('click', async () => {
+      const hex = b.dataset.pfAcc;
+      $('pf-accent-picker').value = hex;
+      applyAccentColorEverywhere(hex);
+      await guard(() => api('user_pref_save', { accent_color: hex }));
+      toast('تم تطبيق وحفظ لون النظام المفضل');
+    });
+  });
+
+  const curWp = user.wallpaper || SETTINGS.os_default_wallpaper || 'win11-bloom';
+  $('pf-wp-grid').innerHTML = WP_OPTIONS.map((wp) => `
+    <div data-pf-wp="${wp.id}" class="cursor-pointer rounded-xl p-2 border-2 transition-all ${curWp === wp.id ? 'border-primary bg-primary/5' : 'border-slate-200 dark:border-slate-700 hover:border-primary/40'}">
+      <div class="h-12 rounded-lg mb-1.5 shadow-inner" style="background:${wp.preview}"></div>
+      <div class="text-[11px] font-bold text-center">${esc(wp.name)}</div>
+    </div>
+  `).join('');
+  $('pf-wp-grid').querySelectorAll('[data-pf-wp]').forEach((el) => {
+    el.addEventListener('click', async () => {
+      const wpId = el.dataset.pfWp;
+      await guard(() => api('user_pref_save', { wallpaper: wpId }));
+      try {
+        if (window.top && window.top.TZOS) window.top.TZOS.applyWallpaper(wpId, null, false);
+      } catch (e) {}
+      user.wallpaper = wpId;
+      populateProfileUI(user);
+      toast('تم تغيير وحفظ خلفية سطح المكتب لحسابك');
+    });
+  });
+}
+
+$('pf-card-size').addEventListener('input', (e) => {
+  $('pf-card-size-val').textContent = e.target.value + 'px';
+});
+
+$('pf-accent-picker').addEventListener('change', async (e) => {
+  const hex = e.target.value;
+  applyAccentColorEverywhere(hex);
+  await guard(() => api('user_pref_save', { accent_color: hex }));
+  toast('تم حفظ لون النظام المفضل');
+});
+
+$('pf-theme-light').addEventListener('click', async () => {
+  applyThemeEverywhere(false);
+  await guard(() => api('user_pref_save', { theme_mode: 'light' }));
+  toast('تم تفعيل الوضع النهاري (Light Mode)');
+});
+
+$('pf-theme-dark').addEventListener('click', async () => {
+  applyThemeEverywhere(true);
+  await guard(() => api('user_pref_save', { theme_mode: 'dark' }));
+  toast('تم تفعيل الوضع الليلي (Dark Mode)');
+});
+
+$('btn-save-profile').addEventListener('click', async () => {
+  const payload = {
+    name: $('pf-name').value.trim(),
+    username: $('pf-username').value.trim(),
+    current_pin: $('pf-cur-pin').value.trim() || null,
+    new_pin: $('pf-new-pin').value.trim() || null,
+    start_page: $('pf-start-page').value,
+    start_mode: $('pf-start-mode').value,
+    card_size: +$('pf-card-size').value,
+  };
+  if (PENDING_AVATAR !== undefined) {
+    payload.avatar = PENDING_AVATAR;
+  }
+  const updated = await guard(() => api('profile_save', payload));
+  if (updated) {
+    CURRENT_USER = updated;
+    PENDING_AVATAR = undefined;
+    populateProfileUI(updated);
+    try {
+      if (window.top && window.top.TZOS && typeof window.top.TZOS.refreshUserHeader === 'function') {
+        window.top.TZOS.refreshUserHeader(updated);
+      }
+    } catch (e) {}
+    toast('تم حفظ بيانات ملفك الشخصي وإعدادات الدخول الخاصة بك بنجاح');
+  }
+});
+
+(async () => {
+  const user = await pageInit('profile');
+  if (!user) return;
+  populateProfileUI(user);
+})();
+</script>
+</body>
+</html>

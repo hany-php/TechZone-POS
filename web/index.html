@@ -1,9 +1,8 @@
 <!DOCTYPE html>
-
 <html dir="rtl" lang="ar"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>تسجيل الدخول - تك زون للإلكترونيات</title>
+<title>تسجيل الدخول</title>
 <link href="app.css" rel="stylesheet"/>
 <script>if(localStorage.getItem('tz-theme')==='dark')document.documentElement.classList.add('dark');</script>
 </head>
@@ -13,14 +12,17 @@
 <!-- Left Side: Branding & Illustration (Visible on Desktop) -->
 <div class="hidden lg:flex flex-col justify-center items-start space-y-8 p-8">
 <div class="space-y-4">
-<div class="flex items-center gap-3">
-<div class="w-12 h-12 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/30">
+<div class="flex items-center gap-3.5">
+<div id="login-logo-box" class="w-14 h-14 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/30 overflow-hidden shrink-0">
 <span class="material-icons-round text-white text-3xl">memory</span>
 </div>
-<h1 class="text-3xl font-bold text-slate-800 dark:text-white font-arabic tracking-wide">تك زون للإلكترونيات</h1>
+<div>
+<h1 id="login-store-name" class="text-3xl font-bold text-slate-800 dark:text-white font-arabic tracking-wide">تك زون للإلكترونيات</h1>
+<p id="login-store-sub" class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-arabic"></p>
+</div>
 </div>
 <p class="text-slate-500 dark:text-slate-400 text-lg leading-relaxed max-w-md font-arabic">
-نظام متكامل لإدارة المبيعات والصيانة. الحل الأمثل لمحلات الكمبيوتر والأنظمة الأمنية.
+نظام متكامل لإدارة المبيعات ونقاط البيع وعروض الأسعار والصيانة. تعرّف ذكي تلقائي على المستخدم وصلاحياته.
 </p>
 </div>
 <!-- Hero Card (زخرفة CSS محلية بدل صورة الشبكة) -->
@@ -37,9 +39,9 @@
 <div class="text-white z-20">
 <div class="flex items-center gap-2 mb-2">
 <span class="bg-green-500 w-2 h-2 rounded-full animate-pulse"></span>
-<span class="text-sm font-medium opacity-90">النظام يعمل بكفاءة</span>
+<span class="text-sm font-medium opacity-90">النظام يعمل بكفاءة — تعرف ذكي من الرمز السري</span>
 </div>
-<p class="text-sm opacity-80 font-numeric">v2.4.0 (Offline)</p>
+<p class="text-sm opacity-80 font-numeric">v2.5.0 (Offline OS)</p>
 </div>
 </div>
 </div>
@@ -51,53 +53,78 @@
 <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full -mr-8 -mt-8 pointer-events-none"></div>
 <div class="p-8 pb-6">
 <!-- Mobile Logo (Visible only on small screens) -->
-<div class="lg:hidden flex justify-center mb-6">
-<div class="w-12 h-12 bg-primary rounded-xl flex items-center justify-center shadow-md">
+<div class="lg:hidden flex flex-col items-center justify-center mb-5 gap-2">
+<div id="login-mobile-logo-box" class="w-12 h-12 bg-primary rounded-xl flex items-center justify-center shadow-md overflow-hidden">
 <span class="material-icons-round text-white text-2xl">memory</span>
 </div>
+<span id="login-mobile-store-name" class="font-bold text-base text-slate-800 dark:text-white font-arabic">تك زون للإلكترونيات</span>
 </div>
 <div class="text-center mb-6">
 <h2 class="text-2xl font-bold text-slate-800 dark:text-white mb-2 font-arabic">تسجيل الدخول</h2>
-<p class="text-slate-500 dark:text-slate-400 font-arabic">الرجاء إدخال الرمز السري للموظف</p>
+<p id="login-subtitle" class="text-slate-500 dark:text-slate-400 text-sm font-arabic">أدخل الرمز السري فقط — سيتعرف النظام تلقائياً على المستخدم وصلاحياته</p>
 </div>
-<!-- User Selector -->
-<div id="users" class="flex gap-2 justify-center mb-6 flex-wrap"></div>
+
+<!-- 1) User Selector (يظهر فقط إذا اختار الأدمن طريقة: اختيار الموظف + الرمز السري) -->
+<div id="users" class="hidden gap-2 justify-center mb-5 flex-wrap"></div>
+
+<!-- 2) Username + Password inputs (تظهر فقط إذا اختار الأدمن طريقة: اسم مستخدم وكلمة سر) -->
+<div id="username-pass-zone" class="hidden flex-col gap-3.5 mb-5">
+  <div>
+    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">اسم المستخدم</label>
+    <div class="relative">
+      <span class="material-icons-round text-slate-400 text-lg absolute right-3.5 top-3">person</span>
+      <input id="inp-username" type="text" autocomplete="username" class="w-full pr-10 pl-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-primary" placeholder="اكتب معرف الدخول أو اسم المستخدم..."/>
+    </div>
+  </div>
+  <div>
+    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">كلمة المرور / الرمز السري</label>
+    <div class="relative">
+      <span class="material-icons-round text-slate-400 text-lg absolute right-3.5 top-3">lock</span>
+      <input id="inp-password" type="password" autocomplete="current-password" dir="ltr" class="w-full pr-10 pl-10 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-numeric text-center tracking-widest text-slate-800 dark:text-white focus:outline-none focus:border-primary" placeholder="••••"/>
+      <button type="button" id="btn-toggle-pass" class=" text-slate-400 hover:text-primary absolute left-3 top-2.5">
+        <span class="material-icons-round text-lg" id="ico-toggle-pass">visibility</span>
+      </button>
+    </div>
+  </div>
+  <button type="button" id="btn-submit-userpass" class="w-full py-3.5 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold text-sm shadow-lg shadow-primary/30 flex items-center justify-center gap-2 transition-all active:scale-95">
+    <span class="material-icons-round text-lg">login</span>
+    <span>دخول إلى النظام</span>
+  </button>
+</div>
+
+<!-- 3) PIN Dots & Keypad (تظهر في وضع الرمز السري فقط أو وضع اختيار الموظف + الرمز السري) -->
+<div id="pin-keypad-zone">
 <!-- PIN Display -->
-<div class="mb-8">
+<div class="mb-6">
 <div class="bg-slate-50 dark:bg-slate-900 border-2 border-primary/30 focus-within:border-primary rounded-xl h-16 flex items-center justify-center transition-all duration-300 shadow-inner">
 <div class="flex gap-4" dir="ltr" id="dots"></div>
 </div>
 </div>
 <!-- Keypad Grid -->
-<div class="grid grid-cols-3 gap-4 mb-8 font-numeric" dir="ltr" id="keypad">
-<button data-key="1" class="h-16 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-2xl font-semibold text-slate-700 dark:text-slate-200 transition-colors shadow-sm active:scale-95">1</button>
-<button data-key="2" class="h-16 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-2xl font-semibold text-slate-700 dark:text-slate-200 transition-colors shadow-sm active:scale-95">2</button>
-<button data-key="3" class="h-16 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-2xl font-semibold text-slate-700 dark:text-slate-200 transition-colors shadow-sm active:scale-95">3</button>
-<button data-key="4" class="h-16 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-2xl font-semibold text-slate-700 dark:text-slate-200 transition-colors shadow-sm active:scale-95">4</button>
-<button data-key="5" class="h-16 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-2xl font-semibold text-slate-700 dark:text-slate-200 transition-colors shadow-sm active:scale-95">5</button>
-<button data-key="6" class="h-16 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-2xl font-semibold text-slate-700 dark:text-slate-200 transition-colors shadow-sm active:scale-95">6</button>
-<button data-key="7" class="h-16 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-2xl font-semibold text-slate-700 dark:text-slate-200 transition-colors shadow-sm active:scale-95">7</button>
-<button data-key="8" class="h-16 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-2xl font-semibold text-slate-700 dark:text-slate-200 transition-colors shadow-sm active:scale-95">8</button>
-<button data-key="9" class="h-16 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-2xl font-semibold text-slate-700 dark:text-slate-200 transition-colors shadow-sm active:scale-95">9</button>
-<button data-key="del" class="h-16 rounded-xl bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 dark:text-red-400 transition-colors shadow-sm active:scale-95 flex items-center justify-center">
+<div class="grid grid-cols-3 gap-3.5 mb-2 font-numeric" dir="ltr" id="keypad">
+<button data-key="1" class="h-15 py-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-2xl font-semibold text-slate-700 dark:text-slate-200 transition-colors shadow-sm active:scale-95">1</button>
+<button data-key="2" class="h-15 py-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-2xl font-semibold text-slate-700 dark:text-slate-200 transition-colors shadow-sm active:scale-95">2</button>
+<button data-key="3" class="h-15 py-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-2xl font-semibold text-slate-700 dark:text-slate-200 transition-colors shadow-sm active:scale-95">3</button>
+<button data-key="4" class="h-15 py-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-2xl font-semibold text-slate-700 dark:text-slate-200 transition-colors shadow-sm active:scale-95">4</button>
+<button data-key="5" class="h-15 py-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-2xl font-semibold text-slate-700 dark:text-slate-200 transition-colors shadow-sm active:scale-95">5</button>
+<button data-key="6" class="h-15 py-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-2xl font-semibold text-slate-700 dark:text-slate-200 transition-colors shadow-sm active:scale-95">6</button>
+<button data-key="7" class="h-15 py-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-2xl font-semibold text-slate-700 dark:text-slate-200 transition-colors shadow-sm active:scale-95">7</button>
+<button data-key="8" class="h-15 py-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-2xl font-semibold text-slate-700 dark:text-slate-200 transition-colors shadow-sm active:scale-95">8</button>
+<button data-key="9" class="h-15 py-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-2xl font-semibold text-slate-700 dark:text-slate-200 transition-colors shadow-sm active:scale-95">9</button>
+<button data-key="del" class="h-15 py-3.5 rounded-xl bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 dark:text-red-400 transition-colors shadow-sm active:scale-95 flex items-center justify-center">
 <span class="material-icons-round text-2xl">backspace</span>
 </button>
-<button data-key="0" class="h-16 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-2xl font-semibold text-slate-700 dark:text-slate-200 transition-colors shadow-sm active:scale-95">0</button>
-<button data-key="ok" class="h-16 rounded-xl bg-primary hover:bg-primary-dark text-white transition-colors shadow-lg shadow-primary/30 active:scale-95 flex items-center justify-center">
+<button data-key="0" class="h-15 py-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-2xl font-semibold text-slate-700 dark:text-slate-200 transition-colors shadow-sm active:scale-95">0</button>
+<button data-key="ok" class="h-15 py-3.5 rounded-xl bg-primary hover:bg-primary-dark text-white transition-colors shadow-lg shadow-primary/30 active:scale-95 flex items-center justify-center">
 <span class="material-icons-round text-3xl transform rotate-180">login</span>
 </button>
 </div>
-<!-- Admin Link -->
-<div class="flex justify-center pt-2 border-t border-slate-100 dark:border-slate-800">
-<button id="admin-btn" class="group flex items-center gap-2 px-4 py-2 rounded-lg text-slate-500 hover:text-primary dark:text-slate-400 dark:hover:text-primary transition-colors">
-<span class="material-icons-round text-sm group-hover:scale-110 transition-transform">admin_panel_settings</span>
-<span class="text-sm font-medium font-arabic">دخول المدير</span>
-</button>
 </div>
+
 </div>
 <!-- Card Footer Status -->
 <div class="bg-slate-50 dark:bg-slate-900/50 p-3 flex justify-between items-center text-xs text-slate-400 border-t border-slate-100 dark:border-slate-800">
-<span class="font-numeric">ID: Term-04</span>
+<span id="login-mode-badge" class="font-arabic">وضع الدخول: الرمز السري المباشر</span>
 <span class="flex items-center gap-1">
 <span class="w-2 h-2 rounded-full bg-green-500"></span>
 متصل بالنظام المحلي
@@ -105,36 +132,140 @@
 </div>
 </div>
 <!-- Footer Copyright -->
-<div class="mt-8 text-center">
-<p class="text-slate-400 dark:text-slate-600 text-sm font-arabic">جميع الحقوق محفوظة © تك زون</p>
+<div class="mt-6 text-center">
+<p id="login-footer-copy" class="text-slate-400 dark:text-slate-500 text-sm font-arabic">جميع الحقوق محفوظة © تك زون للإلكترونيات</p>
 </div>
 </div>
 </main>
 <!-- Theme Button (Fixed) -->
-<button onclick="toggleTheme()" class="fixed bottom-6 right-6 lg:bottom-8 lg:right-8 bg-surface-light dark:bg-surface-dark p-3 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-primary hover:bg-primary hover:text-white transition-all duration-300 z-50 group">
+<button onclick="toggleTheme()" class="fixed bottom-6 right-6 lg:bottom-8 lg:right-8 bg-surface-light dark:bg-surface-dark p-3 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-primary hover:bg-primary hover:text-white transition-all duration-300 z-50 group" title="تبديل الوضع الليلي / النهاري">
 <span class="material-icons-round block dark:hidden">dark_mode</span>
 <span class="material-icons-round hidden dark:block">light_mode</span>
 </button>
 <script src="app.js"></script>
 <script>
-let PIN = '', USERNAME = 'cashier', USERS = [];
+let PIN = '', USERNAME = '', USERS = [], LOGIN_MODE = 'pin_only', LOGIN_CFG = {};
 
 function renderDots() {
   document.getElementById('dots').innerHTML = [0, 1, 2, 3].map((i) =>
     `<div class="w-4 h-4 rounded-full transition-colors ${i < PIN.length ? 'bg-slate-800 dark:bg-white animate-pulse' : 'bg-slate-300 dark:bg-slate-700'}"></div>`).join('');
 }
+
 function renderUsers() {
-  document.getElementById('users').innerHTML = USERS.map((u) =>
-    `<button data-u="${u.username}" class="px-4 py-2 rounded-xl text-sm font-medium border transition-all ${u.username === USERNAME ? 'bg-primary text-white border-primary shadow-lg shadow-primary/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'}">
-      <span class="material-icons-round text-base align-middle">person</span> ${esc(u.name)}${u.role === 'admin' ? ' (مدير)' : ''}</button>`).join('');
-  document.querySelectorAll('#users button').forEach((b) => b.addEventListener('click', () => { USERNAME = b.dataset.u; renderUsers(); }));
+  const box = document.getElementById('users');
+  if (LOGIN_MODE !== 'select_user_pin') {
+    box.classList.add('hidden');
+    box.classList.remove('flex');
+    return;
+  }
+  box.classList.remove('hidden');
+  box.classList.add('flex');
+  box.innerHTML = USERS.map((u) =>
+    `<button type="button" data-u="${esc(u.username)}" class="px-4 py-2 rounded-xl text-sm font-medium border transition-all ${u.username === USERNAME ? 'bg-primary text-white border-primary shadow-lg shadow-primary/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'}">
+      <span class="material-icons-round text-base align-middle">person</span> ${esc(u.name)}</button>`).join('');
+  box.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+    USERNAME = b.dataset.u;
+    renderUsers();
+  }));
 }
+
+function applyLoginModeUI() {
+  const sub = document.getElementById('login-subtitle');
+  const badge = document.getElementById('login-mode-badge');
+  const upZone = document.getElementById('username-pass-zone');
+  const pkZone = document.getElementById('pin-keypad-zone');
+
+  if (LOGIN_MODE === 'username_password') {
+    sub.textContent = 'أدخل اسم المستخدم وكلمة المرور أو الرمز السري للدخول';
+    badge.textContent = 'وضع الدخول: اسم مستخدم وكلمة سر';
+    upZone.classList.remove('hidden');
+    upZone.classList.add('flex');
+    pkZone.classList.add('hidden');
+    renderUsers();
+    setTimeout(() => document.getElementById('inp-username').focus(), 60);
+  } else if (LOGIN_MODE === 'select_user_pin') {
+    sub.textContent = 'اختر اسم المستخدم ثم أدخل الرمز السري';
+    badge.textContent = 'وضع الدخول: اختيار المستخدم + الرمز السري';
+    upZone.classList.add('hidden');
+    upZone.classList.remove('flex');
+    pkZone.classList.remove('hidden');
+    if (!USERS.some((u) => u.username === USERNAME)) {
+      USERNAME = (USERS[0] || {}).username || '';
+    }
+    renderUsers();
+    renderDots();
+  } else {
+    LOGIN_MODE = 'pin_only';
+    USERNAME = '';
+    sub.textContent = 'أدخل الرمز السري فقط — يتعرف النظام تلقائياً على المستخدم وصلاحياته';
+    badge.textContent = 'وضع الدخول: الرمز السري المباشر';
+    upZone.classList.add('hidden');
+    upZone.classList.remove('flex');
+    pkZone.classList.remove('hidden');
+    renderUsers();
+    renderDots();
+  }
+}
+
+function applyStoreBranding(cfg) {
+  const name = (cfg && cfg.store_name ? cfg.store_name : 'تك زون للإلكترونيات').trim() || 'تك زون للإلكترونيات';
+  document.title = `تسجيل الدخول - ${name}`;
+  document.getElementById('login-store-name').textContent = name;
+  document.getElementById('login-mobile-store-name').textContent = name;
+  document.getElementById('login-footer-copy').textContent = `جميع الحقوق محفوظة © ${name}`;
+  const subParts = [cfg && cfg.store_address, cfg && cfg.store_phone].filter(Boolean);
+  document.getElementById('login-store-sub').textContent = subParts.join(' — ');
+  if (cfg && cfg.receipt_logo && cfg.receipt_logo.startsWith('data:image/')) {
+    const imgHtml = `<img src="${esc(cfg.receipt_logo)}" alt="${esc(name)}" class="w-full h-full object-cover"/>`;
+    document.getElementById('login-logo-box').innerHTML = imgHtml;
+    document.getElementById('login-mobile-logo-box').innerHTML = imgHtml;
+  }
+}
+
+function redirectAfterLogin(u) {
+  if (!u) return;
+  if (u.theme_mode === 'dark' || u.theme_mode === 'light') {
+    localStorage.setItem('tz-theme', u.theme_mode);
+    applyThemeEverywhere(u.theme_mode === 'dark');
+  }
+  sessionStorage.setItem('tz-just-logged-in', '1');
+  const startPage = u.effective_start_page || u.start_page || LOGIN_CFG.default_start_page || 'pos';
+  const startMode = u.effective_start_mode || u.start_mode || LOGIN_CFG.default_start_mode || 'window';
+  if (startMode === 'direct' && startPage && startPage !== 'desktop') {
+    location.href = `${startPage}.html`;
+  } else {
+    location.href = 'desktop.html';
+  }
+}
+
 async function submit() {
-  if (PIN.length !== 4) { toast('الرمز السري مكوّن من 4 أرقام', 'warn'); return; }
-  const u = await guard(() => api('login', { username: USERNAME, pin: PIN }));
-  if (u) location.href = 'desktop.html';
-  PIN = ''; renderDots();
+  if (LOGIN_MODE === 'username_password') {
+    const un = document.getElementById('inp-username').value.trim();
+    const pw = document.getElementById('inp-password').value.trim();
+    if (!un || !pw) {
+      toast('يرجى إدخال اسم المستخدم وكلمة المرور / الرمز السري', 'warn');
+      return;
+    }
+    const u = await guard(() => api('login', { username: un, pin: pw }));
+    if (u) redirectAfterLogin(u);
+    return;
+  }
+
+  if (PIN.length !== 4) {
+    toast('الرمز السري مكوّن من 4 أرقام', 'warn');
+    return;
+  }
+  const payload = LOGIN_MODE === 'select_user_pin'
+    ? { username: USERNAME, pin: PIN }
+    : { pin: PIN };
+  const u = await guard(() => api('login', payload));
+  if (u) {
+    redirectAfterLogin(u);
+  }
+  PIN = '';
+  renderDots();
 }
+
 document.getElementById('keypad').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return;
   const k = b.dataset.key;
@@ -143,16 +274,43 @@ document.getElementById('keypad').addEventListener('click', (e) => {
   else if (PIN.length < 4) PIN += k;
   renderDots();
 });
-document.getElementById('admin-btn').addEventListener('click', () => { USERNAME = 'admin'; renderUsers(); });
+
+document.getElementById('btn-submit-userpass').addEventListener('click', submit);
+document.getElementById('btn-toggle-pass').addEventListener('click', () => {
+  const inp = document.getElementById('inp-password');
+  const ico = document.getElementById('ico-toggle-pass');
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    ico.textContent = 'visibility_off';
+  } else {
+    inp.type = 'password';
+    ico.textContent = 'visibility';
+  }
+});
+
 document.addEventListener('keydown', (e) => {
+  if (LOGIN_MODE === 'username_password') {
+    if (e.key === 'Enter') submit();
+    return;
+  }
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
   if (e.key >= '0' && e.key <= '9' && PIN.length < 4) { PIN += e.key; renderDots(); }
   else if (e.key === 'Backspace') { PIN = PIN.slice(0, -1); renderDots(); }
   else if (e.key === 'Enter') submit();
 });
+
 (async () => {
-  USERS = (await guard(() => api('users'))) || [];
-  if (!USERS.some((u) => u.username === USERNAME)) USERNAME = (USERS[0] || {}).username;
-  renderUsers(); renderDots();
+  renderDots();
+  const cfg = await guard(() => api('login_config'));
+  if (cfg) {
+    LOGIN_CFG = cfg;
+    USERS = cfg.users || [];
+    LOGIN_MODE = cfg.login_mode || 'pin_only';
+    applyStoreBranding(cfg);
+  } else {
+    USERS = (await guard(() => api('users'))) || [];
+  }
+  applyLoginModeUI();
 })();
 </script>
 </body></html>

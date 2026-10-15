@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>إعدادات النظام الشاملة - تك زون</title>
+<link href="app.css" rel="stylesheet"/>
+<script>if(localStorage.getItem('tz-theme')==='dark')document.documentElement.classList.add('dark');</script>
+<style>
+  .settings-tab-btn.active {
+    background: var(--tz-accent, #137fec);
+    color: #ffffff;
+    box-shadow: 0 8px 20px -4px rgba(19, 127, 236, 0.45);
+  }
+  .inv-subtab-btn.active {
+    background: var(--tz-accent, #137fec);
+    color: #ffffff;
+  }
+  .login-mode-card.selected {
+    border-color: var(--tz-accent, #137fec);
+    background: rgba(19, 127, 236, 0.06);
+  }
+</style>
+</head>
+<body id="shell" class="bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-100 font-display min-h-screen flex flex-col md:flex-row">
+<main class="flex-1 min-w-0 p-4 md:p-6 flex flex-col gap-5">
+  <!-- الرأس وشريط التبويبات الموحد لكل أقسام الإعدادات -->
+  <div class="bg-white dark:bg-surface-dark p-4 md:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-4">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h1 class="text-xl md:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="material-icons-round text-primary">settings</span>
+          <span>إعدادات النظام والمتجر والفواتير</span>
+        </h1>
+        <p class="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-0.5">تحكم مركزي في بيانات المتجر والضريبة، وطريقة تسجيل الدخول والفتح الافتراضي، وتصميم جميع الفواتير والإيصالات في البرنامج</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <a href="staff.html" class="px-3.5 py-2 rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-white text-xs font-bold flex items-center gap-1.5 transition-colors">
+          <span class="material-icons-round text-base">manage_accounts</span>
+          <span>إدارة الموظفين والصلاحيات</span>
+        </a>
+        <a href="profile.html" class="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold flex items-center gap-1.5 hover:border-primary transition-colors">
+          <span class="material-icons-round text-base">account_circle</span>
+          <span>ملفي الشخصي وإعداداتي</span>
+        </a>
+        <button onclick="toggleTheme()" type="button" class="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold flex items-center gap-1 hover:border-primary transition-colors" title="تبديل الوضع الليلي / النهاري">
+          <span class="material-icons-round text-base text-amber-500 dark:hidden">dark_mode</span>
+          <span class="material-icons-round text-base text-sky-400 hidden dark:inline">light_mode</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- شريط التبويبات المقسم حسب كل قسم -->
+    <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800" id="settings-tabs-bar">
+      <button type="button" data-stab="store" class="settings-tab-btn active px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 transition-all">
+        <span class="material-icons-round text-base">storefront</span>
+        <span>إعدادات المتجر والضريبة والإيصال والدفع</span>
+      </button>
+      <button type="button" data-stab="login" class="settings-tab-btn px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 transition-all">
+        <span class="material-icons-round text-base">password</span>
+        <span>طريقة تسجيل الدخول والفتح الافتراضي</span>
+      </button>
+      <button type="button" data-stab="invoices" class="settings-tab-btn px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 transition-all">
+        <span class="material-icons-round text-base">design_services</span>
+        <span>تصميم القوالب وجميع الفواتير</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ==================== التبويب 1: إعدادات المتجر والضريبة وتخصيص الإيصال وطرق الدفع ==================== -->
+  <section id="spane-store" class="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
+    <div class="xl:col-span-7 bg-white dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-slate-800 p-5 md:p-6 shadow-sm flex flex-col gap-4">
+      <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
+        <h2 class="text-base md:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="material-icons-round text-primary">store</span>
+          <span>إعدادات المتجر والضريبة وتخصيص الإيصال</span>
+        </h2>
+        <p class="text-xs text-slate-500 mt-0.5">اسم المحل المضاف هنا يظهر تلقائياً في صفحة تسجيل الدخول، وشريط سطح المكتب، وجميع الفواتير والإيصالات ورسائل الواتساب</p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="sm:col-span-2">
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">اسم المحل / الشركة (يظهر في شاشة الدخول وسطح المكتب والفواتير)</label>
+          <input id="st-store-name" type="text" class="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-sm font-bold focus:outline-none focus:border-primary" placeholder="مثال: تك زون للإلكترونيات"/>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">العنوان التفصيلي</label>
+          <input id="st-store-addr" type="text" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-xs focus:outline-none focus:border-primary" placeholder="مثال: شارع جامعة الدول العربية، الجيزة"/>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">رقم الموبايل / الهاتف</label>
+          <input id="st-store-phone" type="text" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-xs font-num focus:outline-none focus:border-primary" placeholder="010xxxxxxxx"/>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">البريد الإلكتروني</label>
+          <input id="st-store-email" type="text" dir="ltr" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-xs focus:outline-none focus:border-primary" placeholder="info@example.com"/>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">العملة (الافتراضي لمصر: ج.م)</label>
+          <input id="st-currency" type="text" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-xs font-bold focus:outline-none focus:border-primary" placeholder="ج.م"/>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">رقم السجل التجاري</label>
+          <input id="st-store-cr" type="text" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-xs focus:outline-none focus:border-primary"/>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">رقم التسجيل الضريبي</label>
+          <input id="st-store-vat" type="text" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-xs focus:outline-none focus:border-primary"/>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">سطر الشكر في الإيصال</label>
+          <input id="st-thanks" type="text" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-xs focus:outline-none focus:border-primary" placeholder="شكراً لزيارتكم"/>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">سطر التذييل (سياسة الاستبدال والاسترجاع)</label>
+          <input id="st-footer" type="text" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-xs focus:outline-none focus:border-primary" placeholder="يرجى الاحتفاظ بالإيصال للاستبدال خلال 14 يوماً"/>
+        </div>
+      </div>
+
+      <!-- الضريبة -->
+      <div class="p-4 rounded-xl bg-blue-50/70 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <input id="st-tax-enabled" type="checkbox" class="w-5 h-5 accent-blue-600 cursor-pointer"/>
+          <div>
+            <p class="font-bold text-xs md:text-sm text-slate-900 dark:text-white">تفعيل احتساب الضريبة في الفواتير ونقاط البيع</p>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400">قم بإلغاء التفعيل إذا كان المحل يعمل بدون ضريبة قيمة مضافة (تصبح الضريبة 0% تلقائياً)</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-xs font-bold text-slate-700 dark:text-slate-300">نسبة الضريبة (%):</label>
+          <input id="st-tax-rate" type="number" min="0" max="100" step="1" class="w-20 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-xs font-num font-bold text-center"/>
+        </div>
+      </div>
+
+      <!-- خيارات عرض الإيصال السريعة -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+        <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer"><input id="st-c-logo" type="checkbox" class="w-4 h-4 accent-blue-600"/> إظهار الشعار</label>
+        <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer"><input id="st-c-barcode" type="checkbox" class="w-4 h-4 accent-blue-600"/> إظهار الباركود</label>
+        <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer"><input id="st-c-tax" type="checkbox" class="w-4 h-4 accent-blue-600"/> إظهار الضريبة بالإيصال</label>
+        <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer"><input id="st-c-pays" type="checkbox" class="w-4 h-4 accent-blue-600"/> إظهار المدفوعات</label>
+      </div>
+
+      <!-- شعار المحل الموحد -->
+      <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="w-14 h-14 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0">
+            <img id="st-logo-thumb" src="" alt="الشعار" class="hidden w-full h-full object-contain"/>
+            <span id="st-logo-icon" class="material-icons-round text-2xl text-primary">memory</span>
+          </div>
+          <div>
+            <h4 class="text-xs font-bold text-slate-900 dark:text-white">شعار المحل الموحد (لشاشة الدخول والإيصالات والفواتير)</h4>
+            <p class="text-[11px] text-slate-500">يُضغط تلقائياً ليظهر في شاشة الدخول وإيصال الكاشير وفاتورة الـ A4</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="px-3.5 py-2 rounded-xl bg-primary text-white text-xs font-bold cursor-pointer hover:bg-primary-dark transition-colors flex items-center gap-1">
+            <span class="material-icons-round text-sm">upload</span>
+            <span>رفع شعار</span>
+            <input id="st-logo-file" type="file" accept="image/*" class="hidden"/>
+          </label>
+          <button id="st-logo-clear" type="button" class="px-3 py-2 rounded-xl border border-red-200 text-red-600 text-xs font-bold hover:bg-red-50">حذف الشعار</button>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap gap-3 pt-2">
+        <button id="btn-save-store-settings" type="button" class="flex-1 py-3 px-5 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold text-sm shadow-lg shadow-primary/20 flex items-center justify-center gap-2">
+          <span class="material-icons-round text-lg">save</span>
+          <span>حفظ إعدادات المتجر والضريبة والإيصال</span>
+        </button>
+        <button id="btn-reset-egypt-defaults" type="button" class="px-5 py-3 rounded-xl border border-slate-300 dark:border-slate-600 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-1.5">
+          <span class="material-icons-round text-base">restart_alt</span>
+          <span>استعادة افتراضي مصر</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- العمود الأيسر: إدارة طرق وخطط الدفع المخصصة -->
+    <div class="xl:col-span-5 bg-white dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-slate-800 p-5 md:p-6 shadow-sm flex flex-col gap-4">
+      <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
+        <h2 class="text-base md:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="material-icons-round text-emerald-600">payments</span>
+          <span>طرق وأنظمة الدفع وخطط التقسيط</span>
+        </h2>
+        <p class="text-xs text-slate-500 mt-0.5">أضف طرق الدفع المتاحة في المحل (نقدي، فودافون كاش، إنستا باي، دفعتين، 3 دفعات...) لتظهر في الفواتير</p>
+      </div>
+
+      <div class="flex gap-2">
+        <input id="st-new-pm-name" type="text" class="flex-1 px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs" placeholder="اسم طريقة أو خطة الدفع (مثال: إنستا باي أو 3 دفعات)..."/>
+        <select id="st-new-pm-type" class="px-2.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold">
+          <option value="cash">خزينة نقدية</option>
+          <option value="wallet">محفظة / بنكي</option>
+        </select>
+        <button type="button" id="btn-st-add-pm" class="px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-dark">إضافة</button>
+      </div>
+
+      <div id="st-pm-list" class="flex flex-col gap-2 max-h-80 overflow-y-auto"></div>
+    </div>
+  </section>
+
+  <!-- ==================== التبويب 2: إعدادات طريقة تسجيل الدخول والفتح الافتراضي ==================== -->
+  <section id="spane-login" class="hidden grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
+    <div class="xl:col-span-7 bg-white dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-slate-800 p-5 md:p-6 shadow-sm flex flex-col gap-5">
+      <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
+        <h2 class="text-base md:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="material-icons-round text-primary">lock_person</span>
+          <span>طريقة تسجيل الدخول إلى النظام</span>
+        </h2>
+        <p class="text-xs text-slate-500 mt-0.5">اختر كيف يسجل المديرون والموظفون دخولهم في شاشة البداية (يتعرف النظام تلقائياً على صلاحيات المستخدم من رمزه السري)</p>
+      </div>
+
+      <div class="grid grid-cols-1 gap-3.5" id="login-modes-cards">
+        <label data-lmode-card="pin_only" class="login-mode-card selected cursor-pointer p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700 flex items-start gap-3.5 transition-all">
+          <input type="radio" name="cfg-login-mode" value="pin_only" checked class="mt-1 w-4 h-4 accent-blue-600"/>
+          <div class="flex-1">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-sm text-slate-900 dark:text-white">1. كتابة الرمز السري فقط (التعرف الذكي التلقائي — مُوصى به)</span>
+              <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">الافتراضي</span>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">لا يظهر اختيار مستخدم ولا زر مدير/موظف؛ يكتب المستخدم رمزه السري فقط فيتعرف النظام تلقائياً على اسمه وهل هو مدير أم كاشير موظف ويفتح له صلاحياته.</p>
+          </div>
+        </label>
+
+        <label data-lmode-card="select_user_pin" class="login-mode-card cursor-pointer p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700 flex items-start gap-3.5 transition-all">
+          <input type="radio" name="cfg-login-mode" value="select_user_pin" class="mt-1 w-4 h-4 accent-blue-600"/>
+          <div class="flex-1">
+            <span class="font-bold text-sm text-slate-900 dark:text-white">2. اختيار اسم الموظف ثم كتابة الرمز السري</span>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">تظهر أزرار بأسماء المستخدمين في شاشة الدخول (دون كشف من هو المدير)، يختار المستخدم اسمه ثم يدخل رمزه السري.</p>
+          </div>
+        </label>
+
+        <label data-lmode-card="username_password" class="login-mode-card cursor-pointer p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700 flex items-start gap-3.5 transition-all">
+          <input type="radio" name="cfg-login-mode" value="username_password" class="mt-1 w-4 h-4 accent-blue-600"/>
+          <div class="flex-1">
+            <span class="font-bold text-sm text-slate-900 dark:text-white">3. كتابة اسم المستخدم وكلمة السر / الرمز السري</span>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">تظهر حقول نصية لكتابة اسم المستخدم وكلمة المرور يدوياً بدون إظهار قائمة الموظفين.</p>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <div class="xl:col-span-5 bg-white dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-slate-800 p-5 md:p-6 shadow-sm flex flex-col gap-4">
+      <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
+        <h2 class="text-base md:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="material-icons-round text-primary">rocket_launch</span>
+          <span>الصفحة الافتراضية عند تسجيل الدخول (افتراضي الأدمن)</span>
+        </h2>
+        <p class="text-xs text-slate-500 mt-0.5">تُفتح هذه الصفحة تلقائياً بعد تسجيل الدخول لأي مستخدم لم يحدد صفحة بداية خاصة به في صفحته الشخصية</p>
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">الصفحة الافتراضية التي تفتح أولاً عند الدخول</label>
+        <select id="cfg-default-start-page" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-xs font-bold">
+          <option value="pos">نقاط البيع السريعة (الكاشير)</option>
+          <option value="sales_quotes">قسم المبيعات وعروض الأسعار وفواتير A4</option>
+          <option value="inventory">إدارة المخزون والمنتجات</option>
+          <option value="customers">العملاء والمديونيات وكشف الحساب</option>
+          <option value="repair">مركز الصيانة وتذاكر الإصلاح</option>
+          <option value="history">سجل المبيعات والمرتجعات</option>
+          <option value="buy_used">شراء الأجهزة المستعملة</option>
+          <option value="reports">التقارير والتحليلات المالية</option>
+          <option value="staff">إدارة الموظفين والصلاحيات</option>
+          <option value="settings">صفحة إعدادات النظام</option>
+          <option value="desktop">سطح المكتب فقط (بدون فتح أي نافذة تلقائياً)</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">طريقة عرض الصفحة عند الدخول</label>
+        <select id="cfg-default-start-mode" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-xs font-bold">
+          <option value="window">فتح كنافذة عائمة داخل سطح المكتب (TechZone OS)</option>
+          <option value="maximized">فتح كنافذة مكبرة لملء الشاشة داخل سطح المكتب</option>
+          <option value="direct">الانتقال المباشر للصفحة بملء الشاشة</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">الوضع اللوني الافتراضي للنظام (نهاري / ليلي)</label>
+        <select id="cfg-default-theme" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-xs font-bold">
+          <option value="light">الوضع النهاري (Light Mode)</option>
+          <option value="dark">الوضع الليلي (Dark Mode)</option>
+        </select>
+      </div>
+
+      <button id="btn-save-login-settings" type="button" class="w-full py-3 px-4 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold text-sm shadow-lg shadow-primary/20 flex items-center justify-center gap-2 mt-2">
+        <span class="material-icons-round text-lg">save</span>
+        <span>حفظ إعدادات تسجيل الدخول والفتح الافتراضي</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ==================== التبويب 3: تصميم الفواتير والقوالب (يشمل جميع الفواتير في البرنامج) ==================== -->
+  <section id="spane-invoices" class="hidden grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
+    <div class="xl:col-span-5 bg-white dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm flex flex-col gap-4">
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+        <div>
+          <h2 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+            <span class="material-icons-round text-primary">design_services</span>
+            <span>استوديو تصميم جميع فواتير وإيصالات البرنامج</span>
+          </h2>
+          <p class="text-xs text-slate-500">تخصيص شامل لفواتير المبيعات (A4)، وعروض الأسعار، وإيصال الكاشير الحراري (80mm/58mm)، وإيصالات الصيانة وسندات القبض وشراء المستعمل</p>
+        </div>
+        <button type="button" id="btn-sync-store-to-tpl" class="px-3 py-1.5 rounded-xl bg-emerald-600/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-600 hover:text-white text-[11px] font-bold transition-colors flex items-center gap-1" title="نسخ اسم المحل والعنوان والهاتف والشعار من بيانات المتجر إلى جميع قوالب الفواتير">
+          <span class="material-icons-round text-sm">sync</span>
+          <span>مزامنة بيانات وشعار المحل على كل الفواتير</span>
+        </button>
+      </div>
+
+      <!-- تبديل نوع الفاتورة المراد تصميمها ومعاينتها -->
+      <div class="grid grid-cols-3 gap-1.5 p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800">
+        <button type="button" data-inv-sub="a4" class="inv-subtab-btn active py-2 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1">
+          <span class="material-icons-round text-sm">description</span>
+          <span>فاتورة A4 وعرض السعر</span>
+        </button>
+        <button type="button" data-inv-sub="pos" class="inv-subtab-btn py-2 px-2 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center justify-center gap-1">
+          <span class="material-icons-round text-sm">receipt</span>
+          <span>إيصال الكاشير الحراري</span>
+        </button>
+        <button type="button" data-inv-sub="other" class="inv-subtab-btn py-2 px-2 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center justify-center gap-1">
+          <span class="material-icons-round text-sm">build_circle</span>
+          <span>الصيانة والقبض والمستعمل</span>
+        </button>
+      </div>
+
+      <!-- أ) إعدادات فاتورة المبيعات وعرض السعر A4 -->
+      <div id="inv-form-a4" class="flex flex-col gap-3.5">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <label class="cursor-pointer p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center gap-2 text-xs font-bold">
+            <input type="radio" name="si-a4-theme" value="taqnia_wave" checked class="accent-blue-600"/>
+            <span>النمط الموجي (تقنية)</span>
+          </label>
+          <label class="cursor-pointer p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center gap-2 text-xs font-bold">
+            <input type="radio" name="si-a4-theme" value="modern_clean" class="accent-blue-600"/>
+            <span>العصري المسطح</span>
+          </label>
+          <label class="cursor-pointer p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center gap-2 text-xs font-bold">
+            <input type="radio" name="si-a4-theme" value="classic_formal" class="accent-blue-600"/>
+            <span>الكلاسيكي المؤطر</span>
+          </label>
+        </div>
+
+        <div class="p-3 rounded-xl bg-blue-50/70 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-800 dark:text-white mb-1">بادئة تسلسل الفواتير (Prefix)</label>
+            <input id="si-a4-inv-prefix" type="text" class="w-full px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-xs font-mono font-bold" placeholder="N00 أو الفات/2026/"/>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-800 dark:text-white mb-1">بادئة تسلسل عروض الأسعار</label>
+            <input id="si-a4-quote-prefix" type="text" class="w-full px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-xs font-mono font-bold" placeholder="Q00 أو ع.س/2026/"/>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">مسمى عنوان الفاتورة</label>
+            <input id="si-a4-inv-label" type="text" class="w-full px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-xs" placeholder="الفاتورة"/>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">مسمى عنوان عرض السعر</label>
+            <input id="si-a4-quote-label" type="text" class="w-full px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-xs" placeholder="عرض سعر"/>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">اللون الرئيسي للجدول والعنوان</label>
+            <div class="flex items-center gap-2">
+              <input id="si-a4-primary" type="color" value="#0e6ba8" class="w-9 h-9 rounded-lg cursor-pointer border-0 bg-transparent"/>
+              <input id="si-a4-primary-txt" type="text" value="#0e6ba8" dir="ltr" class="flex-1 px-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono"/>
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">اللون الثانوي للإطار والموجة</label>
+            <div class="flex items-center gap-2">
+              <input id="si-a4-accent" type="color" value="#9e2a5b" class="w-9 h-9 rounded-lg cursor-pointer border-0 bg-transparent"/>
+              <input id="si-a4-accent-txt" type="text" value="#9e2a5b" dir="ltr" class="flex-1 px-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono"/>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">اسم الشركة في الترويسة</label>
+            <input id="si-a4-company" type="text" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs"/>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">هاتف الشركة في الفاتورة</label>
+            <input id="si-a4-phone" type="text" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-num"/>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">البريد الإلكتروني بالتذييل</label>
+            <input id="si-a4-email" type="text" dir="ltr" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs"/>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">رمز العملة (LE / ج.م)</label>
+            <input id="si-a4-currency" type="text" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs"/>
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">العنوان التفصيلي في الترويسة</label>
+            <textarea id="si-a4-address" rows="2" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs"></textarea>
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">شروط الضمان أو ملاحظات ثابتة أسفل الفاتورة</label>
+            <textarea id="si-a4-terms" rows="2" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs"></textarea>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="si-a4-waves" type="checkbox" checked/> إظهار الموجات الملونة</label>
+          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="si-a4-show-logo" type="checkbox" checked/> إظهار الشعار</label>
+          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="si-a4-infobox" type="checkbox" checked/> شريط المرجع والتواريخ</label>
+          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="si-a4-sku" type="checkbox" checked/> إظهار الكود [SKU]</label>
+          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="si-a4-taxcol" type="checkbox" checked/> إظهار عمود الضرائب</label>
+          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="si-a4-paycomm" type="checkbox" checked/> مرجع السداد</label>
+          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="si-a4-paydet" type="checkbox" checked/> تفاصيل الدفع والمستحق</label>
+          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="si-a4-footer" type="checkbox" checked/> التذييل ورقم الصفحة</label>
+        </div>
+      </div>
+
+      <!-- ب) إعدادات إيصال الكاشير الحراري (POS 80mm / 58mm) -->
+      <div id="inv-form-pos" class="hidden flex-col gap-3.5">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-bold mb-1">عرض ورق طابعة الكاشير</label>
+            <select id="si-pos-width" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold">
+              <option value="80mm">80mm (طابعة كاشير قياسية)</option>
+              <option value="58mm">58mm (طابعة كاشير صغيرة)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold mb-1">حجم الخط في الإيصال</label>
+            <select id="si-pos-font" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold">
+              <option value="small">صغير مضغوط</option>
+              <option value="normal">متوسط قياسي</option>
+              <option value="large">كبير وواضح</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold mb-1">نمط الخطوط الفاصلة</label>
+            <select id="si-pos-border" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold">
+              <option value="dashed">خط متقطع (- - -)</option>
+              <option value="solid">خط متصل (───)</option>
+              <option value="double">خط مزدوج (═══)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold mb-1">رسالة ترحيب أعلى الإيصال</label>
+            <input id="si-pos-headnote" type="text" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs" placeholder="أهلاً بكم في متجرنا"/>
+          </div>
+          <div>
+            <label class="block text-xs font-bold mb-1">سطر الشكر أسفل الإيصال</label>
+            <input id="si-pos-thanks" type="text" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs"/>
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-xs font-bold mb-1">سطر التذييل وسياسة الاستبدال والاسترجاع</label>
+            <input id="si-pos-footer" type="text" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs"/>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="si-pos-logo" type="checkbox" checked/> إظهار الشعار</label>
+          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="si-pos-addr" type="checkbox" checked/> إظهار العنوان والهاتف</label>
+          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="si-pos-taxcr" type="checkbox" checked/> إظهار السجل والضريبي</label>
+          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="si-pos-cust" type="checkbox" checked/> إظهار اسم ورقم العميل</label>
+          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="si-pos-cashier" type="checkbox" checked/> إظهار اسم الكاشير</label>
+          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="si-pos-sku" type="checkbox"/> إظهار كود الصنف [SKU]</label>
+          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="si-pos-unit" type="checkbox" checked/> إظهار سعر الوحدة</label>
+          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="si-pos-disc" type="checkbox" checked/> إظهار سطر الخصم</label>
+          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="si-pos-tax" type="checkbox" checked/> إظهار الضريبة</label>
+          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="si-pos-pays" type="checkbox" checked/> إظهار تفاصيل المدفوعات</label>
+          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="si-pos-barcode" type="checkbox" checked/> إظهار الباركود السفلي</label>
+        </div>
+      </div>
+
+      <!-- ج) إعدادات إيصالات الصيانة وسندات القبض وشراء المستعمل -->
+      <div id="inv-form-other" class="hidden flex-col gap-3.5">
+        <div class="p-3 rounded-xl bg-blue-50/70 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-xs text-slate-700 dark:text-slate-200">
+          تستخدم جميع إيصالات الصيانة وسندات قبض العملاء وإيصالات شراء المستعمل نفس ترويسة وشعار وبيانات المتجر مع تخصيص العناوين والشروط أدناه:
+        </div>
+        <div>
+          <label class="block text-xs font-bold mb-1">عنوان إيصال استلام/تسليم الصيانة</label>
+          <input id="si-other-repair-title" type="text" class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs" placeholder="إيصال استلام وصيانة جهاز"/>
+        </div>
+        <div>
+          <label class="block text-xs font-bold mb-1">شروط وملاحظات إيصال الصيانة</label>
+          <textarea id="si-other-repair-terms" rows="2" class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs"></textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-bold mb-1">عنوان سند القبض من العميل</label>
+          <input id="si-other-voucher-title" type="text" class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs" placeholder="سند قبض نقدية / محفظة"/>
+        </div>
+        <div>
+          <label class="block text-xs font-bold mb-1">عنوان إيصال شراء جهاز مستعمل</label>
+          <input id="si-other-used-title" type="text" class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs" placeholder="إيصال شراء جهاز مستعمل"/>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+        <button type="button" id="btn-save-all-invoices" class="flex-1 py-3 px-4 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold text-xs md:text-sm shadow-lg shadow-primary/20 flex items-center justify-center gap-1.5">
+          <span class="material-icons-round text-base">save</span>
+          <span>حفظ تصميم جميع الفواتير والإيصالات</span>
+        </button>
+        <button type="button" id="btn-reset-all-invoices" class="py-3 px-4 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800">
+          استعادة الافتراضي
+        </button>
+      </div>
+    </div>
+
+    <!-- معاينة حية لجميع أنواع الفواتير -->
+    <div class="xl:col-span-7 bg-slate-100 dark:bg-slate-900/70 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 flex flex-col gap-3">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1.5" id="si-preview-label">
+          <span class="material-icons-round text-primary text-base">visibility</span>
+          <span>معاينة حية لتصميم الفاتورة</span>
+        </span>
+      </div>
+      <div id="si-preview-stage" class="overflow-x-auto flex justify-center p-2"></div>
+    </div>
+  </section>
+</main>
+
+<script src="app.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+
+let ACTIVE_STAB = 'store';
+let INV_SUBTAB = 'a4';
+let A4_TPL = {};
+let POS_TPL = {};
+let PAY_METHODS = [];
+let PENDING_LOGO = null;
+
+function switchSettingsTab(tabId) {
+  ACTIVE_STAB = tabId;
+  ['store', 'login', 'invoices'].forEach((id) => {
+    const pane = $('spane-' + id);
+    if (pane) pane.classList.toggle('hidden', id !== tabId);
+  });
+  document.querySelectorAll('[data-stab]').forEach((b) => {
+    b.classList.toggle('active', b.dataset.stab === tabId);
+  });
+  if (tabId === 'invoices') renderInvoiceStudioPreview();
+}
+
+document.querySelectorAll('[data-stab]').forEach((btn) => {
+  btn.addEventListener('click', () => switchSettingsTab(btn.dataset.stab));
+});
+
+function compressLogoToDataUrl(file, maxW = 280, maxH = 200, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onerror = () => reject(new Error('تعذر قراءة الصورة'));
+    r.onload = () => {
+      const im = new Image();
+      im.onerror = () => reject(new Error('ملف الصورة غير صالح'));
+      im.onload = () => {
+        const ratio = Math.min(maxW / (im.width || 1), maxH / (im.height || 1), 1);
+        const c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(im.width * ratio));
+        c.height = Math.max(1, Math.round(im.height * ratio));
+        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+        resolve(c.toDataURL('image/jpeg', quality));
+      };
+      im.src = r.result;
+    };
+    r.readAsDataURL(file);
+  });
+}
+
+/* ==================== 1) تبويب إعدادات المتجر والضريبة والإيصال والدفع ==================== */
+function fillStoreTab() {
+  const show = (k) => (SETTINGS[k] == null || SETTINGS[k] === '') ? true : SETTINGS[k] !== '0';
+  $('st-store-name').value = SETTINGS.store_name || 'تك زون للإلكترونيات';
+  $('st-store-addr').value = SETTINGS.store_address || '';
+  $('st-store-phone').value = SETTINGS.store_phone || '';
+  $('st-store-email').value = SETTINGS.store_email || '';
+  $('st-currency').value = SETTINGS.currency || 'ج.م';
+  $('st-store-cr').value = SETTINGS.store_cr || '';
+  $('st-store-vat').value = SETTINGS.store_vat || '';
+  $('st-thanks').value = SETTINGS.receipt_thanks || POS_TPL.thanks_text || 'شكراً لزيارتكم';
+  $('st-footer').value = SETTINGS.receipt_footer || POS_TPL.footer_text || 'يرجى الاحتفاظ بالإيصال للاستبدال خلال 14 يوماً';
+  $('st-tax-enabled').checked = show('tax_enabled');
+  $('st-tax-rate').value = SETTINGS.tax_rate != null ? SETTINGS.tax_rate : '14';
+  $('st-c-logo').checked = show('receipt_show_logo');
+  $('st-c-barcode').checked = show('receipt_show_barcode');
+  $('st-c-tax').checked = show('receipt_show_tax');
+  $('st-c-pays').checked = show('receipt_show_payments');
+  drawLogoPreview(PENDING_LOGO !== null ? PENDING_LOGO : (SETTINGS.receipt_logo || ''));
+  renderPayMethodsList();
+}
+
+function drawLogoPreview(src) {
+  const img = $('st-logo-thumb');
+  const ico = $('st-logo-icon');
+  if (src && src.startsWith('data:image/')) {
+    img.src = src;
+    img.classList.remove('hidden');
+    ico.classList.add('hidden');
+  } else {
+    img.src = '';
+    img.classList.add('hidden');
+    ico.classList.remove('hidden');
+  }
+}
+
+$('st-logo-file').addEventListener('change', async (e) => {
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  try {
+    PENDING_LOGO = await compressLogoToDataUrl(f);
+    drawLogoPreview(PENDING_LOGO);
+    A4_TPL.company_logo = PENDING_LOGO;
+    toast('تم تجهيز الشعار — اضغط حفظ لتثبيته في النظام والفواتير');
+  } catch (err) {
+    toast(err.message || 'تعذر قراءة الشعار', 'error');
+  }
+  e.target.value = '';
+});
+
+$('st-logo-clear').addEventListener('click', () => {
+  PENDING_LOGO = '';
+  drawLogoPreview('');
+});
+
+function broadcastStoreNameEverywhere(newName) {
+  const clean = (newName || 'تك زون للإلكترونيات').trim() || 'تك زون للإلكترونيات';
+  syncTitle('إعدادات النظام');
+  const sb = document.getElementById('tz-store');
+  if (sb) sb.textContent = clean;
+  try {
+    if (window.top && window.top.document) {
+      const osName = window.top.document.getElementById('os-store-name');
+      if (osName) osName.textContent = clean;
+      const wBrand = window.top.document.getElementById('w-os-brand');
+      if (wBrand) wBrand.textContent = clean;
+    }
+  } catch (e) {}
+}
+
+$('btn-save-store-settings').addEventListener('click', async () => {
+  const payload = {
+    store_name: $('st-store-name').value.trim() || 'تك زون للإلكترونيات',
+    store_address: $('st-store-addr').value.trim(),
+    store_phone: $('st-store-phone').value.trim(),
+    store_email: $('st-store-email').value.trim(),
+    currency: $('st-currency').value.trim() || 'ج.م',
+    store_cr: $('st-store-cr').value.trim(),
+    store_vat: $('st-store-vat').value.trim(),
+    receipt_thanks: $('st-thanks').value.trim() || 'شكراً لزيارتكم',
+    receipt_footer: $('st-footer').value.trim() || 'يرجى الاحتفاظ بالإيصال للاستبدال خلال 14 يوماً',
+    tax_enabled: $('st-tax-enabled').checked ? '1' : '0',
+    tax_rate: $('st-tax-rate').value || '14',
+    receipt_show_logo: $('st-c-logo').checked ? '1' : '0',
+    receipt_show_barcode: $('st-c-barcode').checked ? '1' : '0',
+    receipt_show_tax: $('st-c-tax').checked ? '1' : '0',
+    receipt_show_payments: $('st-c-pays').checked ? '1' : '0',
+  };
+  if (PENDING_LOGO !== null) {
+    payload.receipt_logo = PENDING_LOGO;
+  }
+  const st = await guard(() => api('settings_save', payload));
+  if (!st) return;
+  SETTINGS = st;
+  CURRENCY = SETTINGS.currency || 'ج.م';
+
+  A4_TPL.company_title = SETTINGS.store_name || A4_TPL.company_title;
+  if (SETTINGS.store_address) A4_TPL.company_address = SETTINGS.store_address;
+  if (SETTINGS.store_phone) A4_TPL.company_phone = SETTINGS.store_phone;
+  if (SETTINGS.store_email) A4_TPL.company_email = SETTINGS.store_email;
+  if (PENDING_LOGO !== null) A4_TPL.company_logo = PENDING_LOGO;
+
+  POS_TPL.thanks_text = payload.receipt_thanks;
+  POS_TPL.footer_text = payload.receipt_footer;
+  POS_TPL.show_logo = $('st-c-logo').checked;
+  POS_TPL.show_barcode = $('st-c-barcode').checked;
+  POS_TPL.show_tax = $('st-c-tax').checked;
+  POS_TPL.show_payments = $('st-c-pays').checked;
+
+  await guard(() => api('templates_save', { a4: A4_TPL, pos: POS_TPL }));
+  PENDING_LOGO = null;
+  fillInvoicesTab();
+  broadcastStoreNameEverywhere(SETTINGS.store_name);
+  toast('تم حفظ إعدادات المتجر والضريبة والإيصال وتعميم الاسم والشعار في النظام بالكامل');
+});
+
+$('btn-reset-egypt-defaults').addEventListener('click', () => {
+  $('st-store-name').value = 'تك زون للإلكترونيات';
+  $('st-store-addr').value = 'شارع جامعة الدول العربية، الجيزة، مصر';
+  $('st-store-phone').value = '01000000000';
+  $('st-store-email').value = '';
+  $('st-store-cr').value = '';
+  $('st-store-vat').value = '';
+  $('st-thanks').value = 'شكراً لزيارتكم';
+  $('st-footer').value = 'يرجى الاحتفاظ بالإيصال للاستبدال خلال 14 يوماً';
+  $('st-currency').value = 'ج.م';
+  $('st-tax-rate').value = '14';
+  $('st-tax-enabled').checked = false;
+  $('st-c-logo').checked = $('st-c-barcode').checked = $('st-c-tax').checked = $('st-c-pays').checked = true;
+  toast('أُعيدت الحقول لافتراضي مصر — اضغط حفظ لتثبيتها', 'warn');
+});
+
+function renderPayMethodsList() {
+  const box = $('st-pm-list');
+  box.innerHTML = PAY_METHODS.map((m, idx) => `
+    <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
+      <div class="flex items-center gap-2">
+        <span class="material-icons-round text-primary text-base">${m.base_type === 'wallet' ? 'account_balance_wallet' : 'payments'}</span>
+        <span class="font-bold">${esc(m.name)}</span>
+        <span class="px-2 py-0.5 rounded-full text-[10px] ${m.base_type === 'wallet' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'}">${m.base_type === 'wallet' ? 'محفظة / بنكي' : 'نقدي'}</span>
+      </div>
+      ${PAY_METHODS.length > 1 ? `<button type="button" data-del-pm="${idx}" class="text-red-500 hover:text-red-700 font-bold px-2">حذف</button>` : ''}
+    </div>
+  `).join('');
+  box.querySelectorAll('[data-del-pm]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      PAY_METHODS.splice(+btn.dataset.delPm, 1);
+      const saved = await guard(() => api('payment_methods_save', { methods: PAY_METHODS }));
+      if (saved) { PAY_METHODS = saved; renderPayMethodsList(); toast('تم تحديث طرق الدفع'); }
+    });
+  });
+}
+
+$('btn-st-add-pm').addEventListener('click', async () => {
+  const nm = $('st-new-pm-name').value.trim();
+  const bt = $('st-new-pm-type').value;
+  if (!nm) { toast('اكتب اسم طريقة الدفع أولاً', 'warn'); return; }
+  PAY_METHODS.push({ id: 'pm_' + Date.now(), name: nm, base_type: bt });
+  const saved = await guard(() => api('payment_methods_save', { methods: PAY_METHODS }));
+  if (saved) {
+    PAY_METHODS = saved;
+    $('st-new-pm-name').value = '';
+    renderPayMethodsList();
+    toast(`تمت إضافة طريقة الدفع «${nm}»`);
+  }
+});
+
+/* ==================== 2) تبويب إعدادات تسجيل الدخول والفتح الافتراضي ==================== */
+function fillLoginTab() {
+  const mode = SETTINGS.login_mode || 'pin_only';
+  const radio = document.querySelector(`input[name="cfg-login-mode"][value="${mode}"]`);
+  if (radio) radio.checked = true;
+  syncLoginModeCardsHighlight();
+  $('cfg-default-start-page').value = SETTINGS.default_start_page || 'pos';
+  $('cfg-default-start-mode').value = SETTINGS.default_start_mode || 'window';
+  $('cfg-default-theme').value = SETTINGS.os_default_theme || 'dark';
+}
+
+function syncLoginModeCardsHighlight() {
+  const checked = document.querySelector('input[name="cfg-login-mode"]:checked');
+  const val = checked ? checked.value : 'pin_only';
+  document.querySelectorAll('[data-lmode-card]').forEach((c) => {
+    c.classList.toggle('selected', c.dataset.lmodeCard === val);
+  });
+}
+
+document.querySelectorAll('input[name="cfg-login-mode"]').forEach((r) => {
+  r.addEventListener('change', syncLoginModeCardsHighlight);
+});
+
+$('btn-save-login-settings').addEventListener('click', async () => {
+  const checked = document.querySelector('input[name="cfg-login-mode"]:checked');
+  const loginMode = checked ? checked.value : 'pin_only';
+  const payload = {
+    login_mode: loginMode,
+    default_start_page: $('cfg-default-start-page').value || 'pos',
+    default_start_mode: $('cfg-default-start-mode').value || 'window',
+    os_default_theme: $('cfg-default-theme').value || 'dark',
+  };
+  const st = await guard(() => api('settings_save', payload));
+  if (st) {
+    SETTINGS = st;
+    toast('تم حفظ طريقة تسجيل الدخول والصفحة الافتراضية بنجاح');
+  }
+});
+
+/* ==================== 3) تبويب تصميم جميع الفواتير والإيصالات ==================== */
+document.querySelectorAll('[data-inv-sub]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    INV_SUBTAB = btn.dataset.invSub;
+    document.querySelectorAll('[data-inv-sub]').forEach((b) => {
+      b.classList.toggle('active', b === btn);
+      if (b !== btn) b.classList.add('text-slate-600', 'dark:text-slate-300');
+      else b.classList.remove('text-slate-600', 'dark:text-slate-300');
+    });
+    $('inv-form-a4').classList.toggle('hidden', INV_SUBTAB !== 'a4');
+    $('inv-form-pos').classList.toggle('hidden', INV_SUBTAB !== 'pos');
+    $('inv-form-pos').classList.toggle('flex', INV_SUBTAB === 'pos');
+    $('inv-form-other').classList.toggle('hidden', INV_SUBTAB !== 'other');
+    $('inv-form-other').classList.toggle('flex', INV_SUBTAB === 'other');
+    renderInvoiceStudioPreview();
+  });
+});
+
+function fillInvoicesTab() {
+  const thRadio = document.querySelector(`input[name="si-a4-theme"][value="${A4_TPL.theme || 'taqnia_wave'}"]`);
+  if (thRadio) thRadio.checked = true;
+  $('si-a4-inv-prefix').value = A4_TPL.invoice_prefix || 'الفات/2026/';
+  $('si-a4-quote-prefix').value = A4_TPL.quote_prefix || 'ع.س/2026/';
+  $('si-a4-inv-label').value = A4_TPL.invoice_title_label || 'الفاتورة';
+  $('si-a4-quote-label').value = A4_TPL.quote_title_label || 'عرض سعر';
+  $('si-a4-primary').value = A4_TPL.primary_color || '#0e6ba8';
+  $('si-a4-primary-txt').value = A4_TPL.primary_color || '#0e6ba8';
+  $('si-a4-accent').value = A4_TPL.accent_color || '#9e2a5b';
+  $('si-a4-accent-txt').value = A4_TPL.accent_color || '#9e2a5b';
+  $('si-a4-company').value = A4_TPL.company_title || SETTINGS.store_name || 'تك زون للإلكترونيات';
+  $('si-a4-phone').value = A4_TPL.company_phone || SETTINGS.store_phone || '';
+  $('si-a4-email').value = A4_TPL.company_email || SETTINGS.store_email || '';
+  $('si-a4-currency').value = A4_TPL.currency_symbol || SETTINGS.currency || 'LE';
+  $('si-a4-address').value = A4_TPL.company_address || SETTINGS.store_address || '';
+  $('si-a4-terms').value = A4_TPL.custom_terms || '';
+  $('si-a4-waves').checked = A4_TPL.show_waves !== false;
+  $('si-a4-show-logo').checked = A4_TPL.show_logo !== false;
+  $('si-a4-infobox').checked = A4_TPL.show_info_box !== false;
+  $('si-a4-sku').checked = A4_TPL.show_sku_brackets !== false;
+  $('si-a4-taxcol').checked = A4_TPL.show_tax_col !== false;
+  $('si-a4-paycomm').checked = A4_TPL.show_payment_comm !== false;
+  $('si-a4-paydet').checked = A4_TPL.show_payments_detail !== false;
+  $('si-a4-footer').checked = A4_TPL.show_footer_page !== false;
+
+  $('si-pos-width').value = POS_TPL.paper_width || '80mm';
+  $('si-pos-font').value = POS_TPL.font_scale || 'normal';
+  $('si-pos-border').value = POS_TPL.border_style || 'dashed';
+  $('si-pos-headnote').value = POS_TPL.header_note || '';
+  $('si-pos-thanks').value = POS_TPL.thanks_text || SETTINGS.receipt_thanks || 'شكراً لزيارتكم';
+  $('si-pos-footer').value = POS_TPL.footer_text || SETTINGS.receipt_footer || 'يرجى الاحتفاظ بالإيصال للاستبدال خلال 14 يوماً';
+  $('si-pos-logo').checked = POS_TPL.show_logo !== false;
+  $('si-pos-addr').checked = POS_TPL.show_store_address !== false;
+  $('si-pos-taxcr').checked = POS_TPL.show_store_tax_cr !== false;
+  $('si-pos-cust').checked = POS_TPL.show_customer !== false;
+  $('si-pos-cashier').checked = POS_TPL.show_cashier !== false;
+  $('si-pos-sku').checked = !!POS_TPL.show_sku;
+  $('si-pos-unit').checked = POS_TPL.show_unit_price !== false;
+  $('si-pos-disc').checked = POS_TPL.show_discount !== false;
+  $('si-pos-tax').checked = POS_TPL.show_tax !== false;
+  $('si-pos-pays').checked = POS_TPL.show_payments !== false;
+  $('si-pos-barcode').checked = POS_TPL.show_barcode !== false;
+
+  $('si-other-repair-title').value = POS_TPL.repair_receipt_title || 'إيصال استلام وصيانة جهاز';
+  $('si-other-repair-terms').value = POS_TPL.repair_terms || 'المحل غير مسؤول عن الأجهزة التي لا يُسأل عنها خلال 30 يوماً من تاريخ الإبلاغ.';
+  $('si-other-voucher-title').value = POS_TPL.voucher_receipt_title || 'سند قبض نقدية / محفظة';
+  $('si-other-used-title').value = POS_TPL.used_receipt_title || 'إيصال شراء جهاز مستعمل';
+}
+
+function readInvoicesFormIntoState() {
+  const th = document.querySelector('input[name="si-a4-theme"]:checked');
+  A4_TPL.theme = th ? th.value : 'taqnia_wave';
+  A4_TPL.invoice_prefix = $('si-a4-inv-prefix').value.trim() || 'الفات/2026/';
+  A4_TPL.quote_prefix = $('si-a4-quote-prefix').value.trim() || 'ع.س/2026/';
+  A4_TPL.invoice_title_label = $('si-a4-inv-label').value.trim() || 'الفاتورة';
+  A4_TPL.quote_title_label = $('si-a4-quote-label').value.trim() || 'عرض سعر';
+  A4_TPL.primary_color = $('si-a4-primary').value;
+  A4_TPL.accent_color = $('si-a4-accent').value;
+  A4_TPL.company_title = $('si-a4-company').value;
+  A4_TPL.company_phone = $('si-a4-phone').value;
+  A4_TPL.company_email = $('si-a4-email').value;
+  A4_TPL.currency_symbol = $('si-a4-currency').value;
+  A4_TPL.company_address = $('si-a4-address').value;
+  A4_TPL.custom_terms = $('si-a4-terms').value;
+  A4_TPL.show_waves = $('si-a4-waves').checked;
+  A4_TPL.show_logo = $('si-a4-show-logo').checked;
+  A4_TPL.show_info_box = $('si-a4-infobox').checked;
+  A4_TPL.show_sku_brackets = $('si-a4-sku').checked;
+  A4_TPL.show_tax_col = $('si-a4-taxcol').checked;
+  A4_TPL.show_payment_comm = $('si-a4-paycomm').checked;
+  A4_TPL.show_payments_detail = $('si-a4-paydet').checked;
+  A4_TPL.show_footer_page = $('si-a4-footer').checked;
+
+  POS_TPL.paper_width = $('si-pos-width').value;
+  POS_TPL.font_scale = $('si-pos-font').value;
+  POS_TPL.border_style = $('si-pos-border').value;
+  POS_TPL.header_note = $('si-pos-headnote').value;
+  POS_TPL.thanks_text = $('si-pos-thanks').value;
+  POS_TPL.footer_text = $('si-pos-footer').value;
+  POS_TPL.show_logo = $('si-pos-logo').checked;
+  POS_TPL.show_store_address = $('si-pos-addr').checked;
+  POS_TPL.show_store_tax_cr = $('si-pos-taxcr').checked;
+  POS_TPL.show_customer = $('si-pos-cust').checked;
+  POS_TPL.show_cashier = $('si-pos-cashier').checked;
+  POS_TPL.show_sku = $('si-pos-sku').checked;
+  POS_TPL.show_unit_price = $('si-pos-unit').checked;
+  POS_TPL.show_discount = $('si-pos-disc').checked;
+  POS_TPL.show_tax = $('si-pos-tax').checked;
+  POS_TPL.show_payments = $('si-pos-pays').checked;
+  POS_TPL.show_barcode = $('si-pos-barcode').checked;
+
+  POS_TPL.repair_receipt_title = $('si-other-repair-title').value;
+  POS_TPL.repair_terms = $('si-other-repair-terms').value;
+  POS_TPL.voucher_receipt_title = $('si-other-voucher-title').value;
+  POS_TPL.used_receipt_title = $('si-other-used-title').value;
+}
+
+function renderInvoiceStudioPreview() {
+  readInvoicesFormIntoState();
+  const stage = $('si-preview-stage');
+  const lbl = $('si-preview-label');
+
+  if (INV_SUBTAB === 'a4') {
+    lbl.innerHTML = `<span class="material-icons-round text-primary text-base">visibility</span><span>معاينة حية لفاتورة المبيعات وعرض السعر (A4)</span>`;
+    const sampleDoc = {
+      id: 1,
+      quote_no: formatDocSeqClient(A4_TPL.invoice_prefix || 'الفات/2026/', 1),
+      doc_type: 'invoice',
+      status: 'converted',
+      customer_name: 'عميل نموذجي للمعاينة',
+      customer_phone: '01000000000',
+      doc_date: todayISO(),
+      due_date: todayISO(),
+      items: [
+        { sku: 'MBP-M2', name: 'ماك بوك برو M2 - 16GB RAM', qty: 1, unit_price: 549900, tax_label: 'Zero Rated 0%', line_total: 549900 },
+        { sku: 'LGM-3S', name: 'ماوس لاسلكي لوجيتك MX Master 3S', qty: 2, unit_price: 45000, tax_label: 'Zero Rated 0%', line_total: 90000 },
+      ],
+      subtotal: 639900,
+      discount: 9900,
+      tax: 0,
+      total: 630000,
+      paid_amount: 500000,
+      due_amount: 130000,
+      payment_method_label: 'نقدي',
+      payment_date: todayISO(),
+      notes: 'بضاعة مباعة بضمان الوكيل المعتمد',
+    };
+    stage.innerHTML = buildA4InvoiceHtml(sampleDoc, A4_TPL);
+  } else if (INV_SUBTAB === 'pos') {
+    lbl.innerHTML = `<span class="material-icons-round text-primary text-base">visibility</span><span>معاينة حية لإيصال الكاشير الحراري (${POS_TPL.paper_width})</span>`;
+    const wPx = POS_TPL.paper_width === '58mm' ? '235px' : '320px';
+    const sampleSale = {
+      id: 101,
+      invoice_no: 'INV-00101',
+      user_name: (CURRENT_USER && CURRENT_USER.name) || 'المدير',
+      customer_name: 'أحمد محمود',
+      customer_phone: '01012345678',
+      created_at: todayISO() + ' 14:30:00',
+      status: 'completed',
+      items: [
+        { sku: 'KB-RGB', name: 'كيبورد ميكانيكي RGB', qty: 1, unit_price: 29900, line_total: 29900 },
+        { sku: 'CH-25W', name: 'شاحن سريع 25W USB-C', qty: 2, unit_price: 5000, line_total: 10000 },
+      ],
+      subtotal: 39900,
+      discount: 900,
+      tax: 0,
+      total: 39000,
+      payments: [{ method: 'cash', amount: 39000, received: 40000, change: 1000 }],
+    };
+    stage.innerHTML = `<div style="width:${wPx};padding:16px;background:#fff;box-shadow:0 15px 35px rgba(0,0,0,0.18);border-radius:6px">${buildPosThermalReceiptHtml(sampleSale, POS_TPL, SETTINGS)}</div>`;
+  } else {
+    lbl.innerHTML = `<span class="material-icons-round text-primary text-base">visibility</span><span>معاينة حية لإيصالات الصيانة وسندات القبض وشراء المستعمل</span>`;
+    const stName = SETTINGS.store_name || A4_TPL.company_title || 'تك زون للإلكترونيات';
+    stage.innerHTML = `
+      <div dir="rtl" style="width:100%;max-width:560px;background:#fff;color:#0f172a;padding:24px;border-radius:14px;box-shadow:0 15px 35px rgba(0,0,0,0.14);border:1px solid #cbd5e1;font-family:'IBM Plex Sans Arabic',sans-serif">
+        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid ${A4_TPL.primary_color || '#0e6ba8'};padding-bottom:12px;margin-bottom:14px">
+          <div>
+            <div style="font-size:18px;font-weight:800;color:${A4_TPL.primary_color || '#0e6ba8'}">${esc(stName)}</div>
+            <div style="font-size:12px;color:#475569">${esc(SETTINGS.store_address || '')} ${SETTINGS.store_phone ? ' — هاتف: ' + esc(SETTINGS.store_phone) : ''}</div>
+          </div>
+          <div style="padding:6px 14px;border-radius:8px;background:${A4_TPL.primary_color || '#0e6ba8'};color:#fff;font-weight:700;font-size:13px">${esc(POS_TPL.repair_receipt_title || 'إيصال استلام وصيانة جهاز')}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12.5px;margin-bottom:14px;background:#f8fafc;padding:12px;border-radius:10px">
+          <div><b>رقم التذكرة:</b> RPR-20261015</div>
+          <div><b>التاريخ:</b> ${esc(todayISO())}</div>
+          <div><b>العميل:</b> محمد علي (01012345678)</div>
+          <div><b>الجهاز:</b> لابتوب Dell XPS 15</div>
+          <div style="grid-column:span 2"><b>العطل والملحقات:</b> فحص وتغيير شاشة + الشاحن الأصلي</div>
+        </div>
+        <div style="font-size:11.5px;color:#475569;border-top:1px dashed #cbd5e1;padding-top:10px">
+          <b>الشروط:</b> ${esc(POS_TPL.repair_terms || '')}
+        </div>
+        <div style="margin-top:16px;padding-top:12px;border-top:2px solid #e2e8f0;display:flex;justify-content:space-between;font-size:12px;color:#334155">
+          <span>عنوان سند القبض: <b>${esc(POS_TPL.voucher_receipt_title || 'سند قبض')}</b></span>
+          <span>عنوان إيصال المستعمل: <b>${esc(POS_TPL.used_receipt_title || 'إيصال شراء مستعمل')}</b></span>
+        </div>
+      </div>
+    `;
+  }
+}
+
+$('si-a4-primary').addEventListener('input', (e) => { $('si-a4-primary-txt').value = e.target.value; renderInvoiceStudioPreview(); });
+$('si-a4-accent').addEventListener('input', (e) => { $('si-a4-accent-txt').value = e.target.value; renderInvoiceStudioPreview(); });
+$('si-a4-primary-txt').addEventListener('input', (e) => { if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) { $('si-a4-primary').value = e.target.value; renderInvoiceStudioPreview(); } });
+$('si-a4-accent-txt').addEventListener('input', (e) => { if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) { $('si-a4-accent').value = e.target.value; renderInvoiceStudioPreview(); } });
+
+document.querySelectorAll('#inv-form-a4 input, #inv-form-a4 textarea, #inv-form-pos input, #inv-form-pos select, #inv-form-other input, #inv-form-other textarea').forEach((el) => {
+  el.addEventListener('input', renderInvoiceStudioPreview);
+  el.addEventListener('change', renderInvoiceStudioPreview);
+});
+
+$('btn-sync-store-to-tpl').addEventListener('click', () => {
+  $('si-a4-company').value = SETTINGS.store_name || 'تك زون للإلكترونيات';
+  $('si-a4-address').value = SETTINGS.store_address || '';
+  $('si-a4-phone').value = SETTINGS.store_phone || '';
+  $('si-a4-email').value = SETTINGS.store_email || '';
+  if (SETTINGS.receipt_logo) A4_TPL.company_logo = SETTINGS.receipt_logo;
+  renderInvoiceStudioPreview();
+  toast('تمت مزامنة اسم المحل والعنوان والهاتف والشعار على جميع القوالب — اضغط حفظ لتثبيتها');
+});
+
+$('btn-save-all-invoices').addEventListener('click', async () => {
+  readInvoicesFormIntoState();
+  const saved = await guard(() => api('templates_save', { a4: A4_TPL, pos: POS_TPL, sync_receipt_settings: true }));
+  if (saved) {
+    A4_TPL = saved.a4;
+    POS_TPL = saved.pos;
+    SETTINGS = await guard(() => api('settings')) || SETTINGS;
+    fillStoreTab();
+    renderInvoiceStudioPreview();
+    toast('تم حفظ تصميم جميع الفواتير والإيصالات وتعميمها على النظام بالكامل');
+  }
+});
+
+$('btn-reset-all-invoices').addEventListener('click', async () => {
+  const saved = await guard(() => api('templates_save', { reset_a4: true, reset_pos: true }));
+  if (saved) {
+    A4_TPL = saved.a4;
+    POS_TPL = saved.pos;
+    fillInvoicesTab();
+    renderInvoiceStudioPreview();
+    toast('تمت استعادة التصميم الافتراضي للفواتير');
+  }
+});
+
+(async () => {
+  const user = await pageInit('settings', { perm: 'settings_manage' });
+  if (!user) return;
+
+  const tpls = await guard(() => api('templates_get'));
+  if (tpls) {
+    A4_TPL = tpls.a4 || {};
+    POS_TPL = tpls.pos || {};
+    PAY_METHODS = tpls.payment_methods || [];
+  }
+
+  fillStoreTab();
+  fillLoginTab();
+  fillInvoicesTab();
+
+  const reqTab = new URLSearchParams(location.search).get('tab');
+  if (reqTab && ['store', 'login', 'invoices'].includes(reqTab)) {
+    switchSettingsTab(reqTab);
+  } else {
+    switchSettingsTab('store');
+  }
+})();
+</script>
+</body>
+</html>

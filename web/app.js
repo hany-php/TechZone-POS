@@ -4,18 +4,27 @@
 if (localStorage.getItem('tz-theme') === 'dark') document.documentElement.classList.add('dark');
 
 function applyThemeEverywhere(isDark) {
+  const darkBool = !!isDark;
+  localStorage.setItem('tz-theme', darkBool ? 'dark' : 'light');
+  document.documentElement.classList.toggle('dark', darkBool);
+  if (document.body) document.body.classList.toggle('dark-body', darkBool);
   try {
-    const topDoc = (window.top && window.top.document) ? window.top.document : document;
-    topDoc.documentElement.classList.toggle('dark', isDark);
+    const topWin = (window.top) ? window.top : window;
+    const topDoc = topWin.document || document;
+    topDoc.documentElement.classList.toggle('dark', darkBool);
+    if (topDoc.body) topDoc.body.classList.toggle('dark-body', darkBool);
     topDoc.querySelectorAll('iframe').forEach((fr) => {
       try {
         if (fr.contentDocument && fr.contentDocument.documentElement) {
-          fr.contentDocument.documentElement.classList.toggle('dark', isDark);
+          fr.contentDocument.documentElement.classList.toggle('dark', darkBool);
+          if (fr.contentDocument.body) fr.contentDocument.body.classList.toggle('dark-body', darkBool);
         }
       } catch (e) {}
     });
+    if (topWin.TZOS && typeof topWin.TZOS.onThemeChanged === 'function') {
+      topWin.TZOS.onThemeChanged(darkBool);
+    }
   } catch (e) {}
-  document.documentElement.classList.toggle('dark', isDark);
 }
 
 
@@ -75,9 +84,20 @@ function applyAccentColorEverywhere(hex) {
 }
 
 function toggleTheme() {
-  const on = !document.documentElement.classList.contains('dark');
-  localStorage.setItem('tz-theme', on ? 'dark' : 'light');
+  let curDark = document.documentElement.classList.contains('dark');
+  try {
+    if (window.top && window.top.document) {
+      curDark = window.top.document.documentElement.classList.contains('dark');
+    }
+  } catch (e) {}
+  const on = !curDark;
   applyThemeEverywhere(on);
+  try {
+    if (CURRENT_USER) {
+      CURRENT_USER.theme_mode = on ? 'dark' : 'light';
+      api('user_pref_save', { theme_mode: on ? 'dark' : 'light' }).catch(() => {});
+    }
+  } catch (e) {}
 }
 
 /* ===== جسر pywebview (يدعم النافذة الرئيسية وجميع النوافذ الفرعية داخل سطح المكتب) ===== */
@@ -200,11 +220,14 @@ const NAV = [
   { page: 'sales_quotes', href: 'sales_quotes.html', icon: 'description', label: 'المبيعات وعروض الأسعار' },
   { page: 'customers', href: 'customers.html', icon: 'people', label: 'العملاء والمديونيات', perm: ['customers_view', 'customers_edit'] },
   { page: 'history', href: 'history.html', icon: 'receipt_long', label: 'سجل المبيعات' },
-  { page: 'receipt', href: 'receipt.html', icon: 'print', label: 'الإيصال والإعدادات' },
+  { page: 'receipt', href: 'receipt.html', icon: 'print', label: 'معاينة وطباعة الإيصال' },
   { page: 'repair', href: 'repair.html', icon: 'build', label: 'الصيانة', perm: ['repair_view', 'repair_edit'] },
   { page: 'inventory', href: 'inventory.html', icon: 'inventory_2', label: 'المخزون', perm: ['inventory_view', 'inventory_edit'] },
   { page: 'buy_used', href: 'buy_used.html', icon: 'phonelink_setup', label: 'شراء أجهزة مستعملة', perm: 'used_manage' },
-  { page: 'reports', href: 'reports.html', icon: 'bar_chart', label: 'التقارير والموظفون', perm: ['reports_view', 'settings_manage'] },
+  { page: 'reports', href: 'reports.html', icon: 'bar_chart', label: 'التقارير والتحليلات', perm: 'reports_view' },
+  { page: 'staff', href: 'staff.html', icon: 'manage_accounts', label: 'الموظفون والصلاحيات', perm: 'settings_manage' },
+  { page: 'settings', href: 'settings.html', icon: 'settings', label: 'إعدادات النظام', perm: 'settings_manage' },
+  { page: 'profile', href: 'profile.html', icon: 'account_circle', label: 'ملفي الشخصي وإعداداتي' },
   { page: 'index', href: 'index.html', icon: 'switch_account', label: 'تبديل المستخدم' },
 ];
 
@@ -276,11 +299,15 @@ function renderSidebar(current, user) {
     </nav>
     <div class="p-4 border-t border-gray-100 dark:border-gray-800">
       <div class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50">
-        <div class="w-10 h-10 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold">${esc((user.name || '؟').slice(0, 1))}</div>
-        <div class="flex-1 min-w-0">
-          <p class="text-sm font-bold text-gray-900 dark:text-white truncate">${esc(user.name)}</p>
-          <p class="text-xs text-gray-500 truncate">${user.role === 'admin' ? 'مدير' : 'موظف / كاشير'}</p>
-        </div>
+        <a href="profile.html" class="flex items-center gap-3 flex-1 min-w-0 group" title="اضغط لفتح ملفك الشخصي وتغيير اسمك أو صورتك أو إعداداتك">
+          <div class="w-10 h-10 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold overflow-hidden shrink-0 border border-primary/30">
+            ${user.avatar ? `<img src="${esc(user.avatar)}" class="w-full h-full object-cover" alt="${esc(user.name)}"/>` : esc((user.name || '؟').slice(0, 1))}
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-bold text-gray-900 dark:text-white group-hover:text-primary truncate">${esc(user.name)}</p>
+            <p class="text-xs text-gray-500 truncate">${user.role === 'admin' ? 'مدير' : 'موظف / كاشير'} · إعداداتي</p>
+          </div>
+        </a>
         <button id="tz-logout" class="text-gray-400 hover:text-red-500" title="تسجيل الخروج">
           <span class="material-icons-round">logout</span></button>
       </div>
@@ -342,6 +369,9 @@ async function pageInit(current, opts) {
   }
   try { SETTINGS = await api('settings'); } catch (e) { SETTINGS = {}; }
   CURRENCY = SETTINGS.currency || 'ج.م';
+  const savedLocalTheme = localStorage.getItem('tz-theme');
+  const prefTheme = user.theme_mode || savedLocalTheme || SETTINGS.os_default_theme || 'light';
+  applyThemeEverywhere(prefTheme === 'dark');
   const activeAccent = user.accent_color || SETTINGS.os_default_accent || '#137fec';
   applyAccentColorEverywhere(activeAccent);
   const nav = NAV.find((x) => x.page === current);
@@ -1181,4 +1211,119 @@ async function sendQuoteOrA4PdfToWhatsapp(quoteId, phoneOverride = "", a4CfgOver
     toast(`تم تجهيز الرسالة وإرفاق ملف (${res.pdf_name}) في محادثة واتساب`);
   }
   return res;
+}
+
+
+/* ===== محرك بناء إيصال الكاشير الحراري الموحد (80mm / 58mm) لجميع شاشات البرنامج ===== */
+function buildPosThermalReceiptHtml(sale, posCfg = {}, stOverride = null) {
+  const st = stOverride || SETTINGS || {};
+  const cfg = Object.assign({
+    paper_width: '80mm',
+    font_scale: 'normal',
+    border_style: 'dashed',
+    show_logo: st.receipt_show_logo !== '0',
+    show_store_address: true,
+    show_store_phone: true,
+    show_store_email: true,
+    show_store_tax_cr: true,
+    show_customer: true,
+    show_cashier: true,
+    show_sku: false,
+    show_unit_price: true,
+    show_discount: true,
+    show_tax: st.receipt_show_tax !== '0',
+    show_payments: st.receipt_show_payments !== '0',
+    show_barcode: st.receipt_show_barcode !== '0',
+    header_note: '',
+    thanks_text: st.receipt_thanks || 'شكراً لزيارتكم',
+    footer_text: st.receipt_footer || 'يرجى الاحتفاظ بالإيصال للاستبدال خلال 14 يوماً',
+  }, posCfg || {});
+
+  const s = sale || {};
+  const cur = st.currency || CURRENCY || 'ج.م';
+  const taxEnabled = st.tax_enabled !== '0';
+  const fSize = cfg.font_scale === 'small' ? '11px' : cfg.font_scale === 'large' ? '14px' : '12px';
+  const bStyle = cfg.border_style || 'dashed';
+  const sep = `<div style="border-bottom:${bStyle === 'double' ? '3px double' : '1px ' + bStyle} #000;margin:6px 0"></div>`;
+  const logoSrc = st.receipt_logo || '';
+  const AR = { cash: 'نقدي', wallet: 'محفظة', credit: 'آجل' };
+
+  const items = Array.isArray(s.items) ? s.items : [];
+  const pays = Array.isArray(s.payments) ? s.payments : [];
+
+  return `
+    <div dir="rtl" style="font-family:monospace,'IBM Plex Sans Arabic',sans-serif;font-size:${fSize};color:#000;background:#fff;line-height:1.45">
+      <div style="text-align:center;margin-bottom:6px">
+        ${(cfg.show_logo && logoSrc) ? `<img src="${esc(logoSrc)}" style="width:56px;height:56px;object-fit:contain;margin:0 auto 4px;display:block"/>` : ''}
+        <div style="font-size:16px;font-weight:800">${esc(st.store_name || 'تك زون للإلكترونيات')}</div>
+        ${cfg.header_note ? `<div style="font-size:11px;font-weight:600;color:#222;margin-top:2px">${esc(cfg.header_note)}</div>` : ''}
+        ${(cfg.show_store_address && st.store_address) ? `<div style="font-size:11px;color:#333">${esc(st.store_address)}</div>` : ''}
+        ${(cfg.show_store_phone && st.store_phone) ? `<div style="font-size:11px;color:#333">هاتف: ${esc(st.store_phone)}</div>` : ''}
+        ${(cfg.show_store_email && st.store_email) ? `<div style="font-size:10.5px;color:#333">${esc(st.store_email)}</div>` : ''}
+        ${(cfg.show_store_tax_cr && st.store_cr) ? `<div style="font-size:10.5px;color:#333">سجل تجاري: ${esc(st.store_cr)}</div>` : ''}
+        ${(cfg.show_store_tax_cr && st.store_vat) ? `<div style="font-size:10.5px;color:#333">الرقم الضريبي: ${esc(st.store_vat)}</div>` : ''}
+      </div>
+      ${sep}
+      ${(s.status && s.status !== 'completed') || s.modified_by_name ? `
+        <div style="border:1px solid #000;padding:4px;margin-bottom:6px;text-align:center;font-size:11px;font-weight:bold">
+          <div>*** ${s.status === 'returned' ? 'إشعار فاتورة مرتجع كلي' : 'إشعار فاتورة مرتجع / معدلة'} ***</div>
+          ${s.modified_by_name ? `<div style="font-size:10px;font-weight:normal">بواسطة: ${esc(s.modified_by_name)} — ${esc((s.modified_at || '').slice(0, 16))}</div>` : ''}
+        </div>
+      ` : ''}
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
+        <div>
+          <div>فاتورة: <b>#${esc(s.invoice_no || '00001')}</b></div>
+          ${(cfg.show_cashier && s.user_name) ? `<div>الكاشير: ${esc(s.user_name)}</div>` : ''}
+          ${(cfg.show_customer && s.customer_name) ? `<div>العميل: ${esc(s.customer_name)}${s.customer_phone ? ' (' + esc(s.customer_phone) + ')' : ''}</div>` : ''}
+        </div>
+        <div dir="ltr" style="text-align:left">
+          <div>${esc((s.created_at || todayISO()).slice(0, 10))}</div>
+          <div>${esc((s.created_at || '').slice(11, 16))}</div>
+        </div>
+      </div>
+      <div style="border-bottom:1.5px solid #000;padding-bottom:3px;margin-bottom:4px;display:flex;justify-content:space-between;font-weight:bold;font-size:11px">
+        <span style="flex:2">الصنف</span>
+        <span style="flex:0.8;text-align:center">الكمية</span>
+        <span style="flex:1.2;text-align:left">الإجمالي</span>
+      </div>
+      ${items.length ? items.map((it) => `
+        <div style="display:flex;justify-content:space-between;font-size:${fSize};margin-bottom:3px">
+          <span style="flex:2;font-weight:bold">
+            ${(cfg.show_sku && it.sku) ? `[${esc(it.sku)}] ` : ''}${esc(it.name)}
+            ${cfg.show_unit_price ? `<span style="font-weight:normal;font-size:10px;color:#444"> (${fmt(it.unit_price)})</span>` : ''}
+          </span>
+          <span style="flex:0.8;text-align:center">${n(it.qty)}</span>
+          <span style="flex:1.2;text-align:left">${fmt(it.line_total)}</span>
+        </div>
+      `).join('') : '<div style="text-align:center;color:#777;padding:6px 0">— لا توجد أصناف —</div>'}
+      ${sep}
+      <div style="font-size:11px">
+        <div style="display:flex;justify-content:space-between"><span>المجموع الفرعي</span><span>${fmt(s.subtotal || 0)}</span></div>
+        ${(cfg.show_discount && s.discount) ? `<div style="display:flex;justify-content:space-between"><span>الخصم</span><span>-${fmt(s.discount)}</span></div>` : ''}
+        ${(taxEnabled && cfg.show_tax && s.tax) ? `<div style="display:flex;justify-content:space-between"><span>ضريبة القيمة المضافة</span><span>${fmt(s.tax)}</span></div>` : ''}
+      </div>
+      <div style="border-top:1.5px solid #000;margin-top:4px;padding-top:4px;display:flex;justify-content:space-between;font-size:14px;font-weight:800">
+        <span>الإجمالي</span>
+        <span>${fmt(s.total || 0)} ${esc(cur)}</span>
+      </div>
+      ${(cfg.show_payments && pays.length) ? `
+        <div style="margin-top:5px;font-size:11px">
+          ${pays.map((p) => `
+            <div style="display:flex;justify-content:space-between">
+              <span>الدفع (${AR[p.method] || p.method}${p.ref_no ? ' - ' + esc(p.ref_no) : ''})</span>
+              <span>${fmt(p.amount)}${p.change ? ' (الباقي ' + fmt(p.change) + ')' : ''}</span>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+      ${cfg.show_barcode ? `
+        <div style="text-align:center;margin-top:8px">
+          <div style="height:28px;width:165px;margin:0 auto;background:repeating-linear-gradient(90deg,#000 0 2px,transparent 2px 4px,#000 4px 5px,transparent 5px 8px)"></div>
+          <div style="font-size:10px;letter-spacing:2.5px">${String(s.id || 1).padStart(10, '0')}</div>
+        </div>
+      ` : ''}
+      ${cfg.thanks_text ? `<div style="text-align:center;margin-top:7px;font-size:11.5px;font-weight:bold">${esc(cfg.thanks_text)}</div>` : ''}
+      ${cfg.footer_text ? `<div style="text-align:center;font-size:10px;color:#444;margin-top:2px">${esc(cfg.footer_text)}</div>` : ''}
+    </div>
+  `;
 }

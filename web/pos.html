@@ -447,57 +447,18 @@ document.getElementById('btn-size-default').addEventListener('click', async () =
 async function printSaleDirectly(saleId) {
   const s = await guard(() => api('sale', { id: +saleId }));
   if (!s) return;
-  const show = (k) => (SETTINGS[k] == null || SETTINGS[k] === '') ? true : SETTINGS[k] !== '0';
-  const showLogo = show('receipt_show_logo');
-  const showBarcode = show('receipt_show_barcode');
-  const showTax = TAX_ON && show('receipt_show_tax');
-  const showPays = show('receipt_show_payments');
-  const AR = { cash: 'نقدي', wallet: 'محفظة', credit: 'آجل' };
-
+  let posCfg = {};
+  try {
+    if (SETTINGS.template_pos_config) posCfg = JSON.parse(SETTINGS.template_pos_config) || {};
+  } catch (e) {}
   const paper = document.getElementById('pos-print-paper');
-  paper.innerHTML = `
-    <div style="text-align:center;margin-bottom:8px">
-      ${(showLogo && SETTINGS.receipt_logo) ? `<img src="${esc(SETTINGS.receipt_logo)}" style="width:56px;height:56px;object-fit:cover;border-radius:50%;margin:0 auto 6px"/>` : ''}
-      <div style="font-size:16px;font-weight:bold">${esc(SETTINGS.store_name || 'تك زون للإلكترونيات')}</div>
-      ${SETTINGS.store_address ? `<div style="font-size:11px;color:#555">${esc(SETTINGS.store_address)}</div>` : ''}
-      ${SETTINGS.store_phone ? `<div style="font-size:11px;color:#555">هاتف: ${esc(SETTINGS.store_phone)}</div>` : ''}
-      ${SETTINGS.store_vat ? `<div style="font-size:11px;color:#555">الرقم الضريبي: ${esc(SETTINGS.store_vat)}</div>` : ''}
-    </div>
-    <div style="border-bottom:1px dashed #000;margin:6px 0"></div>
-    ${(s.status !== 'completed' || s.modified_by_name) ? `<div style="border:1px solid #000;padding:4px;margin-bottom:6px;text-align:center;font-size:11px;font-weight:bold">
-      <div>*** ${s.status === 'returned' ? 'إشعار فاتورة مرتجع كلي' : 'إشعار فاتورة مرتجع / معدلة'} ***</div>
-      ${s.modified_by_name ? `<div style="font-size:10px;font-weight:normal">تم التعديل بواسطة: ${esc(s.modified_by_name)} — في: ${esc((s.modified_at || '').slice(0, 16))}</div>` : ''}
-    </div>` : ''}
-    <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:6px">
-      <div><div>فاتورة: <b>#${esc(s.invoice_no)}</b></div><div>الكاشير: ${esc(s.user_name)}</div>${s.customer_name ? `<div>العميل: ${esc(s.customer_name)}</div>` : ''}</div>
-      <div dir="ltr" style="text-align:left"><div>${esc(s.created_at.slice(0, 10))}</div><div>${esc(s.created_at.slice(11, 16))}</div></div>
-    </div>
-    <div style="border-bottom:1px solid #000;padding-bottom:4px;margin-bottom:4px;display:flex;justify-content:space-between;font-weight:bold;font-size:11px">
-      <span style="flex:2">الصنف</span><span style="flex:1;text-align:center">الكمية</span><span style="flex:1;text-align:left">الإجمالي</span>
-    </div>
-    ${s.items.map((it) => `
-      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
-        <span style="flex:2;font-weight:bold">${esc(it.name)}</span>
-        <span style="flex:1;text-align:center">${n(it.qty)}</span>
-        <span style="flex:1;text-align:left">${fmt(it.line_total)}</span>
-      </div>`).join('')}
-    <div style="border-bottom:1px dashed #000;margin:6px 0"></div>
-    <div style="font-size:11px">
-      <div style="display:flex;justify-content:space-between"><span>المجموع الفرعي</span><span>${fmt(s.subtotal)}</span></div>
-      ${s.discount ? `<div style="display:flex;justify-content:space-between"><span>الخصم</span><span>-${fmt(s.discount)}</span></div>` : ''}
-      ${(showTax && s.tax) ? `<div style="display:flex;justify-content:space-between"><span>الضريبة</span><span>${fmt(s.tax)}</span></div>` : ''}
-    </div>
-    <div style="border-top:1px solid #000;margin-top:4px;padding-top:4px;display:flex;justify-content:space-between;font-size:14px;font-weight:bold">
-      <span>الإجمالي</span><span>${fmt(s.total)} ${esc(CURRENCY)}</span>
-    </div>
-    ${showPays ? `<div style="margin-top:6px;font-size:11px">
-      ${s.payments.map((p) => `<div style="display:flex;justify-content:space-between"><span>الدفع (${AR[p.method] || p.method}${p.ref_no ? ' - ' + esc(p.ref_no) : ''})</span><span>${fmt(p.amount)}${p.change ? ' (الباقي ' + fmt(p.change) + ')' : ''}</span></div>`).join('')}
-    </div>` : ''}
-    ${showBarcode ? `<div style="text-align:center;margin-top:8px"><div style="height:28px;width:160px;margin:0 auto;background:repeating-linear-gradient(90deg,#000 0 2px,transparent 2px 4px,#000 4px 5px,transparent 5px 8px)"></div><div style="font-size:10px;letter-spacing:3px">${String(s.id).padStart(10, '0')}</div></div>` : ''}
-    <div style="text-align:center;margin-top:8px;font-size:11px;font-weight:bold">${esc(SETTINGS.receipt_thanks || 'شكراً لزيارتكم')}</div>
-    <div style="text-align:center;font-size:10px;color:#555">${esc(SETTINGS.receipt_footer || 'يرجى الاحتفاظ بالإيصال للاستبدال')}</div>
-  `;
-  if (window.parent && window.parent !== window && window.parent.TZOS && window.parent.TZOS.printHtml) { window.parent.TZOS.printHtml(paper.innerHTML); } else { setTimeout(() => window.print(), 80); }
+  paper.innerHTML = buildPosThermalReceiptHtml(s, posCfg, SETTINGS);
+  const mode = posCfg.paper_width === '58mm' ? '58mm' : 'thermal';
+  if (window.parent && window.parent !== window && window.parent.TZOS && window.parent.TZOS.printHtml) {
+    window.parent.TZOS.printHtml(paper.innerHTML, mode);
+  } else {
+    setTimeout(() => window.print(), 80);
+  }
 }
 
 /* ===== إدارة الوردية (فتح + تقرير إغلاق تفصيلي) ===== */
