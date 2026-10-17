@@ -6,6 +6,7 @@ import os
 import pathlib
 import sqlite3
 import sys
+import time
 import traceback
 from decimal import Decimal, ROUND_HALF_UP
 
@@ -13,6 +14,9 @@ import db
 
 # حالة الجلسة (مستخدم واحد، نافذة واحدة) — الدور والصلاحيات تُقرأ من هنا وليس من JS
 _STATE = {"user": None}
+
+# حماية من هجمات التخمين (brute-force) على تسجيل الدخول
+_LOGIN_ATTEMPTS = {}  # key -> {"count": int, "locked_until": float}
 
 
 class ApiError(Exception):
@@ -39,6 +43,35 @@ def _int(v, default=0):
         return int(v)
     except Exception:
         raise ApiError("قيمة عددية غير صالحة")
+
+
+def _validate_image_data_url(s, max_bytes=None):
+    """التحقق من صحة data URL صورة (magic bytes) وحجمها."""
+    if not isinstance(s, str) or not s.startswith("data:image/"):
+        raise ApiError("صيغة الصورة غير صالحة (يجب أن تكون data:image/)")
+    # رفض SVG/HTML
+    if "svg" in s[:40].lower() or "html" in s[:40].lower():
+        raise ApiError("صيغة الصورة غير مدعومة")
+    if "," not in s:
+        raise ApiError("صيغة الصورة غير صالحة")
+    import base64
+    try:
+        b64_part = s.split(",", 1)[1]
+        raw = base64.b64decode(b64_part, validate=True)
+    except Exception:
+        raise ApiError("بيانات الصورة غير صالحة (base64)")
+    if max_bytes is not None and len(raw) > max_bytes:
+        raise ApiError("حجم الصورة يتجاوز الحد المسموح")
+    # magic bytes
+    if raw.startswith(b"\xff\xd8\xff"):
+        return True
+    if raw.startswith(b"\x89PNG\r\n\x1a\n"):
+        return True
+    if raw.startswith(b"GIF87a") or raw.startswith(b"GIF89a"):
+        return True
+    if raw.startswith(b"RIFF") and raw[8:12] == b"WEBP":
+        return True
+    raise ApiError("صيغة الصورة غير مدعومة (JPEG/PNG/GIF/WebP فقط)")
 
 
 
@@ -317,26 +350,48 @@ def _customer_debt_summary(conn, cust_row) -> dict:
     cname = cust_row["name"]
     cphone = cust_row["phone"]
     sales = conn.execute(
-        """SELECT s.id, s.invoice_no, s.created_at, s.total, s.status,
-                  COALESCE((SELECT SUM(p.amount) FROM payments p WHERE p.sale_id=s.id AND p.method='credit'), 0) AS credit_amt,
-                  COALESCE((SELECT SUM(p.amount) FROM payments p WHERE p.sale_id=s.id AND p.method='cash'), 0) AS cash_amt,
-                  COALESCE((SELECT SUM(p.amount) FROM payments p WHERE p.sale_id=s.id AND p.method='wallet'), 0) AS wallet_amt,
-                  COALESCE((SELECT SUM(sr.total) FROM sale_returns sr WHERE sr.sale_id=s.id), 0) AS ret_amt
-           FROM sales s
-           WHERE s.customer_id=?
-              OR (s.customer_id IS NULL AND s.customer_name=?)
-              OR (? IS NOT NULL AND ? != '' AND s.customer_phone=?)
-           ORDER BY s.id DESC""",
+        """SELECT s.id, s.invoice_no, s.created_at, s.total, s.status
+            FROM sales s
+            WHERE s.customer_id=?
+               OR (s.customer_id IS NULL AND s.customer_name=?)
+               OR (? IS NOT NULL AND ? != '' AND s.customer_phone=?)
+            ORDER BY s.id DESC""",
         (cid, cname, cphone, cphone, cphone),
     ).fetchall()
+
+    # جمع المدفوعات دفعة واحدة (تجنب N+1)
+    sale_ids = [s["id"] for s in sales]
+    pay_map = {}
+    ret_map = {}
+    if sale_ids:
+        placeholders = ",".join("?" for _ in sale_ids)
+        for p in conn.execute(
+            f"SELECT sale_id, method, COALESCE(SUM(amount),0) AS amt FROM payments WHERE sale_id IN ({placeholders}) GROUP BY sale_id, method",
+            sale_ids,
+        ).fetchall():
+            pay_map.setdefault(p["sale_id"], {})[p["method"]] = p["amt"]
+        for r in conn.execute(
+            f"SELECT sale_id, COALESCE(SUM(total),0) AS amt FROM sale_returns WHERE sale_id IN ({placeholders}) GROUP BY sale_id",
+            sale_ids,
+        ).fetchall():
+            ret_map[r["sale_id"]] = r["amt"]
 
     total_purchases = 0
     credit_total = 0
     sales_out = []
     for s in sales:
         d = dict(s)
-        net_total = max(0, d["total"] - d["ret_amt"])
-        net_credit = max(0, d["credit_amt"] - d["ret_amt"])
+        pm = pay_map.get(d["id"], {})
+        credit_amt = pm.get("credit", 0)
+        cash_amt = pm.get("cash", 0)
+        wallet_amt = pm.get("wallet", 0)
+        ret_amt = ret_map.get(d["id"], 0)
+        net_total = max(0, d["total"] - ret_amt)
+        net_credit = max(0, credit_amt - ret_amt)
+        d["credit_amt"] = credit_amt
+        d["cash_amt"] = cash_amt
+        d["wallet_amt"] = wallet_amt
+        d["ret_amt"] = ret_amt
         d["net_total"] = net_total
         d["net_credit"] = net_credit
         total_purchases += net_total
@@ -367,7 +422,8 @@ def _customer_debt_summary(conn, cust_row) -> dict:
 
 class Api:
     def __init__(self):
-        db.connect()  # إنشاء المخطط + الـ seed عند الإقلاع
+        with db.connect():
+            pass  # إنشاء المخطط + الـ seed عند الإقلاع
         self._methods = {
             n for n in dir(self)
             if not n.startswith("_") and callable(getattr(self, n)) and n != "call"
@@ -417,6 +473,15 @@ class Api:
             raise ApiError("ممنوع: للمدير أو لمن يملك الصلاحية فقط")
         return u
 
+    def _perm_any(self, *keys):
+        u = self._user()
+        if u["role"] == "admin":
+            return u
+        perms = u.get("permissions") or {}
+        if not any(perms.get(k, False) for k in keys):
+            raise ApiError("ممنوع: للمدير أو لمن يملك الصلاحية فقط")
+        return u
+
     def _admin(self):
         u = self._user()
         if u["role"] != "admin":
@@ -424,7 +489,11 @@ class Api:
         return u
 
     def _settings(self, conn):
-        return {r["key"]: r["value"] for r in conn.execute("SELECT key, value FROM settings")}
+        cache = getattr(self, "_settings_cache", None)
+        if cache is None:
+            cache = {r["key"]: r["value"] for r in conn.execute("SELECT key, value FROM settings")}
+            self._settings_cache = cache
+        return cache
 
     def _open_shift(self, conn, user_id):
         return conn.execute(
@@ -438,6 +507,17 @@ class Api:
         with db.connect() as conn:
             st = self._settings(conn)
             rows = conn.execute("SELECT id, username, name, avatar FROM users ORDER BY id").fetchall()
+            try:
+                fail_state = json.loads(st.get("login_fail_state") or "{}")
+                if not isinstance(fail_state, dict):
+                    fail_state = {}
+            except Exception:
+                fail_state = {}
+            info = fail_state.get("pin_only", {}) if isinstance(fail_state, dict) else {}
+            try:
+                locked_until = float(info.get("locked_until", 0.0) or 0.0)
+            except Exception:
+                locked_until = 0.0
             return {
                 "store_name": (st.get("store_name") or "تك زون للإلكترونيات").strip() or "تك زون للإلكترونيات",
                 "store_address": st.get("store_address") or "",
@@ -447,6 +527,7 @@ class Api:
                 "default_start_page": st.get("default_start_page") or "pos",
                 "default_start_mode": st.get("default_start_mode") or "window",
                 "os_default_theme": st.get("os_default_theme") or "dark",
+                "login_locked_until": locked_until,
                 "users": [{"id": r["id"], "username": r["username"], "name": r["name"], "avatar": r["avatar"]} for r in rows],
             }
 
@@ -518,10 +599,7 @@ class Api:
                 if bg == "":
                     conn.execute("UPDATE users SET custom_bg=NULL WHERE id=?", (uid,))
                 else:
-                    if not bg.startswith("data:image/"):
-                        raise ApiError("صيغة صورة الخلفية غير صالحة")
-                    if len(bg.encode("utf-8")) > 950 * 1024:
-                        raise ApiError("حجم صورة الخلفية كبير جداً (الحد الأقصى 950KB)")
+                    _validate_image_data_url(bg, 950 * 1024)
                     conn.execute("UPDATE users SET custom_bg=?, wallpaper='custom' WHERE id=?", (bg, uid))
             if accent_color is not None:
                 ac = str(accent_color).strip()[:20] or None
@@ -617,10 +695,7 @@ class Api:
                 if av == "":
                     conn.execute("UPDATE users SET avatar=NULL WHERE id=?", (uid,))
                 else:
-                    if not av.startswith("data:image/"):
-                        raise ApiError("صيغة الصورة الشخصية غير صالحة")
-                    if len(av.encode("utf-8")) > 450 * 1024:
-                        raise ApiError("حجم الصورة الشخصية كبير جداً (الحد الأقصى 450KB)")
+                    _validate_image_data_url(av, 450 * 1024)
                     conn.execute("UPDATE users SET avatar=? WHERE id=?", (av, uid))
 
             conn.execute(
@@ -695,8 +770,8 @@ class Api:
                     final_sp = (sp_val or None) if start_page is not None else (cur_u["start_page"] if cur_u else None)
                     final_sm = (sm_val or None) if start_mode is not None else (cur_u["start_mode"] if cur_u else None)
                     final_av = (str(avatar).strip() or None) if avatar is not None else (cur_u["avatar"] if cur_u else None)
-                    if final_av and not final_av.startswith("data:image/"):
-                        raise ApiError("صيغة صورة الموظف غير صالحة")
+                    if final_av:
+                        _validate_image_data_url(final_av, 450 * 1024)
                     if pin:
                         salt = os.urandom(16)
                         conn.execute(
@@ -751,26 +826,86 @@ class Api:
         username = str(username or "").strip()
         if len(pin) < 4:
             raise ApiError("اسم المستخدم أو الرمز السري غير صحيح")
+        lock_key = username.lower() if username else "pin_only"
+        now_ts = time.time()
+
         with db.connect() as conn:
             st = self._settings(conn)
-            if username:
-                row = conn.execute("SELECT * FROM users WHERE username=? OR name=?", (username, username)).fetchone()
-                if not row:
-                    raise ApiError("اسم المستخدم أو الرمز السري غير صحيح")
-                expect = db.hash_pin(pin, row["pin_salt"])
-                if not hmac.compare_digest(expect, row["pin_hash"]):
-                    raise ApiError("اسم المستخدم أو الرمز السري غير صحيح")
-            else:
-                rows = conn.execute("SELECT * FROM users ORDER BY id").fetchall()
-                matched = None
-                for r in rows:
-                    expect = db.hash_pin(pin, r["pin_salt"])
-                    if hmac.compare_digest(expect, r["pin_hash"]):
-                        matched = r
-                        break
-                if not matched:
-                    raise ApiError("الرمز السري غير صحيح")
-                row = matched
+            max_attempts = max(1, _int(st.get("login_max_attempts", 5), 5))
+            lock_minutes = max(1, _int(st.get("login_lockout_minutes", 10), 10))
+            try:
+                fail_state = json.loads(st.get("login_fail_state") or "{}")
+                if not isinstance(fail_state, dict):
+                    fail_state = {}
+            except Exception:
+                fail_state = {}
+            info = fail_state.get(lock_key, {"count": 0, "locked_until": 0.0})
+            try:
+                info["locked_until"] = float(info.get("locked_until", 0.0) or 0.0)
+            except Exception:
+                info["locked_until"] = 0.0
+            info["count"] = int(info.get("count", 0) or 0)
+
+            if info["locked_until"] > now_ts:
+                remain = int(info["locked_until"] - now_ts)
+                mins = max(1, (remain + 59) // 60)
+                raise ApiError(f"تم تجاوز عدد المحاولات المسموح. حاول بعد {mins} دقيقة [LOCKED:{remain}]")
+
+            if info["locked_until"] and info["locked_until"] <= now_ts:
+                info = {"count": 0, "locked_until": 0.0}
+                fail_state[lock_key] = info
+
+            try:
+                if username:
+                    row = conn.execute("SELECT * FROM users WHERE username=? OR name=?", (username, username)).fetchone()
+                    if not row:
+                        raise ApiError("اسم المستخدم أو الرمز السري غير صحيح")
+                    expect = db.hash_pin(pin, row["pin_salt"])
+                    if not hmac.compare_digest(expect, row["pin_hash"]):
+                        raise ApiError("اسم المستخدم أو الرمز السري غير صحيح")
+                else:
+                    rows = conn.execute("SELECT * FROM users ORDER BY id").fetchall()
+                    matched = None
+                    for r in rows:
+                        expect = db.hash_pin(pin, r["pin_salt"])
+                        if hmac.compare_digest(expect, r["pin_hash"]):
+                            matched = r
+                            break
+                    if not matched:
+                        raise ApiError("الرمز السري غير صحيح")
+                    row = matched
+            except ApiError:
+                info["count"] = info.get("count", 0) + 1
+                if info["count"] >= max_attempts:
+                    info["locked_until"] = now_ts + (lock_minutes * 60)
+                    info["count"] = 0
+                fail_state[lock_key] = info
+                conn.execute(
+                    "INSERT INTO settings(key, value) VALUES(?, ?) "
+                    "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                    ("login_fail_state", json.dumps(fail_state)),
+                )
+                self._settings_cache = None
+                conn.commit()
+                if info.get("locked_until", 0) > now_ts:
+                    mins = max(1, (int(info["locked_until"] - now_ts) + 59) // 60)
+                    raise ApiError(f"تم تجاوز عدد المحاولات المسموح. حاول بعد {mins} دقيقة [LOCKED:{int(info['locked_until'] - now_ts)}]")
+                raise
+
+            # نجاح: إعادة تعيين
+            fail_state[lock_key] = {"count": 0, "locked_until": 0.0}
+            conn.execute(
+                "INSERT INTO settings(key, value) VALUES(?, ?) "
+                "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                ("login_fail_state", json.dumps(fail_state)),
+            )
+            # إلغاء أي إقفال سابق
+            conn.execute(
+                "INSERT INTO settings(key, value) VALUES(?, ?) "
+                "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                ("login_locked_until", "0"),
+            )
+            self._settings_cache = None
             _STATE["user"] = self._row_to_user_dict(row)
             out = dict(_STATE["user"])
             out["effective_start_page"] = out.get("start_page") or st.get("default_start_page") or "pos"
@@ -794,7 +929,7 @@ class Api:
 
     # ---------------------------------------------------------- إعدادات
     def settings(self):
-        self._user()
+        self._perm("settings_manage")
         with db.connect() as conn:
             return self._settings(conn)
 
@@ -803,11 +938,12 @@ class Api:
         allowed = {"store_name", "store_address", "store_phone", "currency", "tax_enabled", "tax_rate",
                    "pos_card_size", "os_default_wallpaper", "os_default_custom_bg", "os_default_accent", "os_default_layout",
                    "os_default_theme", "login_mode", "default_start_page", "default_start_mode",
-                   "store_email", "store_cr", "store_vat", "receipt_thanks", "receipt_footer",
-                   "receipt_logo", "receipt_show_logo", "receipt_show_barcode",
-                   "receipt_show_tax", "receipt_show_payments",
-                   "template_a4_config", "template_pos_config"}
-        show = {"tax_enabled", "receipt_show_logo", "receipt_show_barcode", "receipt_show_tax", "receipt_show_payments"}
+                    "store_email", "store_cr", "store_vat", "receipt_thanks", "receipt_footer",
+                    "receipt_logo", "receipt_show_logo", "receipt_show_barcode",
+                    "receipt_show_tax", "receipt_show_payments", "whatsapp_send_enabled",
+                    "login_max_attempts", "login_lockout_minutes",
+                    "template_a4_config", "template_pos_config"}
+        show = {"tax_enabled", "receipt_show_logo", "receipt_show_barcode", "receipt_show_tax", "receipt_show_payments", "whatsapp_send_enabled"}
         valid_login_modes = {"pin_only", "select_user_pin", "username_password"}
         valid_start_pages = {"pos", "sales_quotes", "inventory", "customers", "repair", "history", "buy_used", "reports", "settings", "receipt", "desktop"}
         valid_start_modes = {"window", "maximized", "direct"}
@@ -833,33 +969,46 @@ class Api:
                 elif k == "os_default_theme":
                     if s not in ("light", "dark"):
                         raise ApiError("وضع المظهر الافتراضي غير صالح")
+                elif k == "login_max_attempts":
+                    n = _int(s, 5)
+                    if n < 1 or n > 20:
+                        raise ApiError("عدد المحاولات يجب أن يكون بين 1 و 20")
+                    s = str(n)
+                elif k == "login_lockout_minutes":
+                    n = _int(s, 10)
+                    if n < 1 or n > 1440:
+                        raise ApiError("مدة الإقفال يجب أن تكون بين 1 و 1440 دقيقة")
+                    s = str(n)
                 elif k == "pos_card_size":
                     cs = _int(s, 200)
                     if cs < 110 or cs > 360:
                         raise ApiError("حجم البلوك الافتراضي يجب أن يكون بين 110 و 360")
                     s = str(cs)
                 elif k == "receipt_logo" and s != "":
-                    if not s.startswith("data:image/"):
-                        raise ApiError("صيغة الشعار غير صالحة (يجب أن تكون صورة data:image/)")
-                    if len(s.encode("utf-8")) > 200 * 1024:
-                        raise ApiError("حجم الشعار يتجاوز 200KB")
+                    _validate_image_data_url(s, 200 * 1024)
                 conn.execute(
                     "INSERT INTO settings(key, value) VALUES(?, ?) "
                     "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
                     (k, s),
                 )
+            self._settings_cache = None
             return self._settings(conn)
 
     def _load_payment_methods(self, conn):
+        cache = getattr(self, "_pm_cache", None)
+        if cache is not None:
+            return cache
         st = self._settings(conn)
+        result = list(db.DEFAULT_PAYMENT_METHODS)
         if st.get("custom_payment_methods"):
             try:
                 loaded = json.loads(st["custom_payment_methods"])
                 if isinstance(loaded, list) and loaded:
-                    return loaded
+                    result = loaded
             except Exception:
                 pass
-        return list(db.DEFAULT_PAYMENT_METHODS)
+        self._pm_cache = result
+        return result
 
     def payment_methods_get(self):
         """جلب قائمة طرق وأنظمة الدفع المخصصة."""
@@ -892,26 +1041,35 @@ class Api:
                 "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
                 (json.dumps(cleaned, ensure_ascii=False),),
             )
+            self._settings_cache = None
+            self._pm_cache = None
             return cleaned
 
     def _load_templates(self, conn):
+        cache = getattr(self, "_tpl_cache", None)
         st = self._settings(conn)
-        a4 = dict(db.DEFAULT_A4_TEMPLATE)
-        pos = dict(db.DEFAULT_POS_TEMPLATE)
-        if st.get("template_a4_config"):
-            try:
-                loaded_a4 = json.loads(st["template_a4_config"])
-                if isinstance(loaded_a4, dict):
-                    a4.update(loaded_a4)
-            except Exception:
-                pass
-        if st.get("template_pos_config"):
-            try:
-                loaded_pos = json.loads(st["template_pos_config"])
-                if isinstance(loaded_pos, dict):
-                    pos.update(loaded_pos)
-            except Exception:
-                pass
+        if cache is None:
+            a4 = dict(db.DEFAULT_A4_TEMPLATE)
+            pos = dict(db.DEFAULT_POS_TEMPLATE)
+            if st.get("template_a4_config"):
+                try:
+                    loaded_a4 = json.loads(st["template_a4_config"])
+                    if isinstance(loaded_a4, dict):
+                        a4.update(loaded_a4)
+                except Exception:
+                    pass
+            if st.get("template_pos_config"):
+                try:
+                    loaded_pos = json.loads(st["template_pos_config"])
+                    if isinstance(loaded_pos, dict):
+                        pos.update(loaded_pos)
+                except Exception:
+                    pass
+            cache = {"a4": a4, "pos": pos}
+            self._tpl_cache = cache
+        else:
+            a4 = dict(cache["a4"])
+            pos = dict(cache["pos"])
         next_sale_seq = conn.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM sales").fetchone()[0]
         next_quote_seq = conn.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM quotations").fetchone()[0]
         inv_pref = a4.get("invoice_prefix") or "الفات/2026/"
@@ -943,10 +1101,7 @@ class Api:
                 logo = a4.get("company_logo")
                 if logo is not None and logo != "":
                     logo_s = str(logo).strip()
-                    if not logo_s.startswith("data:image/"):
-                        raise ApiError("صيغة شعار القالب غير صالحة")
-                    if len(logo_s.encode("utf-8")) > 500 * 1024:
-                        raise ApiError("حجم شعار القالب كبير جداً (الحد الأقصى 500KB)")
+                    _validate_image_data_url(logo_s, 500 * 1024)
                 for k in db.DEFAULT_A4_TEMPLATE:
                     if k in a4:
                         new_a4[k] = a4[k]
@@ -979,6 +1134,8 @@ class Api:
                         "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
                         (sk, sv),
                     )
+            self._tpl_cache = None
+            self._settings_cache = None
             return self._load_templates(conn)
 
     # ---------------------------------------------------------- فئات
@@ -1083,10 +1240,7 @@ class Api:
             raise ApiError("اسم المنتج والباركود/SKU مطلوبان")
         if image is not None and image != "":
             image = str(image).strip()
-            if not image.startswith("data:image/"):
-                raise ApiError("صيغة صورة المنتج غير صالحة")
-            if len(image.encode("utf-8")) > 600 * 1024:
-                raise ApiError("حجم صورة المنتج كبير جداً (الحد الأقصى 600KB)")
+            _validate_image_data_url(image, 600 * 1024)
         serials = [s.strip() for s in (serials or []) if s and s.strip()]
         with db.connect() as conn:
             try:
@@ -1226,7 +1380,7 @@ class Api:
             return out
 
     def customer(self, id):
-        self._user()
+        self._perm("customers_view")
         with db.connect() as conn:
             r = conn.execute("SELECT * FROM customers WHERE id=?", (_int(id),)).fetchone()
             if not r:
@@ -1244,6 +1398,10 @@ class Api:
         phone = (phone or "").strip() or None
         if not name:
             raise ApiError("اسم العميل مطلوب")
+        if len(name) > 120:
+            raise ApiError("اسم العميل طويل جداً")
+        if phone and len(phone) > 40:
+            raise ApiError("رقم الهاتف طويل جداً")
         with db.connect() as conn:
             try:
                 if id:
@@ -1393,9 +1551,17 @@ class Api:
                 raise ApiError(f"مبلغ السداد ({_fmt_money(amt)}) أكبر من إجمالي المديونية المتبقية ({_fmt_money(summary['debt'])})")
             s = self._open_shift(conn, u["id"])
             shift_id = s["id"] if s else None
+            pos_tpl = self._load_templates(conn)["pos"]
+            v_prefix = (pos_tpl.get("voucher_prefix") or "RCV-").strip() or "RCV-"
             ts = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
             cnt = conn.execute("SELECT COUNT(*) c FROM customer_payments").fetchone()["c"] + 1
-            ref = f"RCV-{ts}-{cnt:03d}"
+            if v_prefix[-1].isdigit():
+                ref = f"{v_prefix}{cnt:03d}"
+            else:
+                sep = "" if v_prefix.endswith(("-", "/", "_")) else "-"
+                ref = f"{v_prefix}{sep}{ts}-{cnt:03d}"
+            if conn.execute("SELECT 1 FROM customer_payments WHERE ref=?", (ref,)).fetchone():
+                ref = f"{ref}-{cnt}"
             cur = conn.execute(
                 """INSERT INTO customer_payments(ref, customer_id, sale_id, user_id, shift_id, created_at, amount, method, ref_no, notes)
                    VALUES(?,?,?,?,?,?,?,?,?,?)""",
@@ -1433,7 +1599,7 @@ class Api:
 
     def shift_summary(self):
         """تقرير تفصيلي كامل للوردية المفتوحة قبل إغلاقها (جميع العمليات وتفصيل النقدي والمحفظة والآجل)."""
-        u = self._user()
+        u = self._perm_any("pos_sell", "sales_all")
         with db.connect() as conn:
             s = self._open_shift(conn, u["id"])
             if not s:
@@ -1468,9 +1634,20 @@ class Api:
             cash_vouchers = sum(v["amount"] for v in vouchers_rows if v["method"] == "cash")
             wallet_vouchers = sum(v["amount"] for v in vouchers_rows if v["method"] == "wallet")
 
+            # جمع مدفوعات كل المبيعات دفعة واحدة (تجنب N+1)
+            sale_ids = [sr["id"] for sr in sales_rows]
+            pays_map = {}
+            if sale_ids:
+                placeholders = ",".join("?" for _ in sale_ids)
+                for p in conn.execute(
+                    f"SELECT sale_id, method, amount, ref_no FROM payments WHERE sale_id IN ({placeholders})",
+                    sale_ids,
+                ).fetchall():
+                    pays_map.setdefault(p["sale_id"], []).append(p)
+
             ops = []
             for sr in sales_rows:
-                spays = conn.execute("SELECT method, amount, ref_no FROM payments WHERE sale_id=?", (sr["id"],)).fetchall()
+                spays = pays_map.get(sr["id"], [])
                 m_labels = []
                 for p in spays:
                     lbl = {"cash": "نقدي", "wallet": "محفظة", "credit": "آجل"}.get(p["method"], p["method"])
@@ -1660,7 +1837,11 @@ class Api:
                  subtotal, discount, tax, total, notes),
             )
             sale_id = cur.lastrowid
-            invoice = f"INV-{sale_id:05d}"
+            pos_tpl = self._load_templates(conn)["pos"]
+            pos_prefix = (pos_tpl.get("pos_invoice_prefix") or "INV-").strip() or "INV-"
+            invoice = _format_doc_seq(pos_prefix, sale_id)
+            if conn.execute("SELECT 1 FROM sales WHERE invoice_no=? AND id!=?", (invoice, sale_id)).fetchone():
+                invoice = f"{invoice}-{sale_id}"
             conn.execute("UPDATE sales SET invoice_no=? WHERE id=?", (invoice, sale_id))
 
             for p, qty, unit, serials in lines:
@@ -1690,7 +1871,7 @@ class Api:
             return {"sale_id": sale_id, "invoice_no": invoice}
 
     def sale(self, id):
-        self._user()
+        self._perm_any("pos_sell", "sales_all", "sales_return")
         with db.connect() as conn:
             r = conn.execute(
                 """SELECT s.*, u.name user_name FROM sales s JOIN users u ON u.id=s.user_id WHERE s.id=?""",
@@ -1698,18 +1879,25 @@ class Api:
             ).fetchone()
             if not r:
                 raise ApiError("الفاتورة غير موجودة")
-            items = []
-            for x in conn.execute(
+            items_raw = [dict(x) for x in conn.execute(
                 """SELECT si.*, COALESCE(NULLIF(si.sku, ''), p.sku, '') AS sku, p.image, p.price AS catalog_price, p.tracked
                    FROM sale_items si LEFT JOIN products p ON p.id=si.product_id
                    WHERE si.sale_id=?""",
                 (r["id"],),
-            ):
-                it = dict(x)
-                returned_qty = conn.execute(
-                    "SELECT COALESCE(SUM(qty),0) q FROM sale_return_items WHERE sale_item_id=?",
-                    (it["id"],),
-                ).fetchone()["q"]
+            ).fetchall()]
+            # جمع المرتجعات دفعة واحدة
+            item_ids = [it["id"] for it in items_raw]
+            returned_map = {}
+            if item_ids:
+                placeholders = ",".join("?" for _ in item_ids)
+                for row in conn.execute(
+                    f"SELECT sale_item_id, COALESCE(SUM(qty),0) q FROM sale_return_items WHERE sale_item_id IN ({placeholders}) GROUP BY sale_item_id",
+                    item_ids,
+                ).fetchall():
+                    returned_map[row["sale_item_id"]] = row["q"]
+            items = []
+            for it in items_raw:
+                returned_qty = returned_map.get(it["id"], 0)
                 it["returned_qty"] = returned_qty
                 it["remaining_qty"] = max(0, it["qty"] - returned_qty)
                 items.append(it)
@@ -1990,10 +2178,12 @@ class Api:
         import urllib.parse
         import webbrowser
 
-        d = self.sale(sale_id)
         with db.connect() as conn:
             st = self._settings(conn)
+            if str(st.get("whatsapp_send_enabled", "1")).strip() == "0":
+                raise ApiError("إرسال WhatsApp معطّل من قبل المدير")
 
+        d = self.sale(sale_id)
         raw_phone = (phone or d.get("customer_phone") or "").strip()
         digits = "".join(ch for ch in raw_phone if ch.isdigit())
         if not digits:
@@ -2036,11 +2226,14 @@ class Api:
         pdf_bytes = _jpeg_to_pdf_bytes(jpeg_bytes, _int(img_w, 720), _int(img_h, 1050))
         receipts_dir = pathlib.Path(db.db_path()).resolve().parent / "receipts"
         receipts_dir.mkdir(parents=True, exist_ok=True)
-        pdf_file = receipts_dir / f"{d['invoice_no']}.pdf"
+        safe_invoice = "".join(c if (c.isalnum() or c in ("-", "_")) else "_" for c in str(d["invoice_no"]))
+        if not safe_invoice:
+            safe_invoice = f"invoice_{sale_id}"
+        pdf_file = receipts_dir / f"{safe_invoice}.pdf"
         pdf_file.write_bytes(pdf_bytes)
 
         # حفظ نسخة نصية احتياطية أيضاً
-        txt_file = receipts_dir / f"{d['invoice_no']}.txt"
+        txt_file = receipts_dir / f"{safe_invoice}.txt"
         txt_file.write_text(self.receipt_text(sale_id), encoding="utf-8")
 
         pdf_abs = str(pdf_file.resolve())
@@ -2086,69 +2279,209 @@ class Api:
             "opened": opened,
         }
 
-    def sales(self, date=None, kind=None, q=None, limit=100, offset=0):
+    def _history_date_clause(self, col_prefix, date=None, date_from=None, date_to=None, all_dates=False):
+        if str(all_dates).lower() in ("1", "true", "yes"):
+            return [], []
+        clauses, args = [], []
+        df = (date_from or "").strip()
+        dt = (date_to or "").strip()
+        d = (date or "").strip()
+        if df or dt:
+            if df:
+                clauses.append(f"{col_prefix}created_at >= ?")
+                args.append(f"{df} 00:00:00")
+            if dt:
+                clauses.append(f"{col_prefix}created_at <= ?")
+                args.append(f"{dt} 23:59:59")
+        elif d:
+            clauses.append(f"{col_prefix}created_at LIKE ?")
+            args.append(f"{d}%")
+        return clauses, args
+
+    def sales(self, date=None, kind=None, q=None, limit=100, offset=0, date_from=None, date_to=None, all_dates=False):
         u = self._user()
         see_all = self._has_perm("sales_all") or self._has_perm("sales_return")
         limit, offset = _int(limit, 100), _int(offset, 0)
+        q_str = (q or "").strip()
+        k_norm = (kind or "").strip().lower()
         with db.connect() as conn:
-            out, tot = [], 0
-            kinds = (["sale", "repair"] if not kind else [kind])
-            if "sale" in kinds:
+            out = []
+            include_sales = k_norm in ("", "all", "sale", "pos", "b2b", "invoice", "returned")
+            include_quotes = k_norm in ("", "all", "quote", "quotes")
+            include_repairs = k_norm in ("", "all", "repair", "repairs")
+
+            if include_sales:
                 where, args = ["1=1"], []
-                if date:
-                    where.append("s.created_at LIKE ?")
-                    args.append(f"{date}%")
-                if q:
+                d_cl, d_ar = self._history_date_clause("s.", date=date, date_from=date_from, date_to=date_to, all_dates=all_dates)
+                where += d_cl
+                args += d_ar
+                if k_norm == "pos":
+                    where.append("COALESCE(s.doc_type, 'pos') != 'b2b'")
+                elif k_norm in ("b2b", "invoice"):
+                    where.append("s.doc_type = 'b2b'")
+                elif k_norm == "returned":
+                    where.append("s.status IN ('returned', 'partial_return')")
+                if q_str:
                     where.append("(s.invoice_no LIKE ? OR s.customer_name LIKE ? OR s.customer_phone LIKE ?)")
-                    args += [f"%{q}%", f"%{q}%", f"%{q}%"]
+                    args += [f"%{q_str}%", f"%{q_str}%", f"%{q_str}%"]
                 if not see_all:
                     where.append("s.user_id=?")
                     args.append(u["id"])
                 base = f"""SELECT s.id, s.invoice_no, s.created_at, u.name user_name,
-                                  s.status, s.total, s.discount, s.customer_name,
+                                  s.status, s.total, s.discount, s.customer_name, s.customer_phone,
+                                  COALESCE(s.doc_type, 'pos') AS doc_type, s.quote_id,
                                   s.modified_by_name, s.modified_at, s.modification_summary
                            FROM sales s JOIN users u ON u.id=s.user_id
-                           WHERE {' AND '.join(where)}"""
-                tot += conn.execute(base.replace("SELECT s.id", "SELECT COUNT(*)"), args).fetchone()[0]
-                out += [{"kind": "sale", **dict(r)} for r in
-                        conn.execute(base + " ORDER BY s.id DESC LIMIT 500", args).fetchall()]
-            if "repair" in kinds:
+                           WHERE {' AND '.join(where)} ORDER BY s.id DESC"""
+                for r in conn.execute(base, args).fetchall():
+                    row_d = dict(r)
+                    row_d["kind"] = "sale"
+                    row_d["sub_kind"] = "b2b" if row_d.get("doc_type") == "b2b" else "pos"
+                    out.append(row_d)
+
+            if include_quotes:
+                where, args = ["q.doc_type = 'quote'", "q.status != 'converted'"], []
+                d_cl, d_ar = self._history_date_clause("q.", date=date, date_from=date_from, date_to=date_to, all_dates=all_dates)
+                where += d_cl
+                args += d_ar
+                if q_str:
+                    where.append("(q.quote_no LIKE ? OR q.customer_name LIKE ? OR q.customer_phone LIKE ?)")
+                    args += [f"%{q_str}%", f"%{q_str}%", f"%{q_str}%"]
+                if not see_all:
+                    where.append("q.user_id=?")
+                    args.append(u["id"])
+                base = f"""SELECT q.id, q.quote_no, q.created_at, u.name user_name,
+                                  q.status, q.total, q.discount, q.customer_name, q.customer_phone, q.doc_date
+                           FROM quotations q JOIN users u ON u.id=q.user_id
+                           WHERE {' AND '.join(where)} ORDER BY q.id DESC"""
+                for r in conn.execute(base, args).fetchall():
+                    row_d = dict(r)
+                    row_d["kind"] = "quote"
+                    row_d["sub_kind"] = "quote"
+                    row_d["quote_id"] = row_d["id"]
+                    row_d["invoice_no"] = row_d["quote_no"]
+                    out.append(row_d)
+
+            if include_repairs:
                 where, args = ["1=1"], []
-                if date:
-                    where.append("r.created_at LIKE ?")
-                    args.append(f"{date}%")
-                if q:
-                    where.append("(r.ref LIKE ? OR r.customer_name LIKE ?)")
-                    args += [f"%{q}%", f"%{q}%"]
+                d_cl, d_ar = self._history_date_clause("r.", date=date, date_from=date_from, date_to=date_to, all_dates=all_dates)
+                where += d_cl
+                args += d_ar
+                if q_str:
+                    where.append("(r.ref LIKE ? OR r.customer_name LIKE ? OR r.customer_phone LIKE ? OR r.device_type LIKE ?)")
+                    args += [f"%{q_str}%", f"%{q_str}%", f"%{q_str}%", f"%{q_str}%"]
                 base = f"""SELECT r.id, r.ref, r.created_at, u.name user_name,
-                                  r.status, r.cost, r.customer_name
+                                  r.status, r.cost, r.customer_name, r.customer_phone, r.device_type
                            FROM repairs r JOIN users u ON u.id=r.user_id
-                           WHERE {' AND '.join(where)}"""
-                tot += conn.execute(base.replace("SELECT r.id", "SELECT COUNT(*)"), args).fetchone()[0]
-                out += [{"kind": "repair", **dict(r)} for r in
-                        conn.execute(base + " ORDER BY r.id DESC LIMIT 500", args).fetchall()]
+                           WHERE {' AND '.join(where)} ORDER BY r.id DESC"""
+                for r in conn.execute(base, args).fetchall():
+                    row_d = dict(r)
+                    row_d["kind"] = "repair"
+                    row_d["sub_kind"] = "repair"
+                    out.append(row_d)
+
             out.sort(key=lambda x: x["created_at"], reverse=True)
+            tot = len(out)
             return {"rows": out[offset:offset + limit], "total": tot}
 
-    def sales_stats(self, date=None):
+    def history_suggestions(self, q=""):
         self._user()
-        d = date or datetime.datetime.now().strftime("%Y-%m-%d")
+        q_str = (q or "").strip()
+        like = f"%{q_str}%"
+        with db.connect() as conn:
+            items = []
+            for r in conn.execute(
+                """SELECT id, invoice_no AS ref, customer_name, customer_phone, total, COALESCE(doc_type, 'pos') AS doc_type, created_at
+                   FROM sales
+                   WHERE (? = '' OR invoice_no LIKE ? OR customer_name LIKE ? OR customer_phone LIKE ?)
+                   ORDER BY id DESC LIMIT 6""",
+                (q_str, like, like, like),
+            ).fetchall():
+                items.append({
+                    "kind": "b2b" if r["doc_type"] == "b2b" else "pos",
+                    "id": r["id"],
+                    "ref": r["ref"],
+                    "customer_name": r["customer_name"] or "",
+                    "customer_phone": r["customer_phone"] or "",
+                    "amount": r["total"],
+                    "created_at": r["created_at"],
+                })
+            for r in conn.execute(
+                """SELECT id, quote_no AS ref, customer_name, customer_phone, total, created_at
+                   FROM quotations
+                   WHERE doc_type='quote' AND status!='converted'
+                     AND (? = '' OR quote_no LIKE ? OR customer_name LIKE ? OR customer_phone LIKE ?)
+                   ORDER BY id DESC LIMIT 5""",
+                (q_str, like, like, like),
+            ).fetchall():
+                items.append({
+                    "kind": "quote",
+                    "id": r["id"],
+                    "ref": r["ref"],
+                    "customer_name": r["customer_name"] or "",
+                    "customer_phone": r["customer_phone"] or "",
+                    "amount": r["total"],
+                    "created_at": r["created_at"],
+                })
+            for r in conn.execute(
+                """SELECT id, ref, customer_name, customer_phone, cost, created_at
+                   FROM repairs
+                   WHERE (? = '' OR ref LIKE ? OR customer_name LIKE ? OR customer_phone LIKE ?)
+                   ORDER BY id DESC LIMIT 5""",
+                (q_str, like, like, like),
+            ).fetchall():
+                items.append({
+                    "kind": "repair",
+                    "id": r["id"],
+                    "ref": r["ref"],
+                    "customer_name": r["customer_name"] or "",
+                    "customer_phone": r["customer_phone"] or "",
+                    "amount": r["cost"],
+                    "created_at": r["created_at"],
+                })
+            items.sort(key=lambda x: x["created_at"], reverse=True)
+            return items[:12]
+
+    def sales_stats(self, date=None, date_from=None, date_to=None, all_dates=False):
+        self._user()
+        if not date and not date_from and not date_to and not all_dates:
+            date = datetime.datetime.now().strftime("%Y-%m-%d")
+        d_cl, d_ar = self._history_date_clause("", date=date, date_from=date_from, date_to=date_to, all_dates=all_dates)
+        w_sql = (" AND ".join(d_cl)) if d_cl else "1=1"
         with db.connect() as conn:
             s = conn.execute(
-                """SELECT COUNT(*) n, COALESCE(SUM(total),0) t FROM sales
-                   WHERE created_at LIKE ? AND status != 'returned'""", (f"{d}%",),
+                f"SELECT COUNT(*) n, COALESCE(SUM(total),0) t FROM sales WHERE {w_sql} AND status != 'returned'",
+                d_ar,
+            ).fetchone()
+            pos_s = conn.execute(
+                f"SELECT COUNT(*) n, COALESCE(SUM(total),0) t FROM sales WHERE {w_sql} AND status != 'returned' AND COALESCE(doc_type,'pos') != 'b2b'",
+                d_ar,
+            ).fetchone()
+            b2b_s = conn.execute(
+                f"SELECT COUNT(*) n, COALESCE(SUM(total),0) t FROM sales WHERE {w_sql} AND status != 'returned' AND doc_type = 'b2b'",
+                d_ar,
+            ).fetchone()
+            q_s = conn.execute(
+                f"SELECT COUNT(*) n, COALESCE(SUM(total),0) t FROM quotations WHERE {w_sql} AND doc_type = 'quote' AND status != 'converted'",
+                d_ar,
             ).fetchone()
             ret = conn.execute(
-                """SELECT COUNT(*) n, COALESCE(SUM(total),0) t FROM sale_returns WHERE created_at LIKE ?""",
-                (f"{d}%",),
+                f"SELECT COUNT(*) n, COALESCE(SUM(total),0) t FROM sale_returns WHERE {w_sql}",
+                d_ar,
             ).fetchone()
             rp = conn.execute(
-                """SELECT COUNT(*) n, SUM(CASE WHEN status IN ('received','in_review','pending_approval')
-                   THEN 1 ELSE 0 END) active FROM repairs WHERE created_at LIKE ?""", (f"{d}%",),
+                f"""SELECT COUNT(*) n, SUM(CASE WHEN status IN ('received','in_review','pending_approval')
+                   THEN 1 ELSE 0 END) active FROM repairs WHERE {w_sql}""",
+                d_ar,
             ).fetchone()
-            return {"sales": {"count": s["n"], "total": s["t"]},
-                    "returns": {"count": ret["n"], "total": ret["t"]},
-                    "repairs": {"count": rp["n"], "active": rp["active"] or 0}}
+            return {
+                "sales": {"count": s["n"], "total": s["t"]},
+                "pos_sales": {"count": pos_s["n"], "total": pos_s["t"]},
+                "b2b_invoices": {"count": b2b_s["n"], "total": b2b_s["t"]},
+                "quotes": {"count": q_s["n"], "total": q_s["t"]},
+                "returns": {"count": ret["n"], "total": ret["t"]},
+                "repairs": {"count": rp["n"], "active": rp["active"] or 0},
+            }
 
     def sale_return(self, sale_id, items, reason=None):
         u = self._perm("sales_return")
@@ -2389,6 +2722,8 @@ class Api:
             method = "cash"
 
         with db.connect() as conn:
+            st = self._settings(conn)
+            tax_enabled = st.get("tax_enabled", "1") != "0"
             tpl_a4 = self._load_templates(conn)["a4"]
             default_tax_lbl = tpl_a4.get("default_tax_label", "Zero Rated 0%")
             src_prefix = (tpl_a4.get("source_prefix") or "تقنية - Technology/").strip()
@@ -2419,11 +2754,13 @@ class Api:
                 unit_price = _money(raw_it.get("unit_price"), 0)
                 if unit_price < 0:
                     raise ApiError("سعر الوحدة لا يمكن أن يكون سالباً")
-                tax_rate = _int(raw_it.get("tax_rate"), 0)
+                tax_rate = _int(raw_it.get("tax_rate"), 0) if tax_enabled else 0
                 if tax_rate < 0 or tax_rate > 100:
                     tax_rate = 0
-                tax_label = raw_it.get("tax_label")
-                if tax_label is None:
+                tax_label = raw_it.get("tax_label") if tax_enabled else ""
+                if not tax_enabled:
+                    tax_label = ""
+                elif tax_label is None:
                     tax_label = f"{tax_rate}%" if tax_rate > 0 else default_tax_lbl
                 else:
                     tax_label = str(tax_label).strip()
@@ -2562,7 +2899,7 @@ class Api:
 
     def quotation(self, id):
         """جلب بيانات عرض سعر أو فاتورة مبيعات A4 بالتفصيل."""
-        self._user()
+        self._perm_any("pos_sell", "sales_all")
         qid = _int(id)
         with db.connect() as conn:
             r = conn.execute(
@@ -2590,6 +2927,7 @@ class Api:
                     ).fetchone()["v"]
                     d["paid_amount"] = min(d["total"], direct_paid + voucher_paid)
                     d["sale_invoice_no"] = s["invoice_no"]
+                    d["sale_status"] = s["status"]
             d["due_amount"] = max(0, d["total"] - (d.get("paid_amount") or 0))
             if d.get("payments_json"):
                 try:
@@ -2629,6 +2967,10 @@ class Api:
             for r in rows:
                 d = dict(r)
                 if d.get("converted_sale_id"):
+                    s_row = conn.execute("SELECT invoice_no, status FROM sales WHERE id=?", (d["converted_sale_id"],)).fetchone()
+                    if s_row:
+                        d["sale_invoice_no"] = s_row["invoice_no"]
+                        d["sale_status"] = s_row["status"]
                     direct_paid = conn.execute(
                         "SELECT COALESCE(SUM(amount),0) p FROM payments WHERE sale_id=? AND method IN ('cash','wallet')",
                         (d["converted_sale_id"],),
@@ -2660,15 +3002,28 @@ class Api:
                 },
             }
 
+    def quotation_cancel(self, id):
+        """إلغاء عرض سعر (تحويل حالته إلى cancelled) مع منع إلغاء الفواتير المعتمدة حفاظاً على الدورة المالية."""
+        self._perm("pos_sell")
+        qid = _int(id)
+        with db.connect() as conn:
+            r = conn.execute("SELECT id, doc_type, status, converted_sale_id FROM quotations WHERE id=?", (qid,)).fetchone()
+            if not r:
+                raise ApiError("عرض السعر غير موجود")
+            if r["doc_type"] == "invoice" or r["status"] == "converted" or r["converted_sale_id"]:
+                raise ApiError("لا يمكن إلغاء فاتورة مبيعات معتمدة لأن ذلك يؤثر على الدورة المالية؛ يمكنك عمل استرجاع (مرتجع) من الفاتورة")
+            conn.execute("UPDATE quotations SET status='cancelled' WHERE id=?", (qid,))
+        return self.quotation(qid)
+
     def quotation_delete(self, id):
         """حذف عرض سعر غير محول إلى فاتورة مبيعات."""
         self._perm("pos_sell")
         qid = _int(id)
         with db.connect() as conn:
-            r = conn.execute("SELECT status, converted_sale_id FROM quotations WHERE id=?", (qid,)).fetchone()
+            r = conn.execute("SELECT doc_type, status, converted_sale_id FROM quotations WHERE id=?", (qid,)).fetchone()
             if not r:
                 raise ApiError("عرض السعر غير موجود")
-            if r["status"] == "converted" or r["converted_sale_id"]:
+            if r["doc_type"] == "invoice" or r["status"] == "converted" or r["converted_sale_id"]:
                 raise ApiError("لا يمكن حذف فاتورة مبيعات معتمدة؛ استخدم شاشة المرتجعات عند الحاجة")
             conn.execute("DELETE FROM quotations WHERE id=?", (qid,))
             return True
@@ -2679,10 +3034,13 @@ class Api:
         import urllib.parse
         import webbrowser
 
-        d = self.quotation(quote_id)
         with db.connect() as conn:
             st = self._settings(conn)
+            if str(st.get("whatsapp_send_enabled", "1")).strip() == "0":
+                raise ApiError("إرسال WhatsApp معطّل من قبل المدير")
             tpl_a4 = self._load_templates(conn)["a4"]
+
+        d = self.quotation(quote_id)
 
         raw_phone = (phone or d.get("customer_phone") or "").strip()
         digits = "".join(ch for ch in raw_phone if ch.isdigit())
@@ -2785,9 +3143,20 @@ class Api:
         buy = _money(buy_price)
         if buy <= 0:
             raise ApiError("سعر الشراء مطلوب")
-        ref = "TRX-" + datetime.datetime.now().strftime("%Y%m%d%H%M%S")
         product_id = None
+        seller_phone_clean = (seller_phone or "").strip() or None
         with db.connect() as conn:
+            pos_tpl = self._load_templates(conn)["pos"]
+            u_prefix = (pos_tpl.get("used_prefix") or "TRX-").strip() or "TRX-"
+            cnt = conn.execute("SELECT COUNT(*) c FROM used_device_purchases").fetchone()["c"] + 1
+            if u_prefix[-1].isdigit():
+                ref = f"{u_prefix}{cnt:03d}"
+            else:
+                sep = "" if u_prefix.endswith(("-", "/", "_")) else "-"
+                ref = f"{u_prefix}{sep}{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
+            if conn.execute("SELECT 1 FROM used_device_purchases WHERE ref=?", (ref,)).fetchone():
+                ref = f"{ref}-{cnt}"
+            customer_id = _upsert_customer(conn, seller_name, seller_phone_clean)
             if to_inventory:
                 if not serial:
                     raise ApiError("السيريال مطلوب لإضافة الجهاز للمخزون")
@@ -2823,10 +3192,10 @@ class Api:
                  model, serial, condition, notes, buy, storage, _money(resale_price) if resale_price not in (None, "") else None,
                  product_id),
             )
-            return {"ref": ref, "product_id": product_id}
+            return {"ref": ref, "product_id": product_id, "customer_id": customer_id}
 
     def used(self, q=None, limit=100, offset=0):
-        self._user()
+        self._perm("used_manage")
         limit, offset = _int(limit, 100), _int(offset, 0)
         where, args = ["1=1"], []
         if q:
@@ -2856,14 +3225,23 @@ class Api:
 
     # ---------------------------------------------------------- صيانة
     def repair_create(self, customer_name, customer_phone, device_type, problem, address=None,
-                      serial=None, accessories=None, notes=None, priority=0, cost=0):
-        u = self._perm("repair_view")
+                       serial=None, accessories=None, notes=None, priority=0, cost=0):
+        u = self._perm("repair_edit")
         for f, v in (("customer_name", customer_name), ("customer_phone", customer_phone),
                      ("device_type", device_type), ("problem", problem)):
             if not (v or "").strip():
                 raise ApiError("حقل مطلوب: " + f)
-        ref = "RPR-" + datetime.datetime.now().strftime("%Y%m%d%H%M%S")
         with db.connect() as conn:
+            pos_tpl = self._load_templates(conn)["pos"]
+            r_prefix = (pos_tpl.get("repair_prefix") or "RPR-").strip() or "RPR-"
+            cnt = conn.execute("SELECT COUNT(*) c FROM repairs").fetchone()["c"] + 1
+            if r_prefix[-1].isdigit():
+                ref = f"{r_prefix}{cnt:03d}"
+            else:
+                sep = "" if r_prefix.endswith(("-", "/", "_")) else "-"
+                ref = f"{r_prefix}{sep}{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
+            if conn.execute("SELECT 1 FROM repairs WHERE ref=?", (ref,)).fetchone():
+                ref = f"{ref}-{cnt}"
             _upsert_customer(conn, customer_name.strip(), customer_phone.strip())
             cur = conn.execute(
                 """INSERT INTO repairs(ref, user_id, created_at, updated_at, customer_name, customer_phone, address,
@@ -2895,7 +3273,7 @@ class Api:
             return {"rows": [dict(r) for r in rows], "total": total}
 
     def repair(self, id):
-        self._user()
+        self._perm("repair_view")
         with db.connect() as conn:
             r = conn.execute(
                 """SELECT r.*, u.name user_name FROM repairs r JOIN users u ON u.id=r.user_id WHERE r.id=?""",
@@ -2910,7 +3288,7 @@ class Api:
             return d
 
     def repair_set_status(self, id, status):
-        self._perm("repair_view")
+        self._perm("repair_edit")
         if status not in REPAIR_FLOW:
             raise ApiError("حالة غير معروفة")
         with db.connect() as conn:
@@ -2954,8 +3332,85 @@ class Api:
             conn.execute("UPDATE repairs SET cost=cost+?, updated_at=? WHERE id=?", (unit * q, db.now(), rid))
             return {"cost": conn.execute("SELECT cost FROM repairs WHERE id=?", (rid,)).fetchone()["cost"]}
 
+    def repair_update(self, id, customer_name=None, customer_phone=None, device_type=None, problem=None,
+                      address=None, serial=None, accessories=None, notes=None, priority=None, cost=None):
+        """تعديل بيانات تذكرة صيانة مع حماية الوضع المالي للتذاكر المسلمة."""
+        self._perm("repair_edit")
+        rid = _int(id)
+        with db.connect() as conn:
+            r = conn.execute("SELECT * FROM repairs WHERE id=?", (rid,)).fetchone()
+            if not r:
+                raise ApiError("التذكرة غير موجودة")
+            cname = (customer_name if customer_name is not None else r["customer_name"] or "").strip()
+            cphone = (customer_phone if customer_phone is not None else r["customer_phone"] or "").strip()
+            dtype = (device_type if device_type is not None else r["device_type"] or "").strip()
+            prob = (problem if problem is not None else r["problem"] or "").strip()
+            if not cname or not cphone or not dtype or not prob:
+                raise ApiError("اسم العميل ورقم الهاتف ونوع الجهاز ووصف العطل حقول مطلوبة")
+            new_cost = _money(cost) if cost is not None else r["cost"]
+            if r["status"] == "delivered" and cost is not None and new_cost != r["cost"]:
+                raise ApiError("لا يمكن تعديل التكلفة المالية لتذكرة صيانة تم تسليمها بالفعل حفاظاً على الوضع المالي")
+            _upsert_customer(conn, cname, cphone)
+            conn.execute(
+                """UPDATE repairs
+                   SET customer_name=?, customer_phone=?, address=?, device_type=?, serial=?,
+                       problem=?, accessories=?, notes=?, priority=?, cost=?, updated_at=?
+                   WHERE id=?""",
+                (
+                    cname,
+                    cphone,
+                    address if address is not None else r["address"],
+                    dtype,
+                    serial if serial is not None else r["serial"],
+                    prob,
+                    accessories if accessories is not None else r["accessories"],
+                    notes if notes is not None else r["notes"],
+                    (1 if priority else 0) if priority is not None else r["priority"],
+                    new_cost,
+                    db.now(),
+                    rid,
+                ),
+            )
+        return self.repair(rid)
+
+    def repair_delete(self, id):
+        """حذف تذكرة صيانة إذا لم تؤثر على الوضع المالي (غير مسلمة بتكلفة مالية) مع استرجاع قطع الغيار للمخزون."""
+        u = self._perm("repair_edit")
+        rid = _int(id)
+        with db.connect() as conn:
+            r = conn.execute("SELECT * FROM repairs WHERE id=?", (rid,)).fetchone()
+            if not r:
+                raise ApiError("التذكرة غير موجودة")
+            if r["status"] == "delivered" and (r["cost"] or 0) > 0:
+                raise ApiError("لا يمكن حذف تذكرة صيانة تم تسليمها وتحصيل قيمتها لأن ذلك يؤثر على الوضع المالي")
+            parts = conn.execute("SELECT * FROM repair_parts WHERE repair_id=?", (rid,)).fetchall()
+            for pt in parts:
+                if pt["product_id"]:
+                    conn.execute("UPDATE products SET qty=qty+? WHERE id=?", (pt["qty"], pt["product_id"]))
+                    row_after = conn.execute("SELECT qty FROM products WHERE id=?", (pt["product_id"],)).fetchone()
+                    if row_after:
+                        conn.execute(
+                            """INSERT INTO stock_movements(created_at, user_id, product_id, qty_change, qty_after, reason, ref)
+                               VALUES(?,?,?,?,?,?,?)""",
+                            (db.now(), u["id"], pt["product_id"], pt["qty"], row_after["qty"], "repair_cancel", r["ref"]),
+                        )
+            conn.execute("DELETE FROM repair_parts WHERE repair_id=?", (rid,))
+            conn.execute("DELETE FROM repairs WHERE id=?", (rid,))
+            return True
+
     # ---------------------------------------------------------- تقارير
-    def _range(self, conn, date=None, month=None):
+    def _range(self, conn, date=None, month=None, date_from=None, date_to=None):
+        df = (date_from or "").strip()
+        dt = (date_to or "").strip()
+        if df or dt:
+            clauses, args = [], []
+            if df:
+                clauses.append("created_at >= ?")
+                args.append(f"{df} 00:00:00")
+            if dt:
+                clauses.append("created_at <= ?")
+                args.append(f"{dt} 23:59:59")
+            return " AND ".join(clauses), args
         if date:
             return "created_at LIKE ?", [f"{date}%"]
         if month:
@@ -2976,9 +3431,10 @@ class Api:
         ret = conn.execute(
             f"SELECT COUNT(*) n, COALESCE(SUM(total),0) tot FROM sale_returns WHERE {where}", args
         ).fetchone()
+        s_where = where.replace("created_at", "s.created_at")
         pays = {r["method"]: r["t"] for r in conn.execute(
             f"""SELECT p.method, COALESCE(SUM(p.amount),0) t FROM payments p
-                JOIN sales s ON s.id=p.sale_id WHERE s.{where} GROUP BY p.method""", args,
+                JOIN sales s ON s.id=p.sale_id WHERE {s_where} GROUP BY p.method""", args,
         ).fetchall()}
         vouchers = conn.execute(
             f"SELECT COUNT(*) n, COALESCE(SUM(amount),0) tot FROM customer_payments WHERE {where}", args
@@ -2997,11 +3453,14 @@ class Api:
             "repairs": {"count": rp["n"], "delivered": rp["done"], "revenue": rp["rev"]},
         }
 
-    def report_daily(self, date=None):
+    def report_daily(self, date=None, date_from=None, date_to=None):
         self._perm("reports_view")
-        d = date or datetime.datetime.now().strftime("%Y-%m-%d")
         with db.connect() as conn:
-            where, args = self._range(conn, date=d)
+            if date_from or date_to:
+                where, args = self._range(conn, date_from=date_from, date_to=date_to)
+            else:
+                d = date or datetime.datetime.now().strftime("%Y-%m-%d")
+                where, args = self._range(conn, date=d)
             return self._period_stats(conn, where, args)
 
     def report_monthly(self, year, month):

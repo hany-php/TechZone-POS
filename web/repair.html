@@ -1,339 +1,610 @@
 <!DOCTYPE html>
-
-<html dir="rtl" lang="ar"><head>
+<html dir="rtl" lang="ar">
+<head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>تذكرة صيانة - تك زون للإلكترونيات</title>
+<title>مركز الصيانة وإدارة التذاكر - تك زون</title>
 <link href="app.css" rel="stylesheet"/>
 <script>if(localStorage.getItem('tz-theme')==='dark')document.documentElement.classList.add('dark');</script>
+<style>
+  @media print {
+    body > *:not(#repair-print-area) { display: none !important; }
+    #repair-print-area { display: block !important; margin: 0 auto !important; }
+  }
+  #repair-print-area { display: none; }
+</style>
 </head>
-<body id="shell" class="bg-background-light dark:bg-background-dark min-h-screen text-slate-800 dark:text-slate-100 flex flex-col md:flex-row">
-<main class="flex-1 flex-grow py-8 px-4 sm:px-6 lg:px-8">
-<div class="max-w-6xl mx-auto">
-<!-- Breadcrumbs & Actions -->
-<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-<div>
-<nav aria-label="Breadcrumb" class="flex text-sm text-slate-500 mb-1">
-<ol class="inline-flex items-center gap-2">
-<li class="inline-flex items-center"><a class="hover:text-primary transition-colors" href="pos.html">الرئيسية</a></li>
-<li class="material-icons text-xs text-slate-400 rotate-180">chevron_right</li>
-<li><a class="hover:text-primary transition-colors" href="#" id="crumb-list">الصيانة</a></li>
-<li class="material-icons text-xs text-slate-400 rotate-180">chevron_right</li>
-<li class="text-slate-800 dark:text-slate-200 font-medium">تذكرة جديدة</li>
-</ol>
-</nav>
-<h2 class="text-3xl font-bold text-slate-900 dark:text-white font-display">إنشاء تذكرة صيانة</h2>
-</div>
-<div class="flex gap-3">
-<button id="btn-list" class="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors font-medium text-sm shadow-sm">
-<span class="material-icons text-lg">history</span>
-<span>السجل السابق</span>
-</button>
-</div>
-</div>
-<!-- Parts section (يظهر عند فتح أو إنشاء تذكرة) -->
-<div id="parts-panel" class="hidden mb-8 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-primary/30 p-6"></div>
-<div id="list-panel" class="hidden mb-8 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6">
-<div class="flex gap-3 mb-4">
-<input id="q" class="flex-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" placeholder="بحث برقم التذكرة أو اسم العميل أو السيريال..."/>
-<select id="fs" class="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm">
-<option value="">كل الحالات</option>
-<option value="received">استلام</option>
-<option value="in_review">قيد الفحص</option>
-<option value="pending_approval">بانتظار الموافقة</option>
-<option value="repaired">تم الإصلاح</option>
-<option value="rejected">مرفوض</option>
-<option value="delivered">تم التسليم</option>
-</select>
-</div>
-<div class="space-y-2" id="rows"></div>
-</div>
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-<!-- Main Form Section -->
-<div class="lg:col-span-2 space-y-6">
-<!-- Customer Info Card -->
-<div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-visible">
-<div class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
-<h3 class="font-bold text-lg text-slate-800 dark:text-slate-100 flex items-center gap-2">
-<span class="material-icons text-primary text-xl">person</span>
-بيانات العميل
-</h3>
-<span class="text-xs font-mono bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded">عميل جديد / مسجل</span>
-</div>
-<div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-<div class="space-y-2 relative">
-<label class="block text-sm font-medium text-slate-700 dark:text-slate-300" for="f-cust">اسم العميل <span class="text-red-500">*</span></label>
-<div class="relative">
-<input class="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary/20 transition-all py-2.5 pr-10 pl-4 text-right" id="f-cust" placeholder="مثال: محمد أحمد" type="text" autocomplete="off"/>
-<div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400"><span class="material-icons text-lg">badge</span></div>
-</div>
-<div id="cust-sug" class="absolute top-full left-0 right-0 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 hidden max-h-48 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700"></div>
-</div>
-<div class="space-y-2">
-<label class="block text-sm font-medium text-slate-700 dark:text-slate-300" for="f-phone">رقم الهاتف <span class="text-red-500">*</span></label>
-<div class="relative" dir="ltr">
-<input class="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary/20 transition-all py-2.5 pl-10 pr-4 text-right" id="f-phone" placeholder="010xxxxxxxx" type="tel"/>
-<div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400"><span class="material-icons text-lg">phone</span></div>
-</div>
-</div>
-<div class="space-y-2 md:col-span-2">
-<label class="block text-sm font-medium text-slate-700 dark:text-slate-300" for="f-addr">العنوان (اختياري)</label>
-<div class="relative">
-<input class="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary/20 transition-all py-2.5 pr-10 pl-4 text-right" id="f-addr" placeholder="الحي، الشارع..." type="text"/>
-<div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400"><span class="material-icons text-lg">location_on</span></div>
-</div>
-</div>
-</div>
-</div>
-<!-- Device Info Card -->
-<div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
-<div class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center bg-slate-50/50 dark:bg-slate-800/50">
-<h3 class="font-bold text-lg text-slate-800 dark:text-slate-100 flex items-center gap-2">
-<span class="material-icons text-primary text-xl">devices</span>
-تفاصيل الجهاز والمشكلة
-</h3>
-</div>
-<div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-<div class="space-y-2">
-<label class="block text-sm font-medium text-slate-700 dark:text-slate-300" for="f-type">نوع الجهاز <span class="text-red-500">*</span></label>
-<div class="relative">
-<select class="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary/20 transition-all py-2.5 pr-10 pl-4 text-right appearance-none" id="f-type">
-<option disabled="" selected="" value="">اختر النوع...</option>
-<option value="لابتوب">لابتوب</option>
-<option value="كمبيوتر مكتبي">كمبيوتر مكتبي</option>
-<option value="هاتف محمول">هاتف محمول</option>
-<option value="جهاز ألعاب">جهاز ألعاب</option>
-<option value="طابعة">طابعة</option>
-<option value="أخرى">أخرى</option>
-</select>
-<div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400"><span class="material-icons text-lg">computer</span></div>
-<div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-500"><span class="material-icons text-lg">expand_more</span></div>
-</div>
-</div>
-<div class="space-y-2">
-<label class="block text-sm font-medium text-slate-700 dark:text-slate-300" for="f-sn">الرقم التسلسلي (S/N)</label>
-<div class="relative">
-<input class="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary/20 transition-all py-2.5 pr-10 pl-12 text-right dir-ltr font-mono text-sm uppercase" id="f-sn" placeholder="S/N..." type="text"/>
-<div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400"><span class="material-icons text-lg">qr_code</span></div>
-</div>
-</div>
-<div class="space-y-2 md:col-span-2">
-<label class="block text-sm font-medium text-slate-700 dark:text-slate-300" for="f-prob">وصف المشكلة <span class="text-red-500">*</span></label>
-<div class="relative">
-<textarea class="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary/20 transition-all py-3 pr-10 pl-4 resize-none" id="f-prob" placeholder="يرجى وصف المشكلة بالتفصيل، مثلاً: الجهاز لا يعمل، الشاشة مكسورة..." rows="4"></textarea>
-<div class="absolute top-3 right-0 flex items-start pr-3 pointer-events-none text-slate-400"><span class="material-icons text-lg">description</span></div>
-</div>
-</div>
-<div class="space-y-2 md:col-span-2">
-<label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">الملحقات المستلمة</label>
-<div class="flex flex-wrap gap-3" id="accs">
-<label class="inline-flex items-center p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 cursor-pointer hover:border-primary/50 transition-colors"><input value="شاحن" class="rounded border-slate-300 text-primary focus:ring-primary/50 w-4 h-4 ml-2" type="checkbox"/><span class="text-sm">شاحن</span></label>
-<label class="inline-flex items-center p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 cursor-pointer hover:border-primary/50 transition-colors"><input value="حقيبة" class="rounded border-slate-300 text-primary focus:ring-primary/50 w-4 h-4 ml-2" type="checkbox"/><span class="text-sm">حقيبة</span></label>
-<label class="inline-flex items-center p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 cursor-pointer hover:border-primary/50 transition-colors"><input value="بطارية خارجية" class="rounded border-slate-300 text-primary focus:ring-primary/50 w-4 h-4 ml-2" type="checkbox"/><span class="text-sm">بطارية خارجية</span></label>
-<label class="inline-flex items-center p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 cursor-pointer hover:border-primary/50 transition-colors"><input value="أخرى" class="rounded border-slate-300 text-primary focus:ring-primary/50 w-4 h-4 ml-2" type="checkbox"/><span class="text-sm">أخرى</span></label>
-</div>
-</div>
-</div>
-</div>
-</div>
-<!-- Summary & Status Section -->
-<div class="lg:col-span-1 space-y-6">
-<div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 sticky top-24">
-<h3 class="font-bold text-lg text-slate-800 dark:text-slate-100 mb-6 flex items-center gap-2">
-<span class="material-icons text-primary text-xl">fact_check</span>
-التكلفة والحفظ
-</h3>
-<div class="space-y-6">
-<div class="space-y-2">
-<label class="block text-sm font-medium text-slate-700 dark:text-slate-300" for="f-cost">التكلفة التقديرية</label>
-<div class="relative">
-<input class="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary/20 transition-all py-3 pr-10 pl-16 text-right font-mono font-medium text-lg" id="f-cost" placeholder="0.00" type="number" min="0" step="0.01"/>
-<div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400"><span class="material-icons text-lg">payments</span></div>
-<div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-500 bg-slate-50 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 h-full rounded-l-lg px-3"><span class="text-sm font-bold" id="cur">ج.م</span></div>
-</div>
-</div>
-<div class="pt-4 border-t border-slate-100 dark:border-slate-800">
-<label class="flex items-center justify-between cursor-pointer group">
-<span class="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-primary transition-colors">أولوية عاجلة (+50)</span>
-<input id="f-urgent" type="checkbox" class="w-5 h-5 accent-blue-600"/>
-</label>
-</div>
-<div class="pt-6 grid grid-cols-2 gap-3">
-<button id="btn-save" class="col-span-2 w-full py-3.5 px-4 bg-primary hover:bg-primary/90 text-white rounded-xl shadow-lg shadow-primary/30 font-bold text-lg transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
-<span class="material-icons">save</span>
-حفظ التذكرة
-</button>
-<button id="btn-clear" class="w-full py-3 px-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 font-medium transition-colors">إلغاء</button>
-<button onclick="window.print()" class="w-full py-3 px-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 font-medium transition-colors flex items-center justify-center gap-2">
-<span class="material-icons text-lg">print</span>
-معاينة
-</button>
-</div>
-</div>
-</div>
-<div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-100 dark:border-blue-800/30">
-<div class="flex items-start gap-3">
-<span class="material-icons text-blue-600 dark:text-blue-400 mt-0.5">info</span>
-<div class="text-sm text-blue-800 dark:text-blue-200">
-<p class="font-bold mb-1">تذكير:</p>
-<p>يرجى التأكد من إزالة جميع بطاقات الذاكرة وشرائح الاتصال من الأجهزة قبل الاستلام.</p>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
+<body id="shell" class="bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-100 font-display min-h-screen flex flex-col md:flex-row">
+<main class="flex-1 flex flex-col min-w-0">
+  <!-- Header -->
+  <header class="h-16 bg-surface-light dark:bg-surface-dark border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 shrink-0">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+        <span class="material-icons-outlined">handyman</span>
+      </div>
+      <div>
+        <h1 class="text-lg md:text-xl font-bold">مركز الصيانة وإدارة التذاكر</h1>
+        <p class="text-xs text-slate-500">استلام الأجهزة، متابعة حالة الإصلاح، تركيب قطع الغيار، التعديل والحذف الآمن، وطباعة تذكرة الصيانة في أي حالة</p>
+      </div>
+    </div>
+    <div class="relative w-64 md:w-80">
+      <span class="material-icons-outlined absolute right-3 top-2.5 text-slate-400">search</span>
+      <input id="q" class="w-full pr-10 pl-4 py-2 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs md:text-sm focus:outline-none focus:border-primary" placeholder="بحث برقم التذكرة، اسم العميل، السيريال..." type="text"/>
+    </div>
+  </header>
+
+  <div class="flex-1 p-5 flex flex-col gap-5 overflow-y-auto">
+    <!-- بطاقات الإحصائيات السريعة -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+      <div class="bg-surface-light dark:bg-surface-dark p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3">
+        <div class="w-11 h-11 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center"><span class="material-icons-outlined">confirmation_number</span></div>
+        <div>
+          <div class="text-xs text-slate-500">إجمالي التذاكر</div>
+          <div id="kpi-total" class="text-lg font-bold font-num">0</div>
+        </div>
+      </div>
+      <div class="bg-surface-light dark:bg-surface-dark p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3">
+        <div class="w-11 h-11 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center"><span class="material-icons-outlined">pending_actions</span></div>
+        <div>
+          <div class="text-xs text-slate-500">قيد الفحص والعمل</div>
+          <div id="kpi-active" class="text-lg font-bold font-num text-amber-600">0</div>
+        </div>
+      </div>
+      <div class="bg-surface-light dark:bg-surface-dark p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3">
+        <div class="w-11 h-11 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center"><span class="material-icons-outlined">check_circle</span></div>
+        <div>
+          <div class="text-xs text-slate-500">جاهزة للتسليم</div>
+          <div id="kpi-ready" class="text-lg font-bold font-num text-emerald-600">0</div>
+        </div>
+      </div>
+      <div class="bg-surface-light dark:bg-surface-dark p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3">
+        <div class="w-11 h-11 rounded-xl bg-slate-500/10 text-slate-600 dark:text-slate-300 flex items-center justify-center"><span class="material-icons-outlined">task_alt</span></div>
+        <div>
+          <div class="text-xs text-slate-500">تم التسليم للعميل</div>
+          <div id="kpi-delivered" class="text-lg font-bold font-num">0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
+      <!-- العمود الأيمن: نموذج استلام جهاز جديد أو تعديل تذكرة قائمة -->
+      <div class="xl:col-span-5 bg-surface-light dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-5">
+        <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-200 dark:border-slate-800">
+          <div class="flex items-center gap-2">
+            <span class="material-icons-outlined text-primary">build_circle</span>
+            <h2 id="form-title" class="text-base font-bold">استلام جهاز صيانة جديد</h2>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span id="edit-ticket-badge" class="hidden px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 font-num"></span>
+            <button type="button" id="btn-reset-form" class="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800">تفريغ النموذج</button>
+          </div>
+        </div>
+
+        <form id="f" class="space-y-4">
+          <input type="hidden" id="edit-repair-id" value=""/>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">1. بيانات العميل</h3>
+              <span id="r-cust-badge" class="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">عميل جديد / مسجل</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div class="relative">
+                <label class="block text-xs font-medium mb-1">اسم العميل *</label>
+                <input id="r-name" autocomplete="off" required class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm" placeholder="ابحث أو اكتب اسم العميل"/>
+                <div id="r-cust-Sug" class="hidden absolute z-30 top-full mt-1 right-0 left-0 max-h-48 overflow-y-auto bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg divide-y divide-slate-100 dark:divide-slate-700/60"></div>
+              </div>
+              <div>
+                <label class="block text-xs font-medium mb-1">رقم الهاتف *</label>
+                <input id="r-phone" autocomplete="off" required dir="ltr" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-right font-num" placeholder="05xxxxxxxx / 01xxxxxxxxx"/>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-medium mb-1">العنوان (اختياري)</label>
+              <input id="r-addr" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"/>
+            </div>
+          </div>
+
+          <div class="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">2. تفاصيل الجهاز والعطل</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="block text-xs font-medium mb-1">نوع وموديل الجهاز *</label>
+                <input id="r-dev" required class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm" placeholder="iPhone 14 Pro / لابتوب HP"/>
+              </div>
+              <div>
+                <label class="block text-xs font-medium mb-1">السيريال / IMEI</label>
+                <input id="r-sn" dir="ltr" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-num"/>
+              </div>
+              <div>
+                <label class="block text-xs font-medium mb-1">تكلفة الصيانة المبدئية</label>
+                <input id="r-cost" type="number" step="0.01" min="0" value="0" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-num"/>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-medium mb-1">وصف العطل / المشكلة بالتفصيل *</label>
+              <textarea id="r-prob" required rows="2" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm" placeholder="اكتب شكوى العميل والعطل الظاهري..."></textarea>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-medium mb-1">الملحقات المستلمة مع الجهاز</label>
+                <input id="r-acc" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm" placeholder="شاحن، جراب، بطارية، كرتونة..."/>
+              </div>
+              <div>
+                <label class="block text-xs font-medium mb-1">ملاحظات الفحص / حالة الجهاز</label>
+                <input id="r-notes" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm" placeholder="خدوش خارجية، كلمة سر الجهاز..."/>
+              </div>
+            </div>
+            <label class="inline-flex items-center gap-2 cursor-pointer pt-1">
+              <input id="r-prio" type="checkbox" class="rounded text-primary"/>
+              <span class="text-xs font-bold text-amber-600 dark:text-amber-400">تذكرة صيانة مستعجلة (أولوية قصوى ★)</span>
+            </label>
+          </div>
+
+          <div class="flex flex-wrap gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+            <button type="submit" id="btn-submit-repair" class="flex-1 py-2.5 px-4 bg-primary hover:bg-primary-dark text-white rounded-xl text-sm font-bold shadow-md shadow-primary/20 flex items-center justify-center gap-2">
+              <span class="material-icons-outlined text-base">save</span>
+              <span id="lbl-submit-repair">حفظ التذكرة وطباعة إيصال الاستلام</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- العمود الأيسر: قائمة التذاكر + لوحة إدارة التذكرة المختارة -->
+      <div class="xl:col-span-7 flex flex-col gap-4">
+        <!-- لوحة إدارة التذكرة المحددة حالياً -->
+        <div id="active-box" class="bg-surface-light dark:bg-surface-dark rounded-2xl border-2 border-primary/30 shadow-sm p-5 hidden space-y-4">
+          <div class="flex flex-wrap justify-between items-start gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-slate-400">التذكرة المحددة:</span>
+                <h3 id="a-ref" class="font-bold font-num text-lg text-primary">#</h3>
+                <span id="a-status-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold"></span>
+              </div>
+              <p id="a-cust" class="text-sm font-bold text-slate-800 dark:text-slate-100 mt-1"></p>
+              <p id="a-dev-info" class="text-xs text-slate-500 mt-0.5"></p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <button type="button" id="a-btn-print" class="px-3.5 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold flex items-center gap-1.5 shadow-sm">
+                <span class="material-icons-outlined text-sm">print</span>
+                <span>طباعة تذكرة الصيانة</span>
+              </button>
+              <button type="button" id="a-btn-edit" class="px-3 py-2 rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:bg-amber-500 hover:text-white text-xs font-bold flex items-center gap-1">
+                <span class="material-icons-outlined text-sm">edit</span>
+                <span>تعديل الطلب</span>
+              </button>
+              <button type="button" id="a-btn-del" class="px-3 py-2 rounded-xl bg-red-500/15 text-red-600 hover:bg-red-600 hover:text-white text-xs font-bold flex items-center gap-1">
+                <span class="material-icons-outlined text-sm">delete</span>
+                <span>حذف الطلب</span>
+              </button>
+              <button type="button" id="a-close" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600"><span class="material-icons-outlined">close</span></button>
+            </div>
+          </div>
+
+          <!-- تغيير الحالة وإضافة قطع الغيار -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-2">
+              <div class="text-xs font-bold text-slate-500">تحديث حالة التذكرة:</div>
+              <div id="a-transitions" class="flex flex-wrap gap-2"></div>
+            </div>
+            <div class="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-500">إجمالي التكلفة (شامل القطع):</span>
+                <span id="a-cost" class="text-base font-extrabold font-num text-primary">0.00</span>
+              </div>
+              <div id="a-part-row" class="flex gap-1.5">
+                <select id="a-part-sel" class="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs"></select>
+                <input id="a-part-qty" type="number" min="1" value="1" class="w-14 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs text-center font-num"/>
+                <button type="button" id="a-part-add" class="px-3 py-1.5 bg-primary text-white rounded-lg text-xs font-bold">+ قطعة</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="a-parts" class="space-y-1 text-xs"></div>
+        </div>
+
+        <!-- فلاتر الحالات والجدول -->
+        <div class="bg-surface-light dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+          <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
+            <div id="s-tabs" class="flex flex-wrap gap-1.5 text-xs">
+              <button data-st="" class="px-3 py-1.5 rounded-xl bg-primary text-white font-bold">الكل</button>
+              <button data-st="received" class="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 font-bold">مستلم</button>
+              <button data-st="in_review" class="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 font-bold">تحت الفحص</button>
+              <button data-st="pending_approval" class="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 font-bold">بانتظار الموافقة</button>
+              <button data-st="repaired" class="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 font-bold">تم الإصلاح</button>
+              <button data-st="delivered" class="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 font-bold">تم التسليم</button>
+              <button data-st="rejected" class="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 font-bold">مرفوض</button>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-right border-collapse text-xs">
+              <thead>
+                <tr class="bg-slate-50 dark:bg-slate-800/50 text-slate-500 font-bold border-b border-slate-200 dark:border-slate-800">
+                  <th class="p-3">رقم التذكرة</th>
+                  <th class="p-3">العميل والهاتف</th>
+                  <th class="p-3">الجهاز والعطل</th>
+                  <th class="p-3">الحالة</th>
+                  <th class="p-3">التكلفة</th>
+                  <th class="p-3 text-center">إجراءات سريعة</th>
+                </tr>
+              </thead>
+              <tbody id="list" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </main>
-<footer class="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 mt-auto py-6">
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-slate-500">
-<p>© تك زون للإلكترونيات. جميع الحقوق محفوظة.</p>
-<div class="flex gap-4">
-<button onclick="toggleTheme()" class="hover:text-primary">وضع ليلي / نهاري</button>
+
+<!-- نافذة معاينة وطباعة تذكرة الصيانة في أي حالة -->
+<div id="repair-print-modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50 p-4">
+  <div class="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col">
+    <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+      <h3 class="font-bold text-sm">معاينة وطباعة تذكرة الصيانة</h3>
+      <div class="flex items-center gap-2">
+        <button type="button" id="modal-btn-do-print" class="px-4 py-1.5 rounded-xl bg-primary text-white text-xs font-bold flex items-center gap-1">
+          <span class="material-icons-outlined text-sm">print</span>
+          <span>طباعة الآن</span>
+        </button>
+        <button type="button" onclick="document.getElementById('repair-print-modal').classList.replace('flex','hidden')" class="p-1 text-slate-400 hover:text-slate-600">
+          <span class="material-icons-outlined">close</span>
+        </button>
+      </div>
+    </div>
+    <div id="repair-print-preview-body" class="p-4 bg-slate-100 dark:bg-slate-950 overflow-y-auto max-h-[80vh]"></div>
+  </div>
 </div>
-</div>
-</footer>
-<div class="fixed top-0 left-0 w-full h-96 bg-gradient-to-b from-primary/5 to-transparent -z-10 pointer-events-none"></div>
+
+<div id="repair-print-area" dir="rtl"></div>
+
 <script src="app.js"></script>
 <script>
-let OPEN_ID = null, OPEN_REF = null, AVAIL_PARTS = [];
-
-const STATUS_AR = { received: 'استلام', in_review: 'قيد الفحص', pending_approval: 'بانتظار الموافقة', repaired: 'تم الإصلاح', rejected: 'مرفوض', delivered: 'تم التسليم' };
-
-document.getElementById('btn-clear').addEventListener('click', () => ['f-cust', 'f-phone', 'f-addr', 'f-sn', 'f-prob', 'f-cost'].forEach((f) => document.getElementById(f).value = ''));
-document.getElementById('btn-list').addEventListener('click', () => document.getElementById('list-panel').classList.toggle('hidden'));
-document.getElementById('crumb-list').addEventListener('click', (e) => { e.preventDefault(); document.getElementById('list-panel').classList.toggle('hidden'); });
-
-const custInput = document.getElementById('f-cust');
-const custSug = document.getElementById('cust-sug');
-custInput.addEventListener('input', async () => {
-  const q = custInput.value.trim();
-  if (q.length < 1) { custSug.classList.add('hidden'); return; }
-  const res = await guard(() => api('customers_search', { q }));
-  if (!res || !res.length) { custSug.classList.add('hidden'); return; }
-  custSug.innerHTML = res.map((c) => `
-    <div class="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer flex justify-between items-center text-sm" onclick="selectRepairCust('${esc(c.name)}', '${esc(c.phone || '')}')">
-      <span class="font-medium">${esc(c.name)}</span>
-      <span class="text-xs text-slate-400 font-num">${esc(c.phone || '')}</span>
-    </div>`).join('');
-  custSug.classList.remove('hidden');
-});
-window.selectRepairCust = (name, phone) => {
-  document.getElementById('f-cust').value = name;
-  if (phone) document.getElementById('f-phone').value = phone;
-  custSug.classList.add('hidden');
+const STATUS_META = {
+  received: ['تم الاستلام', 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'],
+  in_review: ['تحت الفحص', 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'],
+  pending_approval: ['بانتظار الموافقة', 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'],
+  repaired: ['تم الإصلاح — جاهز', 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'],
+  delivered: ['تم التسليم', 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200'],
+  rejected: ['مرفوض', 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'],
 };
-document.addEventListener('click', (e) => {
-  if (!custInput.contains(e.target) && !custSug.contains(e.target)) custSug.classList.add('hidden');
-});
 
-document.getElementById('btn-save').addEventListener('click', async () => {
-  const accs = [...document.querySelectorAll('#accs input:checked')].map((x) => x.value).join('، ');
-  const r = await guard(() => api('repair_create', {
-    customer_name: document.getElementById('f-cust').value, customer_phone: document.getElementById('f-phone').value,
-    address: document.getElementById('f-addr').value || null, device_type: document.getElementById('f-type').value || null,
-    serial: document.getElementById('f-sn').value || null, problem: document.getElementById('f-prob').value,
-    accessories: accs || null, cost: toAmount(document.getElementById('f-cost').value),
-    priority: document.getElementById('f-urgent').checked ? 1 : 0,
-  }));
-  if (r) {
-    toast('تم إنشاء التذكرة ' + r.ref);
-    OPEN_ID = r.id; OPEN_REF = r.ref;
-    await showParts(r);
-    loadList();
-  }
-});
+let FILTER_ST = '';
+let ACTIVE_ID = null;
+let ACTIVE_REPAIR_OBJ = null;
+let POS_TPL = {};
 
-async function showParts(r) {
-  const p = document.getElementById('parts-panel');
-  const canAddParts = hasPerm('repair_edit');
-  p.classList.remove('hidden');
-  if (!AVAIL_PARTS.length) {
-    AVAIL_PARTS = (await guard(() => api('products_search', { q: '', limit: 200 }))) || [];
-  }
-  const partOpts = AVAIL_PARTS.filter((x) => x.qty > 0).map((x) =>
-    `<option value="${x.id}">${esc(x.name)} (${esc(x.sku)}) — متوفر: ${x.qty}</option>`
-  ).join('');
-  p.innerHTML = `
-  <div class="flex items-center justify-between mb-3">
-    <h3 class="font-bold text-lg">التذكرة <span class="text-primary font-num">${esc(r.ref || OPEN_REF)}</span> — الحالة وقطع الغيار</h3>
-    <button id="pp-close" class="text-slate-400 hover:text-slate-600 text-sm">إخفاء</button>
-  </div>
-  <div id="ticket-meta" class="text-xs text-slate-500 mb-3"></div>
-  <div class="flex flex-wrap gap-2 mb-4" id="trans"></div>
-  ${canAddParts ? `<div class="flex flex-col sm:flex-row gap-2 mb-4">
-    <select id="pp-id" class="flex-1 rounded-lg border px-3 py-2 text-sm bg-white dark:bg-slate-800">
-      <option value="">اختر قطعة غيار من المخزون...</option>
-      ${partOpts}
-    </select>
-    <input id="pp-qty" type="number" min="1" value="1" class="w-24 rounded-lg border px-3 py-2 font-num text-sm" placeholder="كمية"/>
-    <button id="pp-add" class="px-4 py-2 rounded-lg bg-primary text-white font-bold text-sm">+ إضافة قطعة</button>
-  </div>` : ''}
-  <div class="text-sm text-slate-500" id="plist">تُحمَّل قطع الغيار عند فتح التذكرة...</div>`;
-  document.getElementById('pp-close').addEventListener('click', () => p.classList.add('hidden'));
-  if (canAddParts && document.getElementById('pp-add')) {
-    document.getElementById('pp-add').addEventListener('click', async () => {
-      const pid = +document.getElementById('pp-id').value;
-      if (!pid) { toast('اختر قطعة الغيار أولاً', 'warn'); return; }
-      const ok = await guard(() => api('repair_add_part', { repair_id: OPEN_ID, product_id: pid, qty: +document.getElementById('pp-qty').value || 1 }));
-      if (ok) {
-        toast('تمت إضافة القطعة — التكلفة ' + fmt(ok.cost) + ' ' + CURRENCY);
-        AVAIL_PARTS = (await guard(() => api('products_search', { q: '', limit: 200 }))) || [];
-        loadTicket();
-      }
-    });
-  }
-  await loadTicket();
+function resetRepairForm() {
+  document.getElementById('f').reset();
+  document.getElementById('edit-repair-id').value = '';
+  document.getElementById('r-cost').value = '0';
+  document.getElementById('r-cost').disabled = false;
+  document.getElementById('form-title').textContent = 'استلام جهاز صيانة جديد';
+  document.getElementById('lbl-submit-repair').textContent = 'حفظ التذكرة وطباعة إيصال الاستلام';
+  document.getElementById('edit-ticket-badge').classList.add('hidden');
+  const badge = document.getElementById('r-cust-badge');
+  badge.textContent = 'عميل جديد / مسجل';
+  badge.className = 'text-[11px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500';
 }
 
-async function loadTicket() {
-  if (!OPEN_ID) return;
-  const t = await guard(() => api('repair', { id: OPEN_ID }));
-  if (!t) return;
-  const meta = document.getElementById('ticket-meta');
-  if (meta) {
-    meta.innerHTML = `العميل: <b>${esc(t.customer_name)}</b> (${esc(t.customer_phone)}) · الجهاز: <b>${esc(t.device_type)}</b> · المشكلة: ${esc(t.problem)} · الحالة الحالية: <b>${STATUS_AR[t.status] || t.status}</b>`;
+document.getElementById('btn-reset-form').addEventListener('click', resetRepairForm);
+
+function loadRepairIntoEditForm(r) {
+  document.getElementById('edit-repair-id').value = r.id;
+  document.getElementById('form-title').textContent = `تعديل بيانات تذكرة الصيانة`;
+  const b = document.getElementById('edit-ticket-badge');
+  b.textContent = r.ref;
+  b.classList.remove('hidden');
+  document.getElementById('lbl-submit-repair').textContent = 'حفظ التعديلات على التذكرة';
+  document.getElementById('r-name').value = r.customer_name || '';
+  document.getElementById('r-phone').value = r.customer_phone || '';
+  document.getElementById('r-addr').value = r.address || '';
+  document.getElementById('r-dev').value = r.device_type || '';
+  document.getElementById('r-sn').value = r.serial || '';
+  document.getElementById('r-cost').value = ((r.cost || 0) / 100).toFixed(2);
+  document.getElementById('r-cost').disabled = (r.status === 'delivered');
+  document.getElementById('r-prob').value = r.problem || '';
+  document.getElementById('r-acc').value = r.accessories || '';
+  document.getElementById('r-notes').value = r.notes || '';
+  document.getElementById('r-prio').checked = Boolean(r.priority);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function printRepairTicketById(id) {
+  const r = await guard(() => api('repair', { id: +id }));
+  if (!r) return;
+  const html = buildRepairTicketPrintHtml(r, POS_TPL, SETTINGS);
+  document.getElementById('repair-print-preview-body').innerHTML = html;
+  document.getElementById('repair-print-modal').classList.replace('hidden', 'flex');
+}
+
+document.getElementById('modal-btn-do-print').addEventListener('click', () => {
+  const html = document.getElementById('repair-print-preview-body').innerHTML;
+  if (window.parent && window.parent !== window && window.parent.TZOS && window.parent.TZOS.printHtml) {
+    window.parent.TZOS.printHtml(html, 'pos');
+  } else {
+    const area = document.getElementById('repair-print-area');
+    area.innerHTML = html;
+    window.print();
   }
-  document.getElementById('plist').innerHTML = (t.parts.length ? t.parts.map((x) => `<div class="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800"><span>${esc(x.name)} × ${x.qty}</span><span class="font-num">${fmt(x.line_total)} ${CURRENCY}</span></div>`).join('') : 'لا قطع بعد.')
-    + `<div class="flex justify-between pt-2 font-bold"><span>إجمالي التكلفة</span><span class="font-num text-primary">${fmt(t.cost)} ${CURRENCY}</span></div>`;
-  document.getElementById('trans').innerHTML = t.transitions.length
-    ? '<span class="text-xs text-slate-400 self-center ml-2">تغيير الحالة إلى:</span>' + t.transitions.map((s) => `<button data-s="${s}" class="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm hover:bg-primary hover:text-white transition-colors font-medium">${STATUS_AR[s]}</button>`).join('')
-    : `<span class="text-sm text-slate-400">حالة نهائية: ${STATUS_AR[t.status]}</span>`;
-  document.querySelectorAll('#trans button').forEach((b) => b.addEventListener('click', async () => {
-    const ok = await guard(() => api('repair_set_status', { id: OPEN_ID, status: b.dataset.s }));
-    if (ok) { toast('الحالة الآن: ' + STATUS_AR[ok.status]); loadTicket(); loadList(); }
-  }));
+});
+
+async function deleteRepairTicketById(id, refLabel) {
+  if (!confirm(`هل أنت متأكد من حذف تذكرة الصيانة (${refLabel || id})؟\nسيتم استرجاع أي قطع غيار مسحوبة للمخزون تلقائياً.`)) return;
+  const ok = await guard(() => api('repair_delete', { id: +id }));
+  if (ok) {
+    toast('تم حذف تذكرة الصيانة بنجاح');
+    if (ACTIVE_ID === +id) {
+      document.getElementById('active-box').classList.add('hidden');
+      ACTIVE_ID = null;
+    }
+    if (+document.getElementById('edit-repair-id').value === +id) {
+      resetRepairForm();
+    }
+    loadList();
+  }
 }
 
 async function loadList() {
-  const r = (await guard(() => api('repairs', { q: document.getElementById('q').value || null, status: document.getElementById('fs').value || null, limit: 40 }))) || { rows: [] };
-  document.getElementById('rows').innerHTML = r.rows.length ? r.rows.map((t) => `
-    <div class="flex items-center justify-between gap-3 p-3 rounded-lg border border-slate-100 dark:border-slate-800 hover:border-primary/40 transition-colors">
-      <div>
-        <p class="font-bold font-num">${esc(t.ref)} <span class="text-xs font-normal text-slate-500">${STATUS_AR[t.status]}</span></p>
-        <p class="text-sm text-slate-500">${esc(t.customer_name)} — ${esc(t.device_type)} <span class="font-num">${fmtDT(t.created_at)}</span></p>
-      </div>
-      <button data-open="${t.id}" class="px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-sm font-bold">فتح</button>
-    </div>`).join('') : '<div class="text-center text-slate-400 py-6">لا نتائج</div>';
-  document.querySelectorAll('[data-open]').forEach((b) => b.addEventListener('click', async () => {
-    OPEN_ID = +b.dataset.open;
-    const t = await guard(() => api('repair', { id: OPEN_ID }));
-    if (t) { OPEN_REF = t.ref; await showParts(t); }
-  }));
+  const q = document.getElementById('q').value.trim() || null;
+  const allRes = await guard(() => api('repairs', { limit: 300 }));
+  if (allRes && allRes.rows) {
+    const all = allRes.rows;
+    document.getElementById('kpi-total').textContent = n(all.length);
+    document.getElementById('kpi-active').textContent = n(all.filter((x) => ['received', 'in_review', 'pending_approval'].includes(x.status)).length);
+    document.getElementById('kpi-ready').textContent = n(all.filter((x) => x.status === 'repaired').length);
+    document.getElementById('kpi-delivered').textContent = n(all.filter((x) => x.status === 'delivered').length);
+  }
+
+  const res = await guard(() => api('repairs', { q, status: FILTER_ST || null }));
+  if (!res) return;
+  const box = document.getElementById('list');
+  if (!res.rows.length) {
+    box.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-400">لا توجد تذاكر صيانة مطابقة</td></tr>`;
+    return;
+  }
+  box.innerHTML = res.rows.map((r) => {
+    const [lbl, cls] = STATUS_META[r.status] || [r.status, 'bg-slate-100 text-slate-600'];
+    const canDelete = !(r.status === 'delivered' && (r.cost || 0) > 0);
+    return `
+      <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 ${ACTIVE_ID === r.id ? 'bg-primary/5' : ''}">
+        <td class="p-3 font-bold font-num text-primary cursor-pointer" data-open-id="${r.id}">
+          #${esc(r.ref)}
+          ${r.priority ? `<span class="mr-1 px-1.5 py-0.5 rounded bg-red-100 text-red-700 text-[10px]">مستعجل ★</span>` : ''}
+          <div class="text-[10px] text-slate-400 font-num">${esc((r.created_at || '').slice(0, 16))}</div>
+        </td>
+        <td class="p-3 cursor-pointer" data-open-id="${r.id}">
+          <div class="font-bold text-slate-800 dark:text-slate-100">${esc(r.customer_name)}</div>
+          <div class="text-[11px] text-slate-400 font-num">${esc(r.customer_phone || '')}</div>
+        </td>
+        <td class="p-3 cursor-pointer" data-open-id="${r.id}">
+          <div class="font-bold">${esc(r.device_type)}</div>
+          <div class="text-[11px] text-slate-500 truncate max-w-[200px]">${esc(r.problem)}</div>
+        </td>
+        <td class="p-3 cursor-pointer" data-open-id="${r.id}">
+          <span class="px-2.5 py-1 rounded-full text-[11px] font-bold ${cls}">${lbl}</span>
+        </td>
+        <td class="p-3 font-num font-bold">${fmt(r.cost || 0)} ${CURRENCY}</td>
+        <td class="p-3">
+          <div class="flex items-center justify-center gap-1">
+            <button type="button" data-open-id="${r.id}" class="px-2 py-1 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white font-bold text-[11px]" title="إدارة الحالة وقطع الغيار">إدارة</button>
+            <button type="button" data-print-id="${r.id}" class="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-900 hover:text-white" title="طباعة تذكرة الصيانة في وضعها الحالي">
+              <span class="material-icons-outlined text-sm">print</span>
+            </button>
+            <button type="button" data-edit-id="${r.id}" class="p-1.5 rounded-lg bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:bg-amber-500 hover:text-white" title="تعديل بيانات التذكرة">
+              <span class="material-icons-outlined text-sm">edit</span>
+            </button>
+            ${canDelete ? `
+            <button type="button" data-del-id="${r.id}" data-del-ref="${esc(r.ref)}" class="p-1.5 rounded-lg bg-red-500/10 text-red-600 hover:bg-red-600 hover:text-white" title="حذف التذكرة">
+              <span class="material-icons-outlined text-sm">delete</span>
+            </button>` : `<span class="text-[10px] text-slate-400 px-1" title="تذكرة مسلمة ومثبتة مالياً لا تُحذف">مثبتة مالياً</span>`}
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  box.querySelectorAll('[data-open-id]').forEach((el) => {
+    el.addEventListener('click', () => openTicket(+el.dataset.openId));
+  });
+  box.querySelectorAll('[data-print-id]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      printRepairTicketById(+btn.dataset.printId);
+    });
+  });
+  box.querySelectorAll('[data-edit-id]').forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const r = await guard(() => api('repair', { id: +btn.dataset.editId }));
+      if (r) loadRepairIntoEditForm(r);
+    });
+  });
+  box.querySelectorAll('[data-del-id]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteRepairTicketById(+btn.dataset.delId, btn.dataset.delRef);
+    });
+  });
 }
 
-document.getElementById('q').addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(loadList, 300); });
-document.getElementById('fs').addEventListener('change', loadList);
+async function openTicket(id) {
+  ACTIVE_ID = id;
+  const r = await guard(() => api('repair', { id }));
+  if (!r) return;
+  ACTIVE_REPAIR_OBJ = r;
+  const box = document.getElementById('active-box');
+  box.classList.remove('hidden');
+  document.getElementById('a-ref').textContent = `#${r.ref}`;
+  const [lbl, cls] = STATUS_META[r.status] || [r.status, 'bg-slate-100 text-slate-700'];
+  const stBadge = document.getElementById('a-status-badge');
+  stBadge.textContent = lbl;
+  stBadge.className = `px-2.5 py-0.5 rounded-full text-xs font-bold ${cls}`;
+  document.getElementById('a-cust').textContent = `${r.customer_name} — ${r.customer_phone}`;
+  document.getElementById('a-dev-info').textContent = `${r.device_type}${r.serial ? ' (SN: ' + r.serial + ')' : ''} | العطل: ${r.problem}`;
+  document.getElementById('a-cost').textContent = `${fmt(r.cost)} ${CURRENCY}`;
+
+  const canDel = !(r.status === 'delivered' && (r.cost || 0) > 0);
+  document.getElementById('a-btn-del').classList.toggle('hidden', !canDel);
+
+  const tr = document.getElementById('a-transitions');
+  if (r.transitions.length) {
+    tr.innerHTML = r.transitions.map((s) => {
+      const [tlbl] = STATUS_META[s] || [s];
+      return `<button data-to="${s}" class="px-3 py-1.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-dark">تحويل إلى: ${tlbl}</button>`;
+    }).join('');
+    tr.querySelectorAll('button').forEach((b) => b.addEventListener('click', async () => {
+      const ok = await guard(() => api('repair_set_status', { id: ACTIVE_ID, status: b.dataset.to }));
+      if (ok) { toast('تم تحديث حالة التذكرة'); await openTicket(ACTIVE_ID); await loadList(); }
+    }));
+  } else {
+    tr.innerHTML = `<span class="text-xs text-slate-400">التذكرة في حالتها النهائية (${lbl}) — يمكنك طباعة التذكرة في أي وقت</span>`;
+  }
+
+  document.getElementById('a-parts').innerHTML = r.parts.length
+    ? `<div class="font-bold text-slate-500 mb-1">قطع الغيار المركبة على التذكرة:</div>` +
+      r.parts.map((p) => `<div class="flex justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-800"><span>${esc(p.name)} × ${p.qty}</span><span class="font-num font-bold">${fmt(p.line_total)}</span></div>`).join('')
+    : '<div class="text-slate-400">لم تُضف قطع غيار إضافية لهذه التذكرة</div>';
+
+  const canAddParts = !['delivered', 'rejected'].includes(r.status) && (!CURRENT_USER.permissions || CURRENT_USER.permissions.includes('repair_edit'));
+  document.getElementById('a-part-row').classList.toggle('hidden', !canAddParts);
+  loadList();
+}
+
+document.getElementById('a-btn-print').addEventListener('click', () => {
+  if (ACTIVE_ID) printRepairTicketById(ACTIVE_ID);
+});
+document.getElementById('a-btn-edit').addEventListener('click', () => {
+  if (ACTIVE_REPAIR_OBJ) loadRepairIntoEditForm(ACTIVE_REPAIR_OBJ);
+});
+document.getElementById('a-btn-del').addEventListener('click', () => {
+  if (ACTIVE_REPAIR_OBJ) deleteRepairTicketById(ACTIVE_REPAIR_OBJ.id, ACTIVE_REPAIR_OBJ.ref);
+});
+document.getElementById('a-close').addEventListener('click', () => {
+  document.getElementById('active-box').classList.add('hidden');
+  ACTIVE_ID = null;
+});
+
+document.getElementById('a-part-add').addEventListener('click', async () => {
+  const pid = +document.getElementById('a-part-sel').value;
+  const qty = +document.getElementById('a-part-qty').value;
+  if (!pid) return;
+  const r = await guard(() => api('repair_add_part', { repair_id: ACTIVE_ID, product_id: pid, qty }));
+  if (r) { toast('تمت إضافة قطعة الغيار وخصمها من المخزون'); await openTicket(ACTIVE_ID); }
+});
+
+document.getElementById('f').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const editId = document.getElementById('edit-repair-id').value;
+  const payload = {
+    customer_name: document.getElementById('r-name').value.trim(),
+    customer_phone: document.getElementById('r-phone').value.trim(),
+    address: document.getElementById('r-addr').value.trim(),
+    device_type: document.getElementById('r-dev').value.trim(),
+    serial: document.getElementById('r-sn').value.trim(),
+    cost: toAmount(document.getElementById('r-cost').value),
+    problem: document.getElementById('r-prob').value.trim(),
+    accessories: document.getElementById('r-acc').value.trim(),
+    notes: document.getElementById('r-notes').value.trim(),
+    priority: document.getElementById('r-prio').checked,
+  };
+  if (editId) {
+    payload.id = +editId;
+    const updated = await guard(() => api('repair_update', payload));
+    if (updated) {
+      toast(`تم تحديث تذكرة الصيانة #${updated.ref}`);
+      resetRepairForm();
+      await loadList();
+      await openTicket(updated.id);
+    }
+  } else {
+    const created = await guard(() => api('repair_create', payload));
+    if (created) {
+      toast(`تم إنشاء تذكرة الصيانة #${created.ref}`);
+      resetRepairForm();
+      await loadList();
+      await openTicket(created.id);
+      await printRepairTicketById(created.id);
+    }
+  }
+});
+
+document.querySelectorAll('#s-tabs button').forEach((b) => {
+  b.addEventListener('click', () => {
+    FILTER_ST = b.dataset.st;
+    document.querySelectorAll('#s-tabs button').forEach((x) => {
+      x.className = x === b
+        ? 'px-3 py-1.5 rounded-xl bg-primary text-white font-bold'
+        : 'px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 font-bold';
+    });
+    loadList();
+  });
+});
+
+document.getElementById('q').addEventListener('input', loadList);
+
+/* ---- البحث التلقائي عن العملاء المسجلين بالاسم أو الهاتف ---- */
+let custTimer = null;
+const rNameEl = document.getElementById('r-name');
+const rPhoneEl = document.getElementById('r-phone');
+const rAddrEl = document.getElementById('r-addr');
+const rSugEl = document.getElementById('r-cust-Sug');
+const rBadgeEl = document.getElementById('r-cust-badge');
+
+async function lookupRepairCustomers(query) {
+  const res = await guard(() => api('customers_search', { q: query, limit: 8 }));
+  if (!res || !res.length) {
+    rSugEl.classList.add('hidden');
+    return;
+  }
+  rSugEl.innerHTML = res.map((c) => `
+    <button type="button" data-name="${esc(c.name)}" data-phone="${esc(c.phone || '')}" data-addr="${esc(c.address || '')}"
+      class="w-full text-right px-3 py-2 hover:bg-primary/5 flex items-center justify-between text-xs">
+      <span class="font-bold text-slate-800 dark:text-slate-100">${esc(c.name)}</span>
+      <span class="font-num text-slate-500" dir="ltr">${esc(c.phone || 'بدون هاتف')}</span>
+    </button>
+  `).join('');
+  rSugEl.classList.remove('hidden');
+  rSugEl.querySelectorAll('button').forEach((b) => {
+    b.addEventListener('click', () => {
+      rNameEl.value = b.dataset.name;
+      if (b.dataset.phone) rPhoneEl.value = b.dataset.phone;
+      if (b.dataset.addr && !rAddrEl.value) rAddrEl.value = b.dataset.addr;
+      rBadgeEl.textContent = 'عميل مسجل ✓';
+      rBadgeEl.className = 'text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-semibold';
+      rSugEl.classList.add('hidden');
+    });
+  });
+}
+
+rNameEl.addEventListener('input', () => {
+  clearTimeout(custTimer);
+  rBadgeEl.textContent = 'عميل جديد / مسجل';
+  rBadgeEl.className = 'text-[11px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500';
+  custTimer = setTimeout(() => lookupRepairCustomers(rNameEl.value.trim()), 150);
+});
+rPhoneEl.addEventListener('input', () => {
+  clearTimeout(custTimer);
+  const v = rPhoneEl.value.trim();
+  if (v.length >= 4) custTimer = setTimeout(() => lookupRepairCustomers(v), 150);
+});
+document.addEventListener('click', (e) => {
+  if (!rSugEl.contains(e.target) && e.target !== rNameEl) rSugEl.classList.add('hidden');
+});
 
 (async () => {
-  if (!(await pageInit('repair', { perm: ['repair_view', 'repair_edit'] }))) return;
-  document.getElementById('cur').textContent = CURRENCY;
-  await loadList();
-  const qid = new URLSearchParams(location.search).get('id');
-  if (qid) {
-    OPEN_ID = +qid;
-    const t = await guard(() => api('repair', { id: OPEN_ID }));
-    if (t) { OPEN_REF = t.ref; await showParts(t); }
+  const u = await pageInit('repair');
+  if (!u) return;
+  try {
+    const tpls = await api('templates_get');
+    if (tpls && tpls.pos) POS_TPL = tpls.pos;
+  } catch (e) {}
+  const prods = await guard(() => api('products', { limit: 200 }));
+  if (prods) {
+    document.getElementById('a-part-sel').innerHTML = prods.rows.filter((p) => p.qty > 0)
+      .map((p) => `<option value="${p.id}">${esc(p.name)} (${fmt(p.cost || p.price)} - متاح ${p.qty})</option>`).join('');
   }
+  await loadList();
 })();
 </script>
 </body></html>

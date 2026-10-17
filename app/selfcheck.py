@@ -280,7 +280,7 @@ check("show flag zero saved", r["ok"] and r["data"].get("receipt_show_barcode") 
 check("show flag zero readable", call(a, "settings", {})["data"].get("receipt_show_barcode") == "0")
 r = call(a, "settings_save", {"receipt_logo": "not-an-image"})
 check("bad logo rejected", (not r["ok"]))
-r = call(a, "settings_save", {"receipt_logo": "data:image/png;base64,AAAA"})
+r = call(a, "settings_save", {"receipt_logo": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="})
 check("logo saved", r["ok"])
 
 # 13) إدارة العملاء والموظفين والصلاحيات المخصصة لكل موظف
@@ -422,10 +422,131 @@ check("reports.html is dedicated to reports only (no staff-zone)",
 check("receipt.html is dedicated to receipt preview only (no custom-form)",
       "custom-form" not in (ROOT / "web" / "receipt.html").read_text(encoding="utf-8"))
 
-# إعادة اسم المحل الافتراضي بعد الفحص
+# إعادة اسم المحل الافتراضي بعد الفحص وفحص الميزات الـ 10 الجديدة
 call(a, "logout")
 call(a, "login", {"pin": "1234"})
-call(a, "settings_save", {"store_name": "تك زون للإلكترونيات"})
+call(a, "settings_save", {"store_name": "تك زون للإلكترونيات", "tax_enabled": "0"})
+
+# (أ) مصمم القوالب أُزيل من sales_quotes.html وأصبح حصرياً في settings.html
+sq_html = (ROOT / "web" / "sales_quotes.html").read_text(encoding="utf-8")
+check("sales_quotes.html has no pane-templates (designer in settings only)",
+      "id=\"pane-templates\"" not in sq_html and "settings.html?tab=invoices" in sq_html)
+
+# (ب) عند إيقاف الضرائب (tax_enabled=0) يتم تصفير الضرائب في عروض الأسعار والفواتير حتى لو أُرسل tax_rate=14
+q_notax = call(a, "quotation_save", {
+    "doc_type": "quote",
+    "customer_name": "عميل بدون ضريبة",
+    "customer_phone": "01099887766",
+    "items": [{"name": "شاشة سامسونج", "qty": 1, "unit_price": 1000, "tax_rate": 14}],
+})
+check("quotation_save forces zero tax when tax_enabled=0",
+      q_notax["ok"] and q_notax["data"]["tax"] == 0 and q_notax["data"]["total"] == 100000)
+
+# (ج) إلغاء عرض السعر (quotation_cancel) مسموح، بينما إلغاء الفاتورة المعتمدة مرفوض لحماية الدورة المالية
+q_cancel_res = call(a, "quotation_cancel", {"id": q_notax["data"]["id"]})
+check("quotation_cancel marks quote as cancelled",
+      q_cancel_res["ok"] and q_cancel_res["data"]["status"] == "cancelled")
+q_cancel_inv_err = call(a, "quotation_cancel", {"id": qid})
+check("quotation_cancel rejects converted invoice to protect financial cycle",
+      not q_cancel_inv_err["ok"])
+
+# (د) بادئات التسلسل المخصصة لجميع الفواتير والإيصالات (POS + صيانة + سند قبض + شراء مستعمل) + ربط البائع بالعملاء
+r_tpl_prefs = call(a, "templates_save", {
+    "pos": {
+        "pos_invoice_prefix": "POS26-",
+        "repair_prefix": "TKT-",
+        "voucher_prefix": "VCH-",
+        "used_prefix": "USD-",
+    }
+})
+check("templates_save saves pos/repair/voucher/used prefixes",
+      r_tpl_prefs["ok"]
+      and r_tpl_prefs["data"]["pos"]["pos_invoice_prefix"] == "POS26-"
+      and r_tpl_prefs["data"]["pos"]["repair_prefix"] == "TKT-"
+      and r_tpl_prefs["data"]["pos"]["voucher_prefix"] == "VCH-"
+      and r_tpl_prefs["data"]["pos"]["used_prefix"] == "USD-")
+
+r_pos_pref_sale = call(a, "sale_create", {
+    "items": [{"product_id": pid, "qty": 1}],
+    "payments": [{"method": "cash", "amount": 550}],
+})
+check("sale_create uses pos_invoice_prefix POS26-",
+      r_pos_pref_sale["ok"] and r_pos_pref_sale["data"]["invoice_no"].startswith("POS26-"))
+
+r_used_cust = call(a, "used_create", {
+    "seller_name": "بائع مسجل تلقائياً",
+    "seller_phone": "01555666777",
+    "model": "iPad Air 5",
+    "buy_price": 8000,
+    "to_inventory": False,
+})
+check("used_create uses used_prefix USD- & registers seller in customers",
+      r_used_cust["ok"]
+      and r_used_cust["data"]["ref"].startswith("USD-")
+      and r_used_cust["data"]["customer_id"] is not None)
+c_search_used = call(a, "customers_search", {"q": "01555666777"})
+check("seller from used_create found via customers_search",
+      c_search_used["ok"] and any(c["name"] == "بائع مسجل تلقائياً" for c in c_search_used["data"]))
+
+# (هـ) تذكرة صيانة ببادئة TKT- + تعديل التذكرة (repair_update) + حذف تذكرة غير مسلمة (repair_delete) + منع حذف تذكرة مسلمة بتكلفة
+r_rep2 = call(a, "repair_create", {
+    "customer_name": "عميل صيانة 2",
+    "customer_phone": "01122334455",
+    "device_type": "لابتوب لينوفو",
+    "problem": "تغيير كيبورد",
+    "cost": 450,
+})
+check("repair_create uses repair_prefix TKT-",
+      r_rep2["ok"] and r_rep2["data"]["ref"].startswith("TKT-"))
+rid2 = r_rep2["data"]["id"]
+r_rep_upd = call(a, "repair_update", {
+    "id": rid2,
+    "problem": "تغيير كيبورد وتنظيف مروحة",
+    "cost": 550,
+})
+check("repair_update updates problem and cost",
+      r_rep_upd["ok"] and r_rep_upd["data"]["cost"] == 55000 and "مروحة" in r_rep_upd["data"]["problem"])
+r_rep_del_ok = call(a, "repair_delete", {"id": rid2})
+check("repair_delete deletes undelivered repair ticket", r_rep_del_ok["ok"])
+call(a, "repair_set_status", {"id": rid, "status": "repaired"})
+call(a, "repair_set_status", {"id": rid, "status": "delivered"})
+r_rep_del_delivered_err = call(a, "repair_delete", {"id": rid})
+check("repair_delete blocks deleting delivered paid repair ticket", not r_rep_del_delivered_err["ok"])
+
+# (و) سجل المبيعات والمرتجعات (sales & sales_stats & history_suggestions) يعرض الكل والتاريخ والأتوكمبليت
+r_hist_all = call(a, "sales", {"all_dates": True, "limit": 50})
+kinds_found = {(row.get("kind"), row.get("sub_kind")) for row in r_hist_all["data"]["rows"]}
+check("history sales(all_dates=True) includes pos, b2b, quote, and repair",
+      r_hist_all["ok"]
+      and ("sale", "pos") in kinds_found
+      and ("sale", "b2b") in kinds_found
+      and ("quote", "quote") in kinds_found
+      and ("repair", "repair") in kinds_found)
+r_hist_sug = call(a, "history_suggestions", {"q": "N00"})
+check("history_suggestions autocomplete works",
+      r_hist_sug["ok"] and len(r_hist_sug["data"]) >= 1)
+
+# (ز) التقارير المالية (report_daily) تدعم من تاريخ إلى تاريخ (date_from / date_to)
+r_rep_range = call(a, "report_daily", {"date_from": today, "date_to": today})
+check("report_daily supports date_from & date_to",
+      r_rep_range["ok"] and r_rep_range["data"]["sales"]["count"] >= 1)
+
+# (ح) التحقق من رفع خلفية سطح المكتب في profile.html وتخطيط الحقول في staff.html
+pf_html = (ROOT / "web" / "profile.html").read_text(encoding="utf-8")
+stf_html = (ROOT / "web" / "staff.html").read_text(encoding="utf-8")
+check("profile.html has custom wallpaper upload & staff.html has non-overlapping staff-fields-grid",
+      "pf-custom-bg-file" in pf_html and "staff-fields-grid" in stf_html)
+
+# إعادة البادئات للافتراضي
+call(a, "templates_save", {"reset_pos": True})
+
+# (ط) فحص سلامة صياغة JavaScript في web/app.js و web/index.html لمنع أي خطأ SyntaxError يوقف شاشة الدخول
+app_js_text = (ROOT / "web" / "app.js").read_text(encoding="utf-8")
+idx_html_text = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
+check("web/app.js has no duplicate const st declaration & index.html has pin-input + login-error-box",
+      app_js_text.count("const globalTaxEnabled = st.tax_enabled") == 2
+      and "id=\"pin-input\"" in idx_html_text
+      and "id=\"login-error-box\"" in idx_html_text)
 
 # 14) تطابق العقد: كل api('NAME') في الواجهة موجود في Api
 names = set()

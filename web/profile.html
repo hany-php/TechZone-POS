@@ -150,7 +150,28 @@
 
       <div>
         <span class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">خلفية سطح المكتب المفضلة:</span>
-        <div id="pf-wp-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2.5"></div>
+        <div id="pf-wp-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mb-3"></div>
+
+        <!-- رفع صورة خلفية سطح المكتب الخاصة بهذا المستخدم فقط -->
+        <div class="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div id="pf-custom-bg-thumb" class="w-16 h-11 rounded-lg bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 flex items-center justify-center overflow-hidden shrink-0">
+              <span class="material-icons-round text-slate-400 text-xl">wallpaper</span>
+            </div>
+            <div>
+              <div class="text-xs font-bold text-slate-800 dark:text-white">رفع صورة خلفية سطح المكتب الخاصة بي</div>
+              <div class="text-[11px] text-slate-500">تُحفظ لحسابك الشخصي فقط وتظهر عند دخولك للنظام</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="px-3 py-2 rounded-xl bg-primary text-white text-xs font-bold cursor-pointer hover:bg-primary-dark transition-colors flex items-center gap-1">
+              <span class="material-icons-round text-sm">upload</span>
+              <span>رفع صورة خلفية</span>
+              <input id="pf-custom-bg-file" type="file" accept="image/*" class="hidden"/>
+            </label>
+            <button id="pf-custom-bg-remove" type="button" class="px-2.5 py-2 rounded-xl border border-red-200 text-red-600 text-xs font-bold hover:bg-red-50">إلغاء الخلفية</button>
+          </div>
+        </div>
       </div>
 
       <div>
@@ -296,8 +317,16 @@ function populateProfileUI(user) {
   });
 
   const curWp = user.wallpaper || SETTINGS.os_default_wallpaper || 'win11-bloom';
+  const thumbBox = $('pf-custom-bg-thumb');
+  if (thumbBox) {
+    if (user.custom_bg && user.custom_bg.startsWith('data:image/')) {
+      thumbBox.innerHTML = `<img src="${esc(user.custom_bg)}" class="w-full h-full object-cover" alt=""/>`;
+    } else {
+      thumbBox.innerHTML = `<span class="material-icons-round text-slate-400 text-xl">wallpaper</span>`;
+    }
+  }
   $('pf-wp-grid').innerHTML = WP_OPTIONS.map((wp) => `
-    <div data-pf-wp="${wp.id}" class="cursor-pointer rounded-xl p-2 border-2 transition-all ${curWp === wp.id ? 'border-primary bg-primary/5' : 'border-slate-200 dark:border-slate-700 hover:border-primary/40'}">
+    <div data-pf-wp="${wp.id}" class="cursor-pointer rounded-xl p-2 border-2 transition-all ${(curWp === wp.id && curWp !== 'custom') ? 'border-primary bg-primary/5' : 'border-slate-200 dark:border-slate-700 hover:border-primary/40'}">
       <div class="h-12 rounded-lg mb-1.5 shadow-inner" style="background:${wp.preview}"></div>
       <div class="text-[11px] font-bold text-center">${esc(wp.name)}</div>
     </div>
@@ -315,6 +344,45 @@ function populateProfileUI(user) {
     });
   });
 }
+
+
+$('pf-custom-bg-file').addEventListener('change', async (e) => {
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  try {
+    const dataUrl = await compressAvatar(f, 1280, 720, 0.80);
+    const saved = await guard(() => api('user_pref_save', { wallpaper: 'custom', custom_bg: dataUrl }));
+    if (saved) {
+      if (CURRENT_USER) {
+        CURRENT_USER.wallpaper = 'custom';
+        CURRENT_USER.custom_bg = dataUrl;
+        populateProfileUI(CURRENT_USER);
+      }
+      try {
+        if (window.top && window.top.TZOS) window.top.TZOS.applyWallpaper('custom', dataUrl, false);
+      } catch (err) {}
+      toast('تم رفع وحفظ صورة خلفية سطح المكتب الخاصة بك بنجاح');
+    }
+  } catch (err) {
+    toast(err.message || 'تعذر رفع صورة الخلفية', 'error');
+  }
+  e.target.value = '';
+});
+
+$('pf-custom-bg-remove').addEventListener('click', async () => {
+  const saved = await guard(() => api('user_pref_save', { wallpaper: 'win11-bloom', custom_bg: '' }));
+  if (saved) {
+    if (CURRENT_USER) {
+      CURRENT_USER.wallpaper = 'win11-bloom';
+      CURRENT_USER.custom_bg = '';
+      populateProfileUI(CURRENT_USER);
+    }
+    try {
+      if (window.top && window.top.TZOS) window.top.TZOS.applyWallpaper('win11-bloom', null, false);
+    } catch (err) {}
+    toast('تمت استعادة الخلفية الافتراضية لسطح المكتب');
+  }
+});
 
 $('pf-card-size').addEventListener('input', (e) => {
   $('pf-card-size-val').textContent = e.target.value + 'px';

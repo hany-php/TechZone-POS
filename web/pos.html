@@ -120,7 +120,7 @@
   <div id="edit-sale-audit" class="text-[11px] text-slate-600 dark:text-slate-300 space-y-0.5 bg-white/80 dark:bg-slate-800/80 p-2 rounded-lg border border-amber-200 dark:border-amber-800"></div>
   <div class="flex gap-2 items-center">
     <input id="edit-reason" class="flex-1 bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700 rounded-lg px-2.5 py-1.5 text-xs" placeholder="سبب المرتجع أو التعديل (يُحفظ باسمك والوقت لمنع التلاعب)..."/>
-    <button id="btn-edit-wa" type="button" class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px]" title="إرسال الفاتورة عبر واتساب">واتساب</button>
+    <button id="btn-edit-wa" type="button" data-wa-toggle class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px]" title="إرسال الفاتورة عبر واتساب">واتساب</button>
   </div>
 </div>
 <!-- Cart Items List -->
@@ -335,7 +335,7 @@
       </div>
       <div class="flex items-center gap-3">
         <span class="font-bold font-num" id="lu-inv-total"></span>
-        <button id="lu-wa-btn" type="button" class="px-3 py-1 rounded-lg bg-emerald-600 text-white text-xs font-bold flex items-center gap-1"><span class="material-icons-outlined text-sm">picture_as_pdf</span>إرسال PDF واتساب</button>
+        <button id="lu-wa-btn" type="button" data-wa-toggle class="px-3 py-1 rounded-lg bg-emerald-600 text-white text-xs font-bold flex items-center gap-1"><span class="material-icons-outlined text-sm">picture_as_pdf</span>إرسال PDF واتساب</button>
         <button id="lu-print-btn" type="button" class="px-3 py-1 rounded-lg bg-primary/10 text-primary text-xs font-bold flex items-center gap-1"><span class="material-icons-outlined text-sm">print</span>طباعة الإيصال</button>
       </div>
     </div>
@@ -395,7 +395,7 @@
     <button id="btn-convert-credit" type="button" class="w-full py-1.5 px-3 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-colors">تحويل المبلغ المتبقي إلى بيع آجل على العميل</button>
   </div>
 </div>
-<label class="flex items-center gap-2 p-2.5 mb-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-xs font-bold text-emerald-800 dark:text-emerald-300 cursor-pointer">
+<label data-wa-toggle class="flex items-center gap-2 p-2.5 mb-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-xs font-bold text-emerald-800 dark:text-emerald-300 cursor-pointer">
   <input id="pay-whatsapp" type="checkbox" class="w-4 h-4 accent-blue-600"/>
   <span>إنشاء ملف PDF للفاتورة وإرفاقه عبر واتساب لرقم العميل بعد الدفع</span>
 </label>

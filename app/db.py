@@ -92,6 +92,10 @@ DEFAULT_POS_TEMPLATE = {
     "repair_terms": "المحل غير مسؤول عن الأجهزة التي لا يُسأل عنها خلال 30 يوماً من تاريخ الإبلاغ.",
     "voucher_receipt_title": "سند قبض نقدية / محفظة",
     "used_receipt_title": "إيصال شراء جهاز مستعمل",
+    "pos_invoice_prefix": "INV-",
+    "repair_prefix": "RPR-",
+    "voucher_prefix": "RCV-",
+    "used_prefix": "TRX-",
 }
 
 SCHEMA = """
@@ -290,6 +294,15 @@ CREATE INDEX IF NOT EXISTS idx_sales_created ON sales(created_at);
 CREATE INDEX IF NOT EXISTS idx_cust_payments_cust ON customer_payments(customer_id);
 CREATE INDEX IF NOT EXISTS idx_movements_product ON stock_movements(product_id);
 CREATE INDEX IF NOT EXISTS idx_serials_serial ON serials(serial);
+CREATE INDEX IF NOT EXISTS idx_sale_items_sale ON sale_items(sale_id);
+CREATE INDEX IF NOT EXISTS idx_sale_items_product ON sale_items(product_id);
+CREATE INDEX IF NOT EXISTS idx_payments_sale ON payments(sale_id);
+CREATE INDEX IF NOT EXISTS idx_sale_returns_sale ON sale_returns(sale_id);
+CREATE INDEX IF NOT EXISTS idx_sale_return_items_item ON sale_return_items(sale_item_id);
+CREATE INDEX IF NOT EXISTS idx_serials_product ON serials(product_id);
+CREATE INDEX IF NOT EXISTS idx_shifts_user ON shifts(user_id);
+CREATE INDEX IF NOT EXISTS idx_customer_payments_shift ON customer_payments(shift_id);
+CREATE INDEX IF NOT EXISTS idx_stock_movements_created ON stock_movements(created_at);
 
 CREATE TABLE IF NOT EXISTS quotations (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -331,6 +344,7 @@ CREATE TABLE IF NOT EXISTS quotation_items (
   line_total INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_quotations_created ON quotations(created_at);
+CREATE INDEX IF NOT EXISTS idx_quotation_items_quote ON quotation_items(quote_id);
 """
 
 
@@ -401,7 +415,36 @@ def parse_user_perms(role: str, raw_perms: str | None) -> dict:
 _INITIALIZED_DBS = set()
 
 
-def connect() -> sqlite3.Connection:
+class _ClosingConnection:
+    """غلاف لاتصال sqlite يغلق الاتصال تلقائياً عند الخروج من with."""
+
+    def __init__(self, conn: sqlite3.Connection):
+        self._conn = conn
+
+    def __enter__(self):
+        return self._conn
+
+    def __exit__(self, exc_type, exc, tb):
+        try:
+            if exc_type is None:
+                self._conn.commit()
+            else:
+                try:
+                    self._conn.rollback()
+                except Exception:
+                    pass
+        finally:
+            try:
+                self._conn.close()
+            except Exception:
+                pass
+        return False
+
+    def __getattr__(self, name):
+        return getattr(self._conn, name)
+
+
+def connect() -> "_ClosingConnection":
     _migrate_once()
     path = db_path()
     conn = sqlite3.connect(path, timeout=15, check_same_thread=False)
@@ -412,8 +455,9 @@ def connect() -> sqlite3.Connection:
         init_db(conn)
         _ensure_schema_columns(conn)
         _migrate_customers(conn)
+        conn.commit()
         _INITIALIZED_DBS.add(path)
-    return conn
+    return _ClosingConnection(conn)
 
 
 def _ensure_schema_columns(conn: sqlite3.Connection):
@@ -586,6 +630,9 @@ def _seed(conn: sqlite3.Connection) -> None:
         "default_start_page": "pos",
         "default_start_mode": "window",
         "os_default_theme": "dark",
+        "whatsapp_send_enabled": "1",
+        "login_max_attempts": "5",
+        "login_lockout_minutes": "10",
     }
     conn.executemany("INSERT INTO settings(key, value) VALUES(?, ?)", list(defaults.items()))
 

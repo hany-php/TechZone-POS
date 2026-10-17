@@ -39,16 +39,20 @@
 <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
 <!-- RIGHT COLUMN: Purchase Form (Intake) -->
 <div class="lg:col-span-4 xl:col-span-3 h-full flex flex-col gap-4 overflow-y-auto pr-1 pb-20 lg:pb-0">
-<!-- Section 1: Seller Info -->
+<!-- Section 1: Seller Info (مربوط بسجل العملاء: عميل جديد / مسجل) -->
 <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-5">
-<h2 class="text-base font-bold mb-4 flex items-center gap-2 text-primary">
-<span class="material-icons text-sm">person</span>
-بيانات البائع
-</h2>
+<div class="flex items-center justify-between mb-4">
+  <h2 class="text-base font-bold flex items-center gap-2 text-primary">
+    <span class="material-icons text-sm">person</span>
+    <span>بيانات البائع / العميل</span>
+  </h2>
+  <span id="u-cust-badge" class="text-[11px] px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 font-semibold">عميل جديد / مسجل</span>
+</div>
 <div class="space-y-4">
-<div>
-<label class="block text-xs font-medium text-slate-500 mb-1">الاسم الكامل</label>
-<input id="f-name" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" placeholder="مثال: أحمد محمد" type="text"/>
+<div class="relative">
+<label class="block text-xs font-medium text-slate-500 mb-1">الاسم الكامل (ابحث أو اكتب اسماً جديداً) *</label>
+<input id="f-name" autocomplete="off" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" placeholder="ابحث باسم العميل أو اكتب اسم بائع جديد..." type="text"/>
+<div id="u-cust-sug" class="hidden absolute z-30 top-full mt-1 right-0 left-0 max-h-48 overflow-y-auto bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl divide-y divide-slate-100 dark:divide-slate-700"></div>
 </div>
 <div class="grid grid-cols-2 gap-3">
 <div>
@@ -57,9 +61,10 @@
 </div>
 <div>
 <label class="block text-xs font-medium text-slate-500 mb-1">رقم الموبايل</label>
-<input id="f-phone" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm font-display focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-left" dir="ltr" placeholder="010xxxxxxxx" type="tel"/>
+<input id="f-phone" autocomplete="off" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm font-display focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-left" dir="ltr" placeholder="010xxxxxxxx" type="tel"/>
 </div>
 </div>
+<p class="text-[11px] text-slate-400">يتم ربط البائع تلقائياً بصفحة العملاء؛ وإذا كان غير مسجل يُسجل كعميل جديد فوراً.</p>
 </div>
 </div>
 <!-- Section 2: Device Details -->
@@ -247,9 +252,66 @@ document.getElementById('btn-buy').addEventListener('click', async () => {
     to_inventory: document.getElementById('f-inv').checked,
   }));
   if (r) {
-    toast('تم الشراء — ' + r.ref);
+    toast('تم الشراء وحفظ بيانات البائع في سجل العملاء — ' + r.ref);
     ['f-name', 'f-phone', 'f-idno', 'f-model', 'f-serial', 'f-notes', 'f-price', 'f-store', 'f-resale'].forEach((f) => document.getElementById(f).value = '');
+    const badge = document.getElementById('u-cust-badge');
+    if (badge) {
+      badge.textContent = 'عميل جديد / مسجل';
+      badge.className = 'text-[11px] px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 font-semibold';
+    }
     load(document.getElementById('q').value);
+  }
+});
+
+/* ---- أتوكمبليت البحث عن البائع في سجل العملاء بالاسم أو رقم التليفون ---- */
+let uCustTimer = null;
+const uNameEl = document.getElementById('f-name');
+const uPhoneEl = document.getElementById('f-phone');
+const uSugEl = document.getElementById('u-cust-sug');
+const uBadgeEl = document.getElementById('u-cust-badge');
+
+async function lookupUsedSellerCustomers(query) {
+  const res = await guard(() => api('customers_search', { q: query || '', limit: 8 }));
+  if (!res || !res.length) {
+    uSugEl.classList.add('hidden');
+    return;
+  }
+  uSugEl.innerHTML = res.map((c) => `
+    <button type="button" data-name="${esc(c.name)}" data-phone="${esc(c.phone || '')}"
+      class="w-full text-right px-3 py-2 hover:bg-primary/5 flex items-center justify-between text-xs">
+      <span class="font-bold text-slate-800 dark:text-slate-100">${esc(c.name)}</span>
+      <span class="font-display text-slate-500" dir="ltr">${esc(c.phone || 'بدون هاتف')}</span>
+    </button>
+  `).join('');
+  uSugEl.classList.remove('hidden');
+  uSugEl.querySelectorAll('button').forEach((b) => {
+    b.addEventListener('click', () => {
+      uNameEl.value = b.dataset.name;
+      if (b.dataset.phone) uPhoneEl.value = b.dataset.phone;
+      uBadgeEl.textContent = 'عميل مسجل ✓';
+      uBadgeEl.className = 'text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-bold';
+      uSugEl.classList.add('hidden');
+    });
+  });
+}
+
+uNameEl.addEventListener('input', () => {
+  clearTimeout(uCustTimer);
+  uBadgeEl.textContent = 'عميل جديد / مسجل';
+  uBadgeEl.className = 'text-[11px] px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 font-semibold';
+  uCustTimer = setTimeout(() => lookupUsedSellerCustomers(uNameEl.value.trim()), 150);
+});
+uNameEl.addEventListener('focus', () => {
+  lookupUsedSellerCustomers(uNameEl.value.trim());
+});
+uPhoneEl.addEventListener('input', () => {
+  clearTimeout(uCustTimer);
+  const v = uPhoneEl.value.trim();
+  if (v.length >= 3) uCustTimer = setTimeout(() => lookupUsedSellerCustomers(v), 150);
+});
+document.addEventListener('click', (e) => {
+  if (!uSugEl.contains(e.target) && e.target !== uNameEl && e.target !== uPhoneEl) {
+    uSugEl.classList.add('hidden');
   }
 });
 

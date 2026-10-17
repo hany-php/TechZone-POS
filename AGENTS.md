@@ -74,5 +74,60 @@
 
 ## سجل التغييرات
 
+### 2026-10-17 — إعدادات قفل تسجيل الدخول (محاولات/مدة)
+- إضافة مفاتيح `login_max_attempts` (افتراضي 5) و `login_lockout_minutes` (افتراضي 10) + حقول إدخال في `web/settings.html` (تبويب تسجيل الدخول).
+- `login()` يقرأ الإعدادات، ويقفل بعد N محاولات فاشلة لمدة M دقيقة، مع حفظ حالة الإقفال في `settings` (login_fail_state) لمنع إعادة فتح البرنامج.
+- شاشة الدخول تعرض الوقت المتبقي (countdown) ويتم تعطيل الإدخال حتى انتهاء الإقفال.
+- selfcheck 104/104.
+
+### 2026-10-17 — خيار مدير للتحكم في ظهور إرسال WhatsApp
+- إضافة مفتاح `whatsapp_send_enabled` (افتراضي 1) في إعدادات المتجر + checkbox في `web/settings.html`.
+- إصلاح persistence: إضافة المفتاح إلى `allowed`/`show` في `settings_save`.
+- إخفاء/إظهار أزرار WhatsApp في `receipt.html`, `pos.html`, `sales_quotes.html`, `history.html` عبر `data-wa-toggle` + `applyWhatsappVisibility()` (CSS class + broadcast).
+- حماية backend: `whatsapp_send_invoice`/`whatsapp_send_quote` يرفضان عندما الإعداد 0.
+- 104/104 فحوصات ناجحة (selfcheck).
+
+### 2026-10-17 — إصلاحات جودة الكود (بدون تغيير واجهة المستخدم)
+- إصلاح تسرب اتصالات قاعدة البيانات عبر غلاف `_ClosingConnection` في `app/db.py` (إغلاق تلقائي).
+- إصلاح ثغرة path traversal في `whatsapp_send_invoice` (`app/api.py`) عبر `safe_name`.
+- تشديد الصلاحيات: `repair_create/set_status/update/delete` تتطلب `repair_edit`، و`settings()` تتطلب `settings_manage`، و`sale/quotation/repair/customer/used/shift_summary` تتطلب صلاحيات مناسبة (مع `_perm_any`).
+- حماية brute-force على `login` (قفل 5 دقائق بعد 5 محاولات فاشلة).
+- التحقق من magic bytes للصور المرفوعة (`_validate_image_data_url`) في all image save paths.
+- حدود طول للنصوص (اسم/هاتف العميل).
+- تحسين أداء: إزالة N+1 في `_customer_debt_summary`, `shift_summary`, `sale()`؛ إضافة فهارس FK في `app/db.py`؛ كاش للإعدادات/القوالب/طرق الدفع.
+- إزالة dead code? `payment_methods_get` remains (unused) — left for compatibility.
+- تحديث `app/selfcheck.py` لاستخدام صورة PNG صالحة.
+- 104/104 فحوصات ناجحة.
+
+### 2026-10-17 — تقرير تدقيق جودة الكود (`CODE_AUDIT_REPORT.md`)
+- إضافة ملف تقرير تدقيق شامل (markdown) يغطي 5 أبعاد: القابلية للصيانة (4/10)، Clean Architecture (3/10)، جودة الكود (5.5/10)، الأمان (6.5/10)، الأداء (5/10)، with overall weighted score 4.8/10، plus top 5 critical issues and recommended fixes. No code changes.
+
+### 2026-10-15 — إصلاح خطأ JavaScript في `web/app.js` وتحسين استجابة شاشة الدخول (`web/index.html`)
+- **`web/app.js`**: إصلاح تكرار تعريف المتغير `const st` داخل `buildA4InvoiceHtml` الذي كان يسبب `SyntaxError: Identifier 'st' has already been declared` ويمنع تحميل دوال `api()` و `guard()` و `toast()` في صفحة تسجيل الدخول.
+- **`web/index.html`**: إضافة حقل إدخال مباشر للرمز السري/كلمة المرور (`#pin-input`) يدعم الكتابة المباشرة من لوحة المفاتيح أو لوحة الأرقام على الشاشة لأي طول رمز سري، مع زر إظهار/إخفاء الرمز، ورسالة خطأ واضحة داخل البطاقة (`#login-error-box`) مع تأثير اهتزاز تنبيهي عند إدخال رمز خاطئ.
+
+
+### 2026-10-15 — حصر مصمم القوالب في الإعدادات، إخفاء الضرائب تلقائياً عند إيقافها، حماية الدورة المالية، بادئات تسلسل كافة الإيصالات، تطوير السجل والصيانة والمستعمل والتقارير، وإصلاح تخطيط صفحة الموظفين
+- **`web/sales_quotes.html` و `web/app.js` و `app/api.py`**:
+  - إزالة تبويب وقسم مصمم قوالب الفواتير (`#pane-templates`) من صفحة المبيعات وعروض الأسعار ليكون تصميم القوالب حصرياً في صفحة الإعدادات (`web/settings.html?tab=invoices`).
+  - ربط ظهور عمود الضرائب وسطر الضرائب في جدول الأصناف وفي المعاينة الحية والطباعة (`buildA4InvoiceHtml` و `renderA4DocumentToJpeg`) وفي `quotation_save` بإعداد تفعيل الضريبة (`SETTINGS.tax_enabled`)؛ فعند إيقاف الضريبة يختفي عمود الضرائب من جدول البنود ومن المعاينة الحية وتُصفّر الضريبة تلقائياً، وعند تفعيلها يظهر فوراً.
+  - إضافة دالة `quotation_cancel(id)` لإلغاء عروض الأسعار (`status="cancelled"`) بجانب إمكانية حذفها (`quotation_delete`) أو تعديلها، مع منع إلغاء أو حذف فواتير المبيعات المعتمدة حفاظاً على الدورة المالية وإتاحة نافذة استرجاع (مرتجع كلي أو جزئي) للفاتورة عبر `sale_return`.
+- **`web/settings.html` و `app/db.py` و `app/api.py` (بادئات تسلسل كافة الفواتير والإيصالات)**:
+  - إضافة مفاتيح البادئات التسلسلية في `DEFAULT_POS_TEMPLATE`: `pos_invoice_prefix` (`INV-`) لفواتير الكاشير الحرارية، `repair_prefix` (`RPR-`) لتذاكر الصيانة، `voucher_prefix` (`RCV-`) لسندات قبض العملاء، و `used_prefix` (`TRX-`) لإيصالات شراء المستعمل، وربطها بدوال `sale_create` و `repair_create` و `customer_payment_create` و `used_create` مع حقول تحكم ومعاينة حية في استوديو الفواتير بصفحة الإعدادات.
+- **`web/history.html` و `app/api.py` (سجل المبيعات والفواتير وعروض الأسعار والمرتجعات والصيانة)**:
+  - تحديث `sales` و `sales_stats` لعرض جميع العمليات: مبيعات نقاط البيع (`pos`)، فواتير المبيعات الرسمية (`b2b`)، عروض الأسعار (`quote`)، المرتجعات (`returned`)، وتذاكر الصيانة (`repair`).
+  - إضافة فلترة من تاريخ (`date_from`) إلى تاريخ (`date_to`) مع الافتراضي على اليوم، وزر «عرض الكل» (`all_dates=True`)، وتعدد صفحات متكامل بأرقام الصفحات، وبحث أتوكمبليت فوري (`history_suggestions`).
+- **`web/repair.html` و `app/api.py` (تنظيم مركز الصيانة + التعديل والحذف الآمن + طباعة التذكرة في أي حالة)**:
+  - إعادة تنظيم صفحة الصيانة وإضافة `repair_update` لتعديل بيانات التذكرة و `repair_delete` لحذف التذكرة إذا لم تؤثر على الوضع المالي (منع حذف التذاكر المسلمة ذات التكلفة المالية، مع إرجاع قطع الغيار للمخزون تلقائياً عند حذف تذكرة غير مسلمة).
+  - إضافة `buildRepairTicketPrintHtml` ونافذة معاينة وطباعة تذكرة الصيانة في أي حالة (`received`, `in_review`, `pending_approval`, `repaired`, `delivered`, `rejected`).
+- **`web/buy_used.html` و `app/api.py` (ربط البائع بسجل العملاء — عميل جديد / مسجل)**:
+  - تحديث `used_create` لتسجيل/ربط البائع تلقائياً في جدول `customers` عبر `_upsert_customer`، وإضافة بحث أتوكمبليت بالاسم أو رقم الهاتف في `web/buy_used.html`.
+- **`web/reports.html` و `app/api.py` (التقارير المالية من تاريخ إلى تاريخ)**:
+  - تحديث `report_daily` و `_range` لدعم `date_from` و `date_to` وإضافة حقلي «من تاريخ» و«إلى تاريخ» في `web/reports.html` مع الافتراضي على اليوم.
+- **`web/profile.html` و `web/staff.html` و `web/app.css`**:
+  - إضافة إمكانية رفع صورة خلفية سطح المكتب الخاصة بكل مستخدم في `web/profile.html` وحفظها لحسابه فقط عبر `user_pref_save`.
+  - إصلاح تداخل حقول إضافة وتعديل الموظف في `web/staff.html` عبر استخدام شبكة `.staff-fields-grid` واضحة من 3 أعمدة وإضافة قواعد الأعمدة المتجاوبة في `web/app.css`.
+
+
 - `2026-10-15`: فصل إدارة الموظفين وتخصيص الصلاحيات في صفحة مستقلة (`web/staff.html`) وإلغاؤها من صفحة التقارير (`web/reports.html`) لتصبح للتقارير فقط، وإنشاء صفحة الملف الشخصي وإعدادات الموظف (`web/profile.html` + `api.profile_save` + عمود `users.avatar`) لتفتح عند الضغط على اسم/صورة المستخدم وتتيح تعديل الاسم وكلمة السر والصورة الشخصية وصفحة الدخول المفضلة، ونقل إعدادات المتجر والضريبة وتخصيص الإيصال بالكامل من `web/receipt.html` إلى صفحة الإعدادات الشاملة (`web/settings.html`) (87/87 فحصاً).
 - `2026-10-15`: إنشاء صفحة الإعدادات الشاملة للمشروع بنظام التبويبات (`web/settings.html`)، وتحديث صفحة تسجيل الدخول (`web/index.html`) لتعرض اسم المحل وشعاره من الإعدادات وتكتفي بالرمز السري للتعرف تلقائياً على المستخدم ودوره (مدير أو كاشير) مع إلغاء زر دخول المدير ودعم 3 طرق دخول قابلة للتخصيص (`pin_only`، `select_user_pin`، `username_password`)، وتوحيد تصميم جميع فواتير وإيصالات البرنامج في مكان واحد، وإضافة تفضيلات صفحة البداية الخاصة بكل مستخدم (`start_page` / `start_mode`) مع افتراضي الأدمن، وتفعيل الوضع الليلي والنهاري بالكامل على صفحة سطح المكتب (`web/desktop.html`).

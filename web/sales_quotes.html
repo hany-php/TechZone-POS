@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>المبيعات وعروض الأسعار وقوالب الفواتير - تك زون</title>
+<title>المبيعات وعروض الأسعار - تك زون</title>
 <link href="app.css" rel="stylesheet"/>
 <script>if(localStorage.getItem('tz-theme')==='dark')document.documentElement.classList.add('dark');</script>
 <style>
@@ -27,14 +27,14 @@
 </head>
 <body id="shell" class="bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-100 font-display min-h-screen flex flex-col md:flex-row">
 <main class="flex-1 min-w-0 p-4 md:p-6 flex flex-col gap-5">
-  <!-- الرأس والتبويبات الرئيسية -->
+  <!-- الرأس والتبويبات الرئيسية (بدون مصمم القوالب — مصمم القوالب موجود حصرياً في صفحة الإعدادات) -->
   <div class="flex flex-wrap items-center justify-between gap-4 bg-white dark:bg-surface-dark p-4 md:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
     <div>
       <h1 class="text-xl md:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
         <span class="material-icons-round text-primary">description</span>
-        <span>قسم المبيعات وعروض الأسعار ومصمم قوالب الفواتير</span>
+        <span>قسم المبيعات وعروض الأسعار (A4)</span>
       </h1>
-      <p class="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-0.5">إصدار فواتير مبيعات A4 وعروض أسعار احترافية، مع كتالوج المنتجات، وإدارة طرق وخطط الدفع، وتخصيص قالب الـ A4 وإيصال الكاشير الحراري</p>
+      <p class="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-0.5">إصدار فواتير مبيعات A4 وعروض أسعار احترافية، مع كتالوج المنتجات، وإدارة خطط الدفع، وإلغاء/حذف عروض الأسعار أو عمل استرجاع للفواتير المعتمدة</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
       <button type="button" data-tab="editor" class="tab-btn active px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 transition-all">
@@ -45,13 +45,9 @@
         <span class="material-icons-round text-base">folder_special</span>
         <span>سجل عروض الأسعار والفواتير (<span id="badge-total-docs">0</span>)</span>
       </button>
-      <button type="button" data-tab="templates" class="tab-btn px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 transition-all">
+      <a href="settings.html?tab=invoices" class="px-3.5 py-2.5 rounded-xl text-xs md:text-sm font-bold flex items-center gap-1.5 bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all" title="تخصيص قوالب الفواتير والبادئة من صفحة الإعدادات">
         <span class="material-icons-round text-base">palette</span>
-        <span>مصمم قوالب الفواتير والبادئة (A4 + كاشير)</span>
-      </button>
-      <a href="settings.html?tab=invoices" class="px-3.5 py-2.5 rounded-xl text-xs md:text-sm font-bold flex items-center gap-1.5 bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all">
-        <span class="material-icons-round text-base">settings</span>
-        <span>الإعدادات الشاملة</span>
+        <span>إعدادات وتصميم قوالب الفواتير</span>
       </a>
     </div>
   </div>
@@ -63,7 +59,7 @@
         <span class="material-icons-round text-2xl">request_quote</span>
       </div>
       <div>
-        <div class="text-xs text-slate-500 dark:text-slate-400">عروض الأسعار النشطة</div>
+        <div class="text-xs text-slate-500 dark:text-slate-400">عروض الأسعار</div>
         <div class="text-lg font-bold font-num text-slate-900 dark:text-white"><span id="st-quotes-cnt">0</span> عرض</div>
         <div class="text-xs font-num text-sky-600 font-semibold" id="st-quotes-tot">0.00</div>
       </div>
@@ -116,6 +112,7 @@
           </button>
         </div>
         <div class="flex items-center gap-2">
+          <span id="editing-doc-badge" class="hidden px-2.5 py-1 rounded-lg bg-amber-100 text-amber-800 text-xs font-bold">تعديل عرض سعر</span>
           <button type="button" id="btn-new-doc" class="px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-1">
             <span class="material-icons-round text-sm">restart_alt</span>
             <span>تفريغ النموذج (جديد)</span>
@@ -131,10 +128,10 @@
         <div>
           <div class="flex items-center justify-between mb-1">
             <label class="text-xs font-bold text-slate-600 dark:text-slate-300" id="lbl-doc-ref">رقم الفاتورة (مرجع تسلسلي تلقائي)</label>
-            <button type="button" onclick="switchTab('templates')" class="text-[11px] text-primary font-bold hover:underline flex items-center gap-0.5" title="تغيير بادئة التسلسل مثل N00 من إعدادات القالب">
+            <a href="settings.html?tab=invoices" class="text-[11px] text-primary font-bold hover:underline flex items-center gap-0.5" title="تغيير بادئة التسلسل من صفحة الإعدادات">
               <span class="material-icons-round text-xs">settings</span>
-              <span>تغيير البادئة (Prefix)</span>
-            </button>
+              <span>تغيير البادئة في الإعدادات</span>
+            </a>
           </div>
           <div class="relative">
             <input id="doc-ref-no" type="text" readonly class="w-full px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700 text-sm font-mono font-bold text-primary cursor-not-allowed select-all" title="رقم الفاتورة يُولّد تلقائياً بالتسلسل ولا يمكن تعديله يدوياً"/>
@@ -171,13 +168,16 @@
         </div>
       </div>
 
-      <!-- قسم إضافة البنود: كتالوج المنتجات المرئي (مثل نقاط البيع) + البحث + إضافة سطر حر -->
+      <!-- قسم إضافة البنود: كتالوج المنتجات المرئي + البحث + إضافة سطر حر -->
       <div class="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex flex-col gap-3">
         <div class="flex flex-wrap items-center justify-between gap-2">
-          <span class="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1">
-            <span class="material-icons-round text-primary text-base">inventory_2</span>
-            <span>إضافة أصناف وبنود الفاتورة / عرض السعر</span>
-          </span>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1">
+              <span class="material-icons-round text-primary text-base">inventory_2</span>
+              <span>إضافة أصناف وبنود الفاتورة / عرض السعر</span>
+            </span>
+            <span id="tax-status-pill" class="px-2 py-0.5 rounded-full text-[10px] font-bold"></span>
+          </div>
           <div class="flex flex-wrap items-center gap-1.5">
             <button type="button" id="btn-toggle-catalog" class="px-3 py-1.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-colors flex items-center gap-1 shadow-sm">
               <span class="material-icons-round text-sm">grid_view</span>
@@ -206,7 +206,7 @@
           <div id="catalog-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-52 overflow-y-auto p-0.5"></div>
         </div>
 
-        <!-- جدول البنود القابل للتعديل -->
+        <!-- جدول البنود القابل للتعديل (عمود الضرائب يظهر أو يختفي تلقائياً حسب تفعيل الضريبة في الإعدادات) -->
         <div class="overflow-x-auto">
           <table class="w-full text-xs border-collapse">
             <thead>
@@ -215,7 +215,7 @@
                 <th class="p-2 text-right">الوصف / البيان</th>
                 <th class="p-2 text-center w-16">الكمية</th>
                 <th class="p-2 text-center w-24">سعر الوحدة</th>
-                <th class="p-2 text-center w-28">الضرائب</th>
+                <th id="th-doc-tax-col" class="p-2 text-center w-28">الضرائب</th>
                 <th class="p-2 text-left w-24">المبلغ</th>
                 <th class="p-2 text-center w-8 rounded-l-lg"></th>
               </tr>
@@ -225,7 +225,7 @@
         </div>
       </div>
 
-      <!-- قسم الخصم والإجماليات + قسم طرق الدفع وخطط السداد (يختفي قسم المدفوعات تلقائياً في عرض السعر) -->
+      <!-- قسم الخصم والإجماليات + قسم طرق الدفع وخطط السداد -->
       <div class="p-4 rounded-xl bg-blue-50/50 dark:bg-slate-800/40 border border-blue-100 dark:border-slate-700 flex flex-col gap-3.5">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
           <div>
@@ -276,13 +276,13 @@
             </div>
           </div>
 
-          <!-- جدول الدفعات المتعددة (إن رغب المستخدم بتسجيل أكثر من دفعة/قسط على الفاتورة) -->
+          <!-- جدول الدفعات المتعددة -->
           <div id="multi-payments-wrap" class="hidden p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex-col gap-2">
             <div class="text-[11px] font-bold text-slate-600 dark:text-slate-300">تفصيل الدفعات المسددة (تظهر كل دفعة بتاريخها وطريقتها في الفاتورة):</div>
             <div id="multi-payments-rows" class="flex flex-col gap-1.5"></div>
           </div>
 
-          <!-- حقل كتابة تفصيل خطة الدفع الخاصة بكل عميل (مثل: 3 دفعات مع دفعة مقدمة، أو دفعتين...) -->
+          <!-- حقل كتابة تفصيل خطة الدفع الخاصة بكل عميل -->
           <div>
             <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">تفصيل خطة / شروط الدفع الخاصة بهذا العميل (تظهر في الفاتورة)</label>
             <textarea id="doc-pay-plan-note" rows="2" class="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs focus:outline-none focus:border-primary" placeholder="مثال: السداد على 3 دفعات مع دفعة مقدمة 2000 ج.م، والباقي على قسطين شهريين..."></textarea>
@@ -306,7 +306,7 @@
           <span class="material-icons-round text-base">print</span>
           <span>طباعة A4</span>
         </button>
-        <button type="button" id="btn-save-and-wa" class="py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-lg shadow-emerald-600/20 flex items-center gap-1.5">
+        <button type="button" id="btn-save-and-wa" data-wa-toggle class="py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-lg shadow-emerald-600/20 flex items-center gap-1.5">
           <span class="material-icons-round text-base">send</span>
           <span>حفظ وإرسال PDF واتساب</span>
         </button>
@@ -320,10 +320,10 @@
           <span class="material-icons-round text-primary text-base">visibility</span>
           <span>معاينة حية للقالب (تتحدث تلقائياً أثناء كتابتك للبيانات)</span>
         </span>
-        <button type="button" onclick="switchTab('templates')" class="text-xs text-primary font-bold hover:underline flex items-center gap-1">
+        <a href="settings.html?tab=invoices" class="text-xs text-primary font-bold hover:underline flex items-center gap-1">
           <span class="material-icons-round text-sm">tune</span>
-          <span>تخصيص القالب وبادئة الترقيم</span>
-        </button>
+          <span>تخصيص القالب وبادئة الترقيم من الإعدادات</span>
+        </a>
       </div>
       <div class="overflow-x-auto rounded-xl">
         <div id="live-a4-preview" class="origin-top"></div>
@@ -333,6 +333,11 @@
 
   <!-- ==================== التبويب 2: سجل عروض الأسعار وفواتير المبيعات A4 ==================== -->
   <section id="pane-list" class="hidden bg-white dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm flex flex-col gap-4">
+    <div class="p-3 rounded-xl bg-blue-50/70 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-xs text-slate-700 dark:text-slate-200 flex items-center gap-2">
+      <span class="material-icons-round text-primary text-base">shield</span>
+      <span><b>حماية الدورة المالية:</b> عروض الأسعار يمكن إلغاؤها أو حذفها أو تعديلها بحرية، أما الفواتير المعتمدة فلا يمكن إلغاؤها أو حذفها حتى لا تتأثر الدورة المالية، ويمكنك عمل <b>استرجاع (مرتجع كلي أو جزئي)</b> لأي فاتورة معتمدة.</span>
+    </div>
+
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-2">
         <button type="button" data-filter-type="" class="filter-pill px-3.5 py-1.5 rounded-xl text-xs font-bold bg-primary text-white">الكل</button>
@@ -350,7 +355,7 @@
         <thead>
           <tr class="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold">
             <th class="p-3 rounded-r-xl">رقم الفاتورة / المرجع</th>
-            <th class="p-3">النوع</th>
+            <th class="p-3">النوع والحالة</th>
             <th class="p-3">العميل</th>
             <th class="p-3">التاريخ</th>
             <th class="p-3">الاستحقاق</th>
@@ -362,204 +367,6 @@
         </thead>
         <tbody id="docs-list-tbody" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody>
       </table>
-    </div>
-  </section>
-
-  <!-- ==================== التبويب 3: مصمم قوالب الفواتير والبادئة (Template Studio: A4 + POS Thermal) ==================== -->
-  <section id="pane-templates" class="hidden grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
-    <div class="xl:col-span-5 bg-white dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm flex flex-col gap-4">
-      <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-        <div>
-          <h2 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-            <span class="material-icons-round text-primary">design_services</span>
-            <span>استوديو تخصيص قوالب الفواتير وبادئة الترقيم</span>
-          </h2>
-          <p class="text-xs text-slate-500">تحكم في بادئة أرقام الفواتير (مثل N00)، وشكل وألوان فاتورة الـ A4 وعرض السعر، وإيصال طابعة الكاشير الحرارية الصغيرة</p>
-        </div>
-      </div>
-
-      <!-- التبديل بين قالب A4 وقالب إيصال الكاشير الحراري -->
-      <div class="grid grid-cols-2 gap-2 p-1 rounded-xl bg-slate-100 dark:bg-slate-800">
-        <button type="button" id="subtab-a4-btn" class="py-2 px-3 rounded-lg text-xs font-bold bg-white dark:bg-slate-900 text-primary shadow-sm flex items-center justify-center gap-1.5">
-          <span class="material-icons-round text-sm">description</span>
-          <span>قالب المبيعات وعرض السعر (A4)</span>
-        </button>
-        <button type="button" id="subtab-pos-btn" class="py-2 px-3 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center justify-center gap-1.5">
-          <span class="material-icons-round text-sm">receipt</span>
-          <span>قالب الكاشير الحراري (80mm/58mm)</span>
-        </button>
-      </div>
-
-      <!-- 1) إعدادات قالب A4 -->
-      <div id="tpl-a4-form" class="flex flex-col gap-3.5">
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          <label class="cursor-pointer p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center gap-2 text-xs font-bold">
-            <input type="radio" name="t-a4-theme" value="taqnia_wave" checked class="accent-blue-600"/>
-            <span>النمط الموجي (تقنية)</span>
-          </label>
-          <label class="cursor-pointer p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center gap-2 text-xs font-bold">
-            <input type="radio" name="t-a4-theme" value="modern_clean" class="accent-blue-600"/>
-            <span>النمط العصري المسطح</span>
-          </label>
-          <label class="cursor-pointer p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center gap-2 text-xs font-bold">
-            <input type="radio" name="t-a4-theme" value="classic_formal" class="accent-blue-600"/>
-            <span>الكلاسيكي المؤطر</span>
-          </label>
-        </div>
-
-        <!-- إعداد بادئة تسلسل الفواتير وعروض الأسعار (Prefix) -->
-        <div class="p-3.5 rounded-xl bg-blue-50/70 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-bold text-slate-800 dark:text-white mb-1">بادئة تسلسل الفواتير (Prefix)</label>
-            <input id="t-a4-inv-prefix" type="text" class="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-xs font-mono font-bold" placeholder="مثال: N00 أو الفات/2026/"/>
-            <p class="text-[10px] text-slate-500 mt-1">مثال: لو كتبت <b>N00</b> سيبدأ التسلسل <b>N001, N002...</b></p>
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-800 dark:text-white mb-1">بادئة تسلسل عروض الأسعار</label>
-            <input id="t-a4-quote-prefix" type="text" class="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-xs font-mono font-bold" placeholder="مثال: Q00 أو ع.س/2026/"/>
-            <p class="text-[10px] text-slate-500 mt-1">تُستخدم لتوليد رقم عرض السعر تلقائياً</p>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">اللون الرئيسي (الجدول والعنوان)</label>
-            <div class="flex items-center gap-2">
-              <input id="t-a4-primary" type="color" value="#0e6ba8" class="w-10 h-9 rounded-lg cursor-pointer border-0 bg-transparent"/>
-              <input id="t-a4-primary-txt" type="text" value="#0e6ba8" dir="ltr" class="flex-1 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono"/>
-            </div>
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">اللون الثانوي (شريط التواريخ والموجة)</label>
-            <div class="flex items-center gap-2">
-              <input id="t-a4-accent" type="color" value="#9e2a5b" class="w-10 h-9 rounded-lg cursor-pointer border-0 bg-transparent"/>
-              <input id="t-a4-accent-txt" type="text" value="#9e2a5b" dir="ltr" class="flex-1 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono"/>
-            </div>
-          </div>
-        </div>
-
-        <!-- رفع وتغيير شعار قالب A4 -->
-        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3">
-          <div class="flex items-center gap-3">
-            <img id="t-a4-logo-preview" src="" alt="شعار" class="w-16 h-11 object-contain bg-white rounded-lg border border-slate-200 p-1"/>
-            <div>
-              <div class="text-xs font-bold">شعار الفاتورة (أعلى اليمين)</div>
-              <div class="text-[11px] text-slate-500">يمكنك رفعه أو تغييره في أي وقت</div>
-            </div>
-          </div>
-          <label class="px-3 py-1.5 rounded-xl bg-primary text-white text-xs font-bold cursor-pointer hover:bg-primary-dark">
-            <span>تغيير الشعار</span>
-            <input id="t-a4-logo-file" type="file" accept="image/*" class="hidden"/>
-          </label>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">اسم الشركة أعلى اليسار</label>
-            <input id="t-a4-company" type="text" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs"/>
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">البريد الإلكتروني في التذييل</label>
-            <input id="t-a4-email" type="text" dir="ltr" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs"/>
-          </div>
-          <div class="sm:col-span-2">
-            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">عنوان الشركة التفصيلي (كل سطر في سطر مستقل)</label>
-            <textarea id="t-a4-address" rows="3" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs"></textarea>
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">رمز العملة في الفاتورة (LE أو ج.م)</label>
-            <input id="t-a4-currency" type="text" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs" placeholder="LE"/>
-          </div>
-          <div class="sm:col-span-2">
-            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">شروط أو ملاحظات ثابتة أسفل الفاتورة / عرض السعر</label>
-            <textarea id="t-a4-terms" rows="2" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs" placeholder="اختياري: تكتب هنا شروط الضمان أو أرقام الحسابات البنكية..."></textarea>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2 text-xs">
-          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="t-a4-waves" type="checkbox" checked/> إظهار الموجات الملونة</label>
-          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="t-a4-show-logo" type="checkbox" checked/> إظهار شعار الشركة</label>
-          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="t-a4-infobox" type="checkbox" checked/> شريط رقم الفاتورة والتواريخ</label>
-          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="t-a4-sku" type="checkbox" checked/> إظهار الكود [SKU] بالوصف</label>
-          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="t-a4-taxcol" type="checkbox" checked/> إظهار عمود الضرائب</label>
-          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="t-a4-paycomm" type="checkbox" checked/> مرجع الفاتورة للسداد</label>
-          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="t-a4-paydet" type="checkbox" checked/> تفاصيل الدفع والمستحق</label>
-          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="t-a4-footer" type="checkbox" checked/> البريد ورقم الصفحة</label>
-        </div>
-      </div>
-
-      <!-- 2) إعدادات قالب إيصال الكاشير الحراري الصغير (POS 80mm / 58mm) -->
-      <div id="tpl-pos-form" class="hidden flex-col gap-3.5">
-        <div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-200">
-          <b>مخصص لطابعات فواتير الكاشير الحرارية الصغيرة:</b> يحافظ دائماً على المقاس الصغير المتوافق مع ورق البكر الحراري (80mm أو 58mm).
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div>
-            <label class="block text-xs font-bold mb-1">عرض ورق طابعة الكاشير</label>
-            <select id="t-pos-width" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
-              <option value="80mm">80mm (طابعة كاشير قياسية)</option>
-              <option value="58mm">58mm (طابعة كاشير صغيرة)</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs font-bold mb-1">حجم الخط في الإيصال</label>
-            <select id="t-pos-font" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
-              <option value="small">صغير مضغوط</option>
-              <option value="normal">متوسط قياسي</option>
-              <option value="large">كبير وواضح</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs font-bold mb-1">نمط الفواصل الأفقية</label>
-            <select id="t-pos-border" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
-              <option value="dashed">خط متقطع (- - -)</option>
-              <option value="solid">خط متصل (───)</option>
-              <option value="double">خط مزدوج (═══)</option>
-            </select>
-          </div>
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-bold mb-1">رسالة ترحيب أعلى الإيصال الحراري</label>
-            <input id="t-pos-headnote" type="text" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs" placeholder="اختياري: أهلاً بكم في تك زون"/>
-          </div>
-          <div>
-            <label class="block text-xs font-bold mb-1">عبارة الشكر السفلية</label>
-            <input id="t-pos-thanks" type="text" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs"/>
-          </div>
-          <div class="sm:col-span-2">
-            <label class="block text-xs font-bold mb-1">سياسة الاستبدال والاسترجاع أسفل الإيصال</label>
-            <input id="t-pos-footer" type="text" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs"/>
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-2 text-xs">
-          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="t-pos-logo" type="checkbox" checked/> إظهار الشعار</label>
-          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="t-pos-addr" type="checkbox" checked/> إظهار العنوان والهاتف</label>
-          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="t-pos-cust" type="checkbox" checked/> إظهار بيانات العميل</label>
-          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="t-pos-sku" type="checkbox"/> إظهار كود الصنف [SKU]</label>
-          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="t-pos-unit" type="checkbox" checked/> إظهار سعر الوحدة</label>
-          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="t-pos-pays" type="checkbox" checked/> إظهار تفاصيل الدفع</label>
-          <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"><input id="t-pos-barcode" type="checkbox" checked/> إظهار الباركود السفلي</label>
-        </div>
-      </div>
-
-      <div class="flex flex-wrap gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
-        <button type="button" id="btn-save-templates" class="flex-1 py-2.5 px-4 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold text-xs shadow-lg shadow-primary/20 flex items-center justify-center gap-1.5">
-          <span class="material-icons-round text-base">save</span>
-          <span>حفظ تصميم القوالب وبادئة الترقيم</span>
-        </button>
-        <button type="button" id="btn-reset-templates" class="py-2.5 px-4 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800">
-          استعادة القالب الافتراضي
-        </button>
-      </div>
-    </div>
-
-    <!-- معاينة القالب المختار في الاستوديو -->
-    <div class="xl:col-span-7 bg-slate-100 dark:bg-slate-900/70 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 flex flex-col gap-3">
-      <div class="flex items-center justify-between">
-        <span class="text-xs font-bold text-slate-600 dark:text-slate-300" id="studio-preview-title">معاينة قالب الفاتورة الرسمي (A4)</span>
-      </div>
-      <div id="studio-preview-box" class="overflow-x-auto flex justify-center p-2"></div>
     </div>
   </section>
 </main>
@@ -604,11 +411,19 @@
           <span class="material-icons-round text-sm">transform</span>
           <span>تحويل عرض السعر إلى فاتورة مبيعات</span>
         </button>
+        <button type="button" id="modal-btn-cancel-quote" class="hidden px-3.5 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold flex items-center gap-1">
+          <span class="material-icons-round text-sm">block</span>
+          <span>إلغاء عرض السعر</span>
+        </button>
+        <button type="button" id="modal-btn-return-inv" class="hidden px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1">
+          <span class="material-icons-round text-sm">assignment_return</span>
+          <span>عمل استرجاع (مرتجع للفاتورة)</span>
+        </button>
         <button type="button" id="modal-btn-print" class="px-3.5 py-2 rounded-xl bg-primary text-white text-xs font-bold flex items-center gap-1">
           <span class="material-icons-round text-sm">print</span>
           <span>طباعة A4</span>
         </button>
-        <button type="button" id="modal-btn-wa" class="px-3.5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold flex items-center gap-1">
+        <button type="button" id="modal-btn-wa" data-wa-toggle class="px-3.5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold flex items-center gap-1">
           <span class="material-icons-round text-sm">send</span>
           <span>إرسال PDF واتساب</span>
         </button>
@@ -618,6 +433,39 @@
       </div>
     </div>
     <div id="modal-doc-body" class="p-4 overflow-y-auto bg-slate-100 dark:bg-slate-950 flex-1"></div>
+  </div>
+</div>
+
+<!-- نافذة استرجاع (مرتجع) فاتورة مبيعات معتمدة -->
+<div id="inv-return-modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50 p-4">
+  <div class="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-xl p-5 shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col gap-4">
+    <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+      <div>
+        <h3 class="font-bold text-base text-slate-900 dark:text-white flex items-center gap-1.5">
+          <span class="material-icons-round text-rose-600">assignment_return</span>
+          <span>استرجاع / مرتجع فاتورة مبيعات (<span id="ret-inv-no" class="font-mono text-primary"></span>)</span>
+        </h3>
+        <p class="text-xs text-slate-500 mt-0.5">الفاتورة المعتمدة لا تُلغى حفاظاً على الدورة المالية، ولكن يمكنك إرجاع أصنافها جزئياً أو كلياً وإعادتها للمخزون</p>
+      </div>
+      <button type="button" onclick="document.getElementById('inv-return-modal').classList.replace('flex','hidden')" class="text-slate-400 hover:text-slate-700">
+        <span class="material-icons-round">close</span>
+      </button>
+    </div>
+
+    <div id="ret-items-list" class="flex flex-col gap-2 max-h-64 overflow-y-auto"></div>
+
+    <div>
+      <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">سبب الاسترجاع / المرتجع</label>
+      <input id="ret-reason-input" type="text" class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs" placeholder="مثال: استبدال أو إرجاع بناءً على طلب العميل"/>
+    </div>
+
+    <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+      <button type="button" onclick="document.getElementById('inv-return-modal').classList.replace('flex','hidden')" class="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold">إلغاء</button>
+      <button type="button" id="btn-confirm-inv-return" class="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1">
+        <span class="material-icons-round text-sm">check_circle</span>
+        <span>تأكيد المرتجع وإعادة الأصناف للمخزون</span>
+      </button>
+    </div>
   </div>
 </div>
 
@@ -643,15 +491,38 @@ let CATALOG_CATEGORIES = [];
 let ACTIVE_CAT_ID = '';
 let CURRENT_FILTER_TYPE = '';
 let MODAL_DOC = null;
-let STUDIO_MODE = 'a4';
+let ACTIVE_RETURN_SALE = null;
+
+function isTaxEnabled() {
+  return Boolean(SETTINGS && SETTINGS.tax_enabled !== '0');
+}
+
+function syncTaxUiState() {
+  const enabled = isTaxEnabled();
+  const th = $('th-doc-tax-col');
+  if (th) th.classList.toggle('hidden', !enabled);
+  const pill = $('tax-status-pill');
+  if (pill) {
+    if (enabled) {
+      const rate = (SETTINGS && SETTINGS.tax_rate) ? SETTINGS.tax_rate : '14';
+      pill.textContent = `الضريبة مفعلة (${rate}%)`;
+      pill.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300';
+    } else {
+      pill.textContent = 'الضرائب متوقفة من الإعدادات';
+      pill.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300';
+    }
+  }
+}
 
 function switchTab(tab) {
+  if (tab === 'templates') {
+    location.href = 'settings.html?tab=invoices';
+    return;
+  }
   document.querySelectorAll('.tab-btn').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
   $('pane-editor').classList.toggle('hidden', tab !== 'editor');
   $('pane-list').classList.toggle('hidden', tab !== 'list');
-  $('pane-templates').classList.toggle('hidden', tab !== 'templates');
   if (tab === 'list') loadDocsList();
-  if (tab === 'templates') renderStudioPreview();
 }
 
 document.querySelectorAll('.tab-btn').forEach((btn) => {
@@ -659,6 +530,7 @@ document.querySelectorAll('.tab-btn').forEach((btn) => {
 });
 
 function syncLockedDocRefNo() {
+  if ($('doc-id').value) return;
   const isInv = $('doc-type').value === 'invoice';
   const pref = isInv ? (A4_TPL.invoice_prefix || 'الفات/2026/') : (A4_TPL.quote_prefix || 'ع.س/2026/');
   const seq = isInv ? NEXT_SALE_SEQ : NEXT_QUOTE_SEQ;
@@ -677,9 +549,8 @@ function setDocMode(mode) {
   $('lbl-doc-ref').textContent = isInv ? 'رقم الفاتورة (مرجع تسلسلي تلقائي)' : 'رقم عرض السعر (مرجع تسلسلي تلقائي)';
   $('lbl-doc-date').textContent = isInv ? 'تاريخ الفاتورة' : 'تاريخ عرض السعر';
   $('lbl-due-date').textContent = isInv ? 'تاريخ الاستحقاق' : 'صالح حتى تاريخ';
-  $('lbl-save-btn').textContent = isInv ? 'حفظ وإصدار فاتورة المبيعات (A4)' : 'حفظ وإصدار عرض السعر (A4)';
+  $('lbl-save-btn').textContent = isInv ? 'حفظ وإصدار فاتورة المبيعات (A4)' : ($('doc-id').value ? 'حفظ تعديلات عرض السعر (A4)' : 'حفظ وإصدار عرض السعر (A4)');
 
-  // إخفاء قسم المدفوعات بالكامل في عرض السعر (لأن عرض السعر يحتوي على خصم وإجمالي فقط بدون مدفوعات)
   $('invoice-payments-box').classList.toggle('hidden', !isInv);
   syncLockedDocRefNo();
   renderLiveEditorPreview();
@@ -688,7 +559,7 @@ function setDocMode(mode) {
 $('mode-invoice-btn').addEventListener('click', () => setDocMode('invoice'));
 $('mode-quote-btn').addEventListener('click', () => setDocMode('quote'));
 
-/* ==================== كتالوج المنتجات المرئي (بنفس طريقة نقاط البيع POS) ==================== */
+/* ==================== كتالوج المنتجات المرئي ==================== */
 $('btn-toggle-catalog').addEventListener('click', () => {
   const box = $('pos-style-catalog');
   const hidden = box.classList.toggle('hidden');
@@ -742,8 +613,14 @@ async function loadCatalogProducts() {
   });
 }
 
+function defaultItemTaxInfo() {
+  if (!isTaxEnabled()) return { tax_label: '', tax_rate: 0 };
+  const defRate = parseInt((SETTINGS && SETTINGS.tax_rate) || '0', 10) || 0;
+  if (defRate > 0) return { tax_label: `VAT ${defRate}%`, tax_rate: defRate };
+  return { tax_label: A4_TPL.default_tax_label || 'Zero Rated 0%', tax_rate: 0 };
+}
+
 function addProductToDocItems(p) {
-  // إذا كان الجدول يحتوي فقط على السطر الفارغ الافتراضي، نستبدله بالمنتج المختار
   if (DOC_ITEMS.length === 1 && !DOC_ITEMS[0].name.trim() && !DOC_ITEMS[0].sku.trim() && !DOC_ITEMS[0].unit_price) {
     DOC_ITEMS = [];
   }
@@ -751,14 +628,15 @@ function addProductToDocItems(p) {
   if (existing) {
     existing.qty += 1;
   } else {
+    const tInfo = defaultItemTaxInfo();
     DOC_ITEMS.push({
       product_id: p.id,
       sku: p.sku || '',
       name: p.name || '',
       qty: 1,
       unit_price: p.price || 0,
-      tax_label: A4_TPL.default_tax_label || 'Zero Rated 0%',
-      tax_rate: 0,
+      tax_label: tInfo.tax_label,
+      tax_rate: tInfo.tax_rate,
     });
   }
   renderItemsRows();
@@ -833,7 +711,7 @@ $('btn-add-pm').addEventListener('click', async () => {
   }
 });
 
-/* ==================== الدفعات المتعددة (إمكانية تسجيل أكثر من دفعة للفاتورة) ==================== */
+/* ==================== الدفعات المتعددة ==================== */
 $('btn-add-installment').addEventListener('click', () => {
   MULTI_PAYMENTS.push({
     label: `الدفعة ${MULTI_PAYMENTS.length + 1}`,
@@ -853,7 +731,6 @@ function renderMultiPaymentsRows() {
   }
   wrap.classList.remove('hidden');
   wrap.classList.add('flex');
-  const methodOpts = PAYMENT_METHODS.map((m) => `<option value="${esc(m.name)}">${esc(m.name)}</option>`).join('');
   box.innerHTML = MULTI_PAYMENTS.map((p, idx) => `
     <div class="grid grid-cols-12 gap-1.5 items-center">
       <input data-mp-idx="${idx}" data-mp-field="label" value="${esc(p.label)}" class="col-span-3 px-2 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs" placeholder="بيان الدفعة"/>
@@ -891,13 +768,17 @@ function renderMultiPaymentsRows() {
 
 /* ==================== حساب الإجماليات والمعاينة الحية ==================== */
 function calcDraftTotals() {
+  const taxOn = isTaxEnabled();
   let subtotal = 0;
   let tax = 0;
   for (const it of DOC_ITEMS) {
     const lt = Math.round((Number(it.qty) || 0) * (Number(it.unit_price) || 0));
     it.line_total = lt;
     subtotal += lt;
-    if (it.tax_rate > 0) {
+    if (!taxOn) {
+      it.tax_rate = 0;
+      it.tax_label = '';
+    } else if (it.tax_rate > 0) {
       tax += Math.round(lt * (Number(it.tax_rate) || 0) / 100);
     }
   }
@@ -955,9 +836,11 @@ function getDraftDocObject() {
 }
 
 function renderItemsRows() {
+  syncTaxUiState();
+  const taxOn = isTaxEnabled();
   const tb = $('doc-items-tbody');
   if (!DOC_ITEMS.length) {
-    tb.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">اضغط على أي منتج من الكتالوج أعلاه أو اضغط «+ إضافة سطر حر / خدمة»</td></tr>`;
+    tb.innerHTML = `<tr><td colspan="${taxOn ? 7 : 6}" class="p-4 text-center text-slate-400">اضغط على أي منتج من الكتالوج أعلاه أو اضغط «+ إضافة سطر حر / خدمة»</td></tr>`;
     renderLiveEditorPreview();
     return;
   }
@@ -967,14 +850,15 @@ function renderItemsRows() {
       <td class="p-1.5"><input data-idx="${idx}" data-field="name" value="${esc(it.name || '')}" class="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs" placeholder="اسم المنتج / البيان"/></td>
       <td class="p-1.5"><input data-idx="${idx}" data-field="qty" type="number" min="1" value="${it.qty}" class="w-16 text-center px-1.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-num"/></td>
       <td class="p-1.5"><input data-idx="${idx}" data-field="unit_price_major" type="number" min="0" step="0.01" value="${(it.unit_price / 100).toFixed(2)}" class="w-24 text-center px-1.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-num"/></td>
+      ${taxOn ? `
       <td class="p-1.5">
         <select data-idx="${idx}" data-field="tax_preset" class="w-full px-1.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[11px]">
           <option value="zero" ${(it.tax_label === 'Zero Rated 0%' && !it.tax_rate) ? 'selected' : ''}>Zero Rated 0%</option>
           <option value="none" ${(it.tax_label === '' && !it.tax_rate) ? 'selected' : ''}>بدون بيان ضريبي</option>
           <option value="vat14" ${it.tax_rate === 14 ? 'selected' : ''}>ضريبة 14%</option>
         </select>
-      </td>
-      <td class="p-1.5 text-left font-num font-bold">${fmt((it.qty || 1) * (it.unit_price || 0))}</td>
+      </td>` : ''}
+      <td data-line-amt="1" class="p-1.5 text-left font-num font-bold">${fmt((it.qty || 1) * (it.unit_price || 0))}</td>
       <td class="p-1.5 text-center">
         <button type="button" data-del-idx="${idx}" class="text-red-500 hover:text-red-700"><span class="material-icons-round text-base">delete</span></button>
       </td>
@@ -999,7 +883,7 @@ function renderItemsRows() {
       renderLiveEditorPreview();
       const row = el.closest('tr');
       if (row) {
-        const amtCell = row.querySelectorAll('td')[5];
+        const amtCell = row.querySelector('[data-line-amt]');
         if (amtCell) amtCell.textContent = fmt((item.qty || 1) * (item.unit_price || 0));
       }
     });
@@ -1052,20 +936,22 @@ $('btn-pay-full').addEventListener('click', () => {
 });
 
 $('btn-add-custom-row').addEventListener('click', () => {
+  const tInfo = defaultItemTaxInfo();
   DOC_ITEMS.push({
     product_id: null,
     sku: '',
     name: '',
     qty: 1,
     unit_price: 0,
-    tax_label: A4_TPL.default_tax_label || 'Zero Rated 0%',
-    tax_rate: 0,
+    tax_label: tInfo.tax_label,
+    tax_rate: tInfo.tax_rate,
   });
   renderItemsRows();
 });
 
 function resetNewDocForm() {
   $('doc-id').value = '';
+  $('editing-doc-badge').classList.add('hidden');
   $('doc-cust-select').value = '';
   $('doc-cust-name').value = '';
   $('doc-cust-phone').value = '';
@@ -1078,16 +964,47 @@ function resetNewDocForm() {
   $('doc-notes').value = '';
   MULTI_PAYMENTS = [];
   renderMultiPaymentsRows();
+  const tInfo = defaultItemTaxInfo();
   DOC_ITEMS = [
-    { product_id: null, sku: '', name: '', qty: 1, unit_price: 0, tax_label: A4_TPL.default_tax_label || 'Zero Rated 0%', tax_rate: 0 }
+    { product_id: null, sku: '', name: '', qty: 1, unit_price: 0, tax_label: tInfo.tax_label, tax_rate: tInfo.tax_rate }
   ];
   syncLockedDocRefNo();
   renderItemsRows();
 }
 
+function loadQuoteIntoEditor(doc) {
+  if (!doc || doc.doc_type === 'invoice' || doc.status === 'converted') {
+    toast('لا يمكن تعديل فاتورة مبيعات معتمدة؛ يمكنك عمل استرجاع (مرتجع) لها', 'warn');
+    return;
+  }
+  switchTab('editor');
+  setDocMode('quote');
+  $('doc-id').value = doc.id;
+  $('doc-ref-no').value = doc.quote_no;
+  $('editing-doc-badge').textContent = `تعديل عرض سعر: ${doc.quote_no}`;
+  $('editing-doc-badge').classList.remove('hidden');
+  $('doc-cust-name').value = doc.customer_name || '';
+  $('doc-cust-phone').value = doc.customer_phone || '';
+  $('doc-date').value = doc.doc_date || todayISO();
+  $('doc-due-date').value = doc.due_date || doc.doc_date || todayISO();
+  $('doc-discount').value = ((doc.discount || 0) / 100).toFixed(2);
+  $('doc-notes').value = doc.notes || '';
+  DOC_ITEMS = (doc.items || []).map((it) => ({
+    product_id: it.product_id || null,
+    sku: it.sku || '',
+    name: it.name || '',
+    qty: it.qty || 1,
+    unit_price: it.unit_price || 0,
+    tax_label: it.tax_label || '',
+    tax_rate: it.tax_rate || 0,
+  }));
+  $('lbl-save-btn').textContent = 'حفظ تعديلات عرض السعر (A4)';
+  renderItemsRows();
+}
+
 $('btn-new-doc').addEventListener('click', resetNewDocForm);
 
-/* البحث السريع في أصناف المخزن لإضافتها للجدول */
+/* البحث السريع في أصناف المخزن */
 $('catalog-search').addEventListener('input', async (e) => {
   const q = e.target.value.trim();
   const box = $('catalog-results');
@@ -1160,6 +1077,7 @@ async function saveCurrentDoc(sendWaAfter = false) {
     return null;
   }
   const isInv = $('doc-type').value === 'invoice';
+  const taxOn = isTaxEnabled();
   const paymentsListPayload = (!isInv || !MULTI_PAYMENTS.length) ? [] : MULTI_PAYMENTS
     .filter((p) => (Number(p.amount_major) || 0) > 0)
     .map((p) => ({
@@ -1190,8 +1108,8 @@ async function saveCurrentDoc(sendWaAfter = false) {
       name: it.name,
       qty: it.qty,
       unit_price: (it.unit_price || 0) / 100,
-      tax_label: it.tax_label,
-      tax_rate: it.tax_rate || 0,
+      tax_label: taxOn ? it.tax_label : '',
+      tax_rate: taxOn ? (it.tax_rate || 0) : 0,
     })),
   };
   const saved = await guard(() => api('quotation_save', payload));
@@ -1210,6 +1128,67 @@ async function saveCurrentDoc(sendWaAfter = false) {
 
 $('btn-save-doc').addEventListener('click', () => saveCurrentDoc(false));
 $('btn-save-and-wa').addEventListener('click', () => saveCurrentDoc(true));
+
+/* ==================== نافذة استرجاع (مرتجع) فاتورة مبيعات معتمدة ==================== */
+async function openInvoiceReturnModal(saleId, quoteNoLabel) {
+  if (!saleId) {
+    toast('لا يوجد سجل مبيعات مرتبط بهذه الفاتورة', 'warn');
+    return;
+  }
+  const sale = await guard(() => api('sale', { id: +saleId }));
+  if (!sale) return;
+  ACTIVE_RETURN_SALE = sale;
+  $('ret-inv-no').textContent = quoteNoLabel || sale.invoice_no;
+  $('ret-reason-input').value = '';
+  const box = $('ret-items-list');
+  const returnable = (sale.items || []).filter((it) => (it.remaining_qty != null ? it.remaining_qty : it.qty) > 0);
+  if (!returnable.length) {
+    toast('جميع أصناف هذه الفاتورة تم إرجاعها مسبقاً', 'warn');
+    return;
+  }
+  box.innerHTML = returnable.map((it) => {
+    const rem = it.remaining_qty != null ? it.remaining_qty : it.qty;
+    return `
+      <label class="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
+        <div class="flex items-center gap-2 min-w-0 flex-1">
+          <input type="checkbox" data-ret-item="${it.id}" checked class="rounded text-rose-600"/>
+          <div class="min-w-0">
+            <div class="font-bold text-slate-900 dark:text-white truncate">${esc(it.name)}</div>
+            <div class="text-[11px] text-slate-400">سعر الوحدة: ${fmt(it.unit_price)} | المتاح للإرجاع: ${rem}</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="text-[11px] text-slate-500">الكمية:</span>
+          <input type="number" data-ret-qty="${it.id}" min="1" max="${rem}" value="${rem}" class="w-16 px-2 py-1 text-center rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-num font-bold"/>
+        </div>
+      </label>
+    `;
+  }).join('');
+  $('inv-return-modal').classList.replace('hidden', 'flex');
+}
+
+$('btn-confirm-inv-return').addEventListener('click', async () => {
+  if (!ACTIVE_RETURN_SALE) return;
+  const items = [];
+  document.querySelectorAll('#ret-items-list [data-ret-item]:checked').forEach((cb) => {
+    const id = +cb.dataset.retItem;
+    const qtyEl = document.querySelector(`#ret-items-list [data-ret-qty="${id}"]`);
+    const qty = Math.max(1, parseInt(qtyEl ? qtyEl.value : '1', 10) || 1);
+    items.push({ sale_item_id: id, qty });
+  });
+  if (!items.length) {
+    toast('اختر صنفاً واحداً على الأقل لعمل المرتجع', 'warn');
+    return;
+  }
+  const reason = $('ret-reason-input').value.trim() || 'مرتجع فاتورة مبيعات A4';
+  const res = await guard(() => api('sale_return', { sale_id: ACTIVE_RETURN_SALE.id, items, reason }));
+  if (res) {
+    toast(`تم تسجيل مرتجع الفاتورة بنجاح بقيمة ${fmt(res.total)} وإعادة الأصناف للمخزون`);
+    $('inv-return-modal').classList.replace('flex', 'hidden');
+    $('doc-modal').classList.replace('flex', 'hidden');
+    loadDocsList();
+  }
+});
 
 /* ==================== سجل الفواتير وعروض الأسعار ==================== */
 async function loadDocsList() {
@@ -1233,14 +1212,28 @@ async function loadDocsList() {
   const cur = A4_TPL.currency_symbol || 'LE';
   tb.innerHTML = res.rows.map((r) => {
     const isInv = r.doc_type === 'invoice' || r.status === 'converted';
+    const isCancelledQuote = !isInv && r.status === 'cancelled';
+    const saleSt = r.sale_status || 'completed';
+
+    let badgeHtml = '';
+    if (isInv) {
+      if (saleSt === 'returned') {
+        badgeHtml = `<span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">فاتورة مبيعات (مرتجع كلي)</span>`;
+      } else if (saleSt === 'partial_return') {
+        badgeHtml = `<span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300">فاتورة مبيعات (مرتجع جزئي)</span>`;
+      } else {
+        badgeHtml = `<span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">فاتورة مبيعات معتمدة (A4)</span>`;
+      }
+    } else if (isCancelledQuote) {
+      badgeHtml = `<span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300">عرض سعر ملغي</span>`;
+    } else {
+      badgeHtml = `<span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">عرض سعر نشط</span>`;
+    }
+
     return `
-      <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+      <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 ${isCancelledQuote ? 'opacity-65' : ''}">
         <td class="p-3 font-bold font-mono text-primary">${esc(r.quote_no)}</td>
-        <td class="p-3">
-          <span class="px-2.5 py-1 rounded-full text-[11px] font-bold ${isInv ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'}">
-            ${isInv ? 'فاتورة مبيعات (A4)' : 'عرض سعر'}
-          </span>
-        </td>
+        <td class="p-3">${badgeHtml}</td>
         <td class="p-3 font-bold">${esc(r.customer_name || 'بدون اسم')}${r.customer_phone ? `<div class="text-[11px] text-slate-400 font-num">${esc(r.customer_phone)}</div>` : ''}</td>
         <td class="p-3 font-num">${esc(r.doc_date || r.created_at.slice(0, 10))}</td>
         <td class="p-3 font-num">${esc(r.due_date || '')}</td>
@@ -1248,23 +1241,40 @@ async function loadDocsList() {
         <td class="p-3 font-num ${isInv ? 'text-emerald-600 font-bold' : 'text-slate-400'}">${isInv ? `${cur} ${fmt(r.paid_amount || 0)}` : '—'}</td>
         <td class="p-3 font-num ${isInv && r.due_amount > 0 ? 'text-rose-600 font-bold' : 'text-slate-400'}">${isInv ? `${cur} ${fmt(r.due_amount || 0)}` : '—'}</td>
         <td class="p-3">
-          <div class="flex items-center justify-center gap-1.5">
+          <div class="flex flex-wrap items-center justify-center gap-1.5">
             <button type="button" data-view-id="${r.id}" class="px-2.5 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white font-bold text-[11px] flex items-center gap-1" title="معاينة وطباعة">
               <span class="material-icons-round text-sm">print</span>
               <span>معاينة</span>
             </button>
-            <button type="button" data-wa-id="${r.id}" class="px-2.5 py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-[11px] flex items-center gap-1" title="إرسال PDF عبر واتساب">
+            <button type="button" data-wa-id="${r.id}" data-wa-toggle class="px-2.5 py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-[11px] flex items-center gap-1" title="إرسال PDF عبر واتساب">
               <span class="material-icons-round text-sm">send</span>
               <span>PDF</span>
             </button>
             ${!isInv ? `
-            <button type="button" data-conv-id="${r.id}" class="px-2.5 py-1.5 rounded-lg bg-amber-500 text-white font-bold text-[11px] flex items-center gap-1" title="تحويل عرض السعر إلى فاتورة مبيعات معتمدة">
-              <span class="material-icons-round text-sm">transform</span>
-              <span>تحويل لفاتورة</span>
-            </button>
-            <button type="button" data-del-id="${r.id}" class="p-1.5 rounded-lg text-red-500 hover:bg-red-50" title="حذف عرض السعر">
-              <span class="material-icons-round text-sm">delete</span>
-            </button>` : ''}
+              <button type="button" data-edit-id="${r.id}" class="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 font-bold text-[11px] flex items-center gap-1" title="تعديل عرض السعر">
+                <span class="material-icons-round text-sm">edit</span>
+                <span>تعديل</span>
+              </button>
+              ${!isCancelledQuote ? `
+              <button type="button" data-conv-id="${r.id}" class="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11px] flex items-center gap-1" title="تحويل عرض السعر إلى فاتورة مبيعات معتمدة">
+                <span class="material-icons-round text-sm">transform</span>
+                <span>تحويل لفاتورة</span>
+              </button>
+              <button type="button" data-cancel-id="${r.id}" class="px-2.5 py-1.5 rounded-lg bg-orange-500/15 text-orange-700 dark:text-orange-300 hover:bg-orange-600 hover:text-white font-bold text-[11px] flex items-center gap-1" title="إلغاء عرض السعر">
+                <span class="material-icons-round text-sm">block</span>
+                <span>إلغاء العرض</span>
+              </button>` : ''}
+              <button type="button" data-del-id="${r.id}" class="px-2 py-1.5 rounded-lg bg-red-500/10 text-red-600 hover:bg-red-600 hover:text-white font-bold text-[11px] flex items-center gap-0.5" title="حذف عرض السعر نهائياً">
+                <span class="material-icons-round text-sm">delete</span>
+                <span>حذف</span>
+              </button>
+            ` : `
+              ${(r.converted_sale_id && saleSt !== 'returned') ? `
+              <button type="button" data-ret-sale="${r.converted_sale_id}" data-ret-no="${esc(r.quote_no)}" class="px-2.5 py-1.5 rounded-lg bg-rose-500/15 text-rose-700 dark:text-rose-300 hover:bg-rose-600 hover:text-white font-bold text-[11px] flex items-center gap-1" title="عمل استرجاع (مرتجع) للفاتورة بدون إلغاء التسلسل المالي">
+                <span class="material-icons-round text-sm">assignment_return</span>
+                <span>عمل استرجاع</span>
+              </button>` : `<span class="text-[11px] text-slate-400 font-bold px-2">مرتجع بالكامل</span>`}
+            `}
           </div>
         </td>
       </tr>
@@ -1275,6 +1285,12 @@ async function loadDocsList() {
     b.addEventListener('click', async () => {
       const full = await guard(() => api('quotation', { id: +b.dataset.viewId }));
       if (full) openDocModal(full);
+    });
+  });
+  tb.querySelectorAll('[data-edit-id]').forEach((b) => {
+    b.addEventListener('click', async () => {
+      const full = await guard(() => api('quotation', { id: +b.dataset.editId }));
+      if (full) loadQuoteIntoEditor(full);
     });
   });
   tb.querySelectorAll('[data-wa-id]').forEach((b) => {
@@ -1301,11 +1317,26 @@ async function loadDocsList() {
       }
     });
   });
+  tb.querySelectorAll('[data-cancel-id]').forEach((b) => {
+    b.addEventListener('click', async () => {
+      if (!confirm('هل تريد إلغاء عرض السعر هذا؟')) return;
+      const res = await guard(() => api('quotation_cancel', { id: +b.dataset.cancelId }));
+      if (res) {
+        toast(`تم إلغاء عرض السعر (${res.quote_no})`);
+        loadDocsList();
+      }
+    });
+  });
   tb.querySelectorAll('[data-del-id]').forEach((b) => {
     b.addEventListener('click', async () => {
-      if (!confirm('هل تريد حذف عرض السعر هذا؟')) return;
+      if (!confirm('هل تريد حذف عرض السعر هذا نهائياً؟')) return;
       const ok = await guard(() => api('quotation_delete', { id: +b.dataset.delId }));
       if (ok) { toast('تم حذف عرض السعر'); loadDocsList(); }
+    });
+  });
+  tb.querySelectorAll('[data-ret-sale]').forEach((b) => {
+    b.addEventListener('click', () => {
+      openInvoiceReturnModal(+b.dataset.retSale, b.dataset.retNo);
     });
   });
 }
@@ -1327,8 +1358,11 @@ $('list-search').addEventListener('input', loadDocsList);
 function openDocModal(doc) {
   MODAL_DOC = doc;
   const isInv = doc.doc_type === 'invoice' || doc.status === 'converted';
-  $('modal-doc-title').textContent = `${isInv ? 'فاتورة مبيعات' : 'عرض سعر'}: ${doc.quote_no}`;
-  $('modal-btn-convert').classList.toggle('hidden', isInv);
+  const isCancelled = !isInv && doc.status === 'cancelled';
+  $('modal-doc-title').textContent = `${isInv ? 'فاتورة مبيعات' : (isCancelled ? 'عرض سعر (ملغي)' : 'عرض سعر')}: ${doc.quote_no}`;
+  $('modal-btn-convert').classList.toggle('hidden', isInv || isCancelled);
+  $('modal-btn-cancel-quote').classList.toggle('hidden', isInv || isCancelled);
+  $('modal-btn-return-inv').classList.toggle('hidden', !isInv || !doc.converted_sale_id || doc.sale_status === 'returned');
   $('modal-doc-body').innerHTML = buildA4InvoiceHtml(doc, A4_TPL);
   $('doc-modal').classList.replace('hidden', 'flex');
 }
@@ -1362,221 +1396,28 @@ $('modal-btn-convert').addEventListener('click', async () => {
   }
 });
 
-/* ==================== مصمم القوالب (Template Studio: A4 + POS Thermal) ==================== */
-function fillTemplatesForm() {
-  const thRadio = document.querySelector(`input[name="t-a4-theme"][value="${A4_TPL.theme || 'taqnia_wave'}"]`);
-  if (thRadio) thRadio.checked = true;
-  $('t-a4-primary').value = A4_TPL.primary_color || '#0e6ba8';
-  $('t-a4-primary-txt').value = A4_TPL.primary_color || '#0e6ba8';
-  $('t-a4-accent').value = A4_TPL.accent_color || '#9e2a5b';
-  $('t-a4-accent-txt').value = A4_TPL.accent_color || '#9e2a5b';
-  $('t-a4-logo-preview').src = A4_TPL.company_logo || '';
-  $('t-a4-company').value = A4_TPL.company_title || 'تقنية -Technology';
-  $('t-a4-email').value = A4_TPL.company_email || 'hany_hassan2000@hotmail.com';
-  $('t-a4-address').value = A4_TPL.company_address || '';
-  $('t-a4-inv-prefix').value = A4_TPL.invoice_prefix || 'الفات/2026/';
-  $('t-a4-quote-prefix').value = A4_TPL.quote_prefix || 'ع.س/2026/';
-  $('t-a4-currency').value = A4_TPL.currency_symbol || 'LE';
-  $('t-a4-terms').value = A4_TPL.custom_terms || '';
-  $('t-a4-waves').checked = A4_TPL.show_waves !== false;
-  $('t-a4-show-logo').checked = A4_TPL.show_logo !== false;
-  $('t-a4-infobox').checked = A4_TPL.show_info_box !== false;
-  $('t-a4-sku').checked = A4_TPL.show_sku_brackets !== false;
-  $('t-a4-taxcol').checked = A4_TPL.show_tax_col !== false;
-  $('t-a4-paycomm').checked = A4_TPL.show_payment_comm !== false;
-  $('t-a4-paydet').checked = A4_TPL.show_payments_detail !== false;
-  $('t-a4-footer').checked = A4_TPL.show_footer_page !== false;
-
-  $('t-pos-width').value = POS_TPL.paper_width || '80mm';
-  $('t-pos-font').value = POS_TPL.font_scale || 'normal';
-  $('t-pos-border').value = POS_TPL.border_style || 'dashed';
-  $('t-pos-headnote').value = POS_TPL.header_note || '';
-  $('t-pos-thanks').value = POS_TPL.thanks_text || 'شكراً لزيارتكم';
-  $('t-pos-footer').value = POS_TPL.footer_text || 'يرجى الاحتفاظ بالإيصال للاستبدال خلال 14 يوماً';
-  $('t-pos-logo').checked = POS_TPL.show_logo !== false;
-  $('t-pos-addr').checked = POS_TPL.show_store_address !== false;
-  $('t-pos-cust').checked = POS_TPL.show_customer !== false;
-  $('t-pos-sku').checked = !!POS_TPL.show_sku;
-  $('t-pos-unit').checked = POS_TPL.show_unit_price !== false;
-  $('t-pos-pays').checked = POS_TPL.show_payments !== false;
-  $('t-pos-barcode').checked = POS_TPL.show_barcode !== false;
-}
-
-function readStudioFormIntoState() {
-  const th = document.querySelector('input[name="t-a4-theme"]:checked');
-  A4_TPL.theme = th ? th.value : 'taqnia_wave';
-  A4_TPL.primary_color = $('t-a4-primary').value;
-  A4_TPL.accent_color = $('t-a4-accent').value;
-  A4_TPL.company_title = $('t-a4-company').value;
-  A4_TPL.company_email = $('t-a4-email').value;
-  A4_TPL.company_address = $('t-a4-address').value;
-  A4_TPL.invoice_prefix = $('t-a4-inv-prefix').value;
-  A4_TPL.quote_prefix = $('t-a4-quote-prefix').value;
-  A4_TPL.currency_symbol = $('t-a4-currency').value;
-  A4_TPL.custom_terms = $('t-a4-terms').value;
-  A4_TPL.show_waves = $('t-a4-waves').checked;
-  A4_TPL.show_logo = $('t-a4-show-logo').checked;
-  A4_TPL.show_info_box = $('t-a4-infobox').checked;
-  A4_TPL.show_sku_brackets = $('t-a4-sku').checked;
-  A4_TPL.show_tax_col = $('t-a4-taxcol').checked;
-  A4_TPL.show_payment_comm = $('t-a4-paycomm').checked;
-  A4_TPL.show_payments_detail = $('t-a4-paydet').checked;
-  A4_TPL.show_footer_page = $('t-a4-footer').checked;
-
-  POS_TPL.paper_width = $('t-pos-width').value;
-  POS_TPL.font_scale = $('t-pos-font').value;
-  POS_TPL.border_style = $('t-pos-border').value;
-  POS_TPL.header_note = $('t-pos-headnote').value;
-  POS_TPL.thanks_text = $('t-pos-thanks').value;
-  POS_TPL.footer_text = $('t-pos-footer').value;
-  POS_TPL.show_logo = $('t-pos-logo').checked;
-  POS_TPL.show_store_address = $('t-pos-addr').checked;
-  POS_TPL.show_customer = $('t-pos-cust').checked;
-  POS_TPL.show_sku = $('t-pos-sku').checked;
-  POS_TPL.show_unit_price = $('t-pos-unit').checked;
-  POS_TPL.show_payments = $('t-pos-pays').checked;
-  POS_TPL.show_barcode = $('t-pos-barcode').checked;
-  syncLockedDocRefNo();
-}
-
-function buildPosThermalPreviewHtml() {
-  const wPx = POS_TPL.paper_width === '58mm' ? '230px' : '310px';
-  const fSize = POS_TPL.font_scale === 'small' ? '11px' : POS_TPL.font_scale === 'large' ? '14px' : '12.5px';
-  const bStyle = POS_TPL.border_style || 'dashed';
-  const sep = `<div style="border-bottom:${bStyle === 'double' ? '3px double' : '1.5px ' + bStyle} #334155;margin:10px 0"></div>`;
-  return `
-    <div dir="rtl" style="width:${wPx};background:#fff;color:#000;padding:18px 14px;font-family:monospace,'IBM Plex Sans Arabic',sans-serif;font-size:${fSize};box-shadow:0 12px 30px rgba(0,0,0,0.15);border-radius:4px">
-      ${POS_TPL.show_logo !== false ? `<div style="text-align:center;margin-bottom:6px"><img src="${esc(A4_TPL.company_logo || '')}" style="max-width:95px;max-height:55px;object-fit:contain;margin:0 auto"/></div>` : ''}
-      <div style="text-align:center;font-weight:800;font-size:15px">${esc(SETTINGS.store_name || A4_TPL.company_title || 'تك زون للإلكترونيات')}</div>
-      ${POS_TPL.header_note ? `<div style="text-align:center;font-size:11px;color:#334155;margin-top:2px">${esc(POS_TPL.header_note)}</div>` : ''}
-      ${POS_TPL.show_store_address !== false ? `<div style="text-align:center;font-size:11px;color:#475569;margin-top:2px">${esc(SETTINGS.store_address || 'طهطا - سوهاج')}</div>` : ''}
-      ${sep}
-      <div style="display:flex;justify-content:space-between;font-size:11px">
-        <span>فاتورة: #${esc($('doc-ref-no').value || 'INV-00001')}</span>
-        <span>${esc(todayISO())}</span>
-      </div>
-      ${POS_TPL.show_customer !== false ? `<div style="font-size:11px;margin-top:3px">العميل: ${esc($('doc-cust-name').value || 'اسم العميل')}</div>` : ''}
-      ${sep}
-      <div style="font-weight:700;display:flex;justify-content:space-between;margin-bottom:6px">
-        <span>الصنف</span>
-        <span>الكمية</span>
-        <span>الإجمالي</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-        <span>${POS_TPL.show_sku ? '[SKU] ' : ''}اسم المنتج${POS_TPL.show_unit_price !== false ? ' (0.00)' : ''}</span>
-        <span>1</span>
-        <span>0.00</span>
-      </div>
-      ${sep}
-      <div style="display:flex;justify-content:space-between;font-weight:800;font-size:14px">
-        <span>الإجمالي المطلوب</span>
-        <span>0.00 ${esc(CURRENCY)}</span>
-      </div>
-      ${POS_TPL.show_barcode !== false ? `<div style="margin:12px auto 4px;height:32px;width:75%;background:repeating-linear-gradient(90deg,#000 0 2px,transparent 2px 4px,#000 4px 5px,transparent 5px 8px)"></div><div style="text-align:center;font-size:10px;letter-spacing:2px">0000000001</div>` : ''}
-      <div style="text-align:center;font-weight:700;margin-top:8px">${esc(POS_TPL.thanks_text || 'شكراً لزيارتكم')}</div>
-      <div style="text-align:center;font-size:10px;color:#64748b;margin-top:2px">${esc(POS_TPL.footer_text || '')}</div>
-    </div>
-  `;
-}
-
-function renderStudioPreview() {
-  readStudioFormIntoState();
-  if (STUDIO_MODE === 'a4') {
-    $('studio-preview-title').textContent = 'معاينة حية لقالب الفاتورة وعرض السعر (A4)';
-    $('studio-preview-box').innerHTML = buildA4InvoiceHtml(getDraftDocObject(), A4_TPL);
-  } else {
-    $('studio-preview-title').textContent = `معاينة حية لإيصال طابعة الكاشير الحرارية (${POS_TPL.paper_width})`;
-    $('studio-preview-box').innerHTML = buildPosThermalPreviewHtml();
-  }
-  renderLiveEditorPreview();
-}
-
-$('subtab-a4-btn').addEventListener('click', () => {
-  STUDIO_MODE = 'a4';
-  $('tpl-a4-form').classList.remove('hidden');
-  $('tpl-pos-form').classList.add('hidden');
-  $('subtab-a4-btn').className = 'py-2 px-3 rounded-lg text-xs font-bold bg-white dark:bg-slate-900 text-primary shadow-sm flex items-center justify-center gap-1.5';
-  $('subtab-pos-btn').className = 'py-2 px-3 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center justify-center gap-1.5';
-  renderStudioPreview();
-});
-
-$('subtab-pos-btn').addEventListener('click', () => {
-  STUDIO_MODE = 'pos';
-  $('tpl-a4-form').classList.add('hidden');
-  $('tpl-pos-form').classList.remove('hidden');
-  $('tpl-pos-form').classList.add('flex');
-  $('subtab-pos-btn').className = 'py-2 px-3 rounded-lg text-xs font-bold bg-white dark:bg-slate-900 text-primary shadow-sm flex items-center justify-center gap-1.5';
-  $('subtab-a4-btn').className = 'py-2 px-3 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center justify-center gap-1.5';
-  renderStudioPreview();
-});
-
-$('t-a4-primary').addEventListener('input', (e) => { $('t-a4-primary-txt').value = e.target.value; renderStudioPreview(); });
-$('t-a4-accent').addEventListener('input', (e) => { $('t-a4-accent-txt').value = e.target.value; renderStudioPreview(); });
-$('t-a4-primary-txt').addEventListener('input', (e) => { if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) { $('t-a4-primary').value = e.target.value; renderStudioPreview(); } });
-$('t-a4-accent-txt').addEventListener('input', (e) => { if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) { $('t-a4-accent').value = e.target.value; renderStudioPreview(); } });
-
-document.querySelectorAll('#tpl-a4-form input, #tpl-a4-form textarea, #tpl-pos-form input, #tpl-pos-form select').forEach((el) => {
-  if (el.id !== 't-a4-logo-file') {
-    el.addEventListener('input', renderStudioPreview);
-    el.addEventListener('change', renderStudioPreview);
+$('modal-btn-cancel-quote').addEventListener('click', async () => {
+  if (!MODAL_DOC) return;
+  if (!confirm('هل تريد إلغاء عرض السعر هذا؟')) return;
+  const res = await guard(() => api('quotation_cancel', { id: MODAL_DOC.id }));
+  if (res) {
+    toast(`تم إلغاء عرض السعر (${res.quote_no})`);
+    openDocModal(res);
+    loadDocsList();
   }
 });
 
-$('t-a4-logo-file').addEventListener('change', (e) => {
-  const f = e.target.files && e.target.files[0];
-  if (!f) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    const im = new Image();
-    im.onload = () => {
-      const maxW = 420, maxH = 260;
-      const r = Math.min(maxW / im.width, maxH / im.height, 1);
-      const c = document.createElement('canvas');
-      c.width = Math.round(im.width * r);
-      c.height = Math.round(im.height * r);
-      c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
-      A4_TPL.company_logo = c.toDataURL('image/jpeg', 0.85);
-      $('t-a4-logo-preview').src = A4_TPL.company_logo;
-      renderStudioPreview();
-    };
-    im.src = reader.result;
-  };
-  reader.readAsDataURL(f);
-});
-
-$('btn-save-templates').addEventListener('click', async () => {
-  readStudioFormIntoState();
-  const saved = await guard(() => api('templates_save', { a4: A4_TPL, pos: POS_TPL }));
-  if (saved) {
-    A4_TPL = saved.a4;
-    POS_TPL = saved.pos;
-    NEXT_INVOICE_NO = saved.next_invoice_no || NEXT_INVOICE_NO;
-    NEXT_QUOTE_NO = saved.next_quote_no || NEXT_QUOTE_NO;
-    syncLockedDocRefNo();
-    toast('تم حفظ إعدادات القوالب وبادئة الترقيم بنجاح');
-    renderStudioPreview();
-  }
-});
-
-$('btn-reset-templates').addEventListener('click', async () => {
-  const saved = await guard(() => api('templates_save', { reset_a4: true, reset_pos: true }));
-  if (saved) {
-    A4_TPL = saved.a4;
-    POS_TPL = saved.pos;
-    fillTemplatesForm();
-    syncLockedDocRefNo();
-    renderStudioPreview();
-    toast('تمت استعادة القالب الافتراضي بنجاح');
-  }
+$('modal-btn-return-inv').addEventListener('click', () => {
+  if (!MODAL_DOC || !MODAL_DOC.converted_sale_id) return;
+  openInvoiceReturnModal(MODAL_DOC.converted_sale_id, MODAL_DOC.quote_no);
 });
 
 (async () => {
   const user = await pageInit('sales_quotes');
   if (!user) return;
+  syncTaxUiState();
   await refreshTemplatesAndSeq();
-  fillTemplatesForm();
 
-  // تحميل قائمة العملاء المسجلين
   try {
     const cl = await api('customers_search', { q: '' });
     ALL_CUSTOMERS = cl || [];
@@ -1585,7 +1426,6 @@ $('btn-reset-templates').addEventListener('click', async () => {
       ALL_CUSTOMERS.map((c) => `<option value="${c.id}">${esc(c.name)}${c.phone ? ' (' + esc(c.phone) + ')' : ''}</option>`).join('');
   } catch (e) {}
 
-  // تحميل فئات ومنتجات الكتالوج (بنفس طريقة نقاط البيع)
   try {
     const cats = await api('categories');
     CATALOG_CATEGORIES = cats || [];
@@ -1593,7 +1433,6 @@ $('btn-reset-templates').addEventListener('click', async () => {
     await loadCatalogProducts();
   } catch (e) {}
 
-  // فتح النموذج والقالب فارغين تماماً وجاهزين لإدخال البيانات مباشرة
   resetNewDocForm();
   await loadDocsList();
 })();

@@ -15,8 +15,15 @@
 <h2 class="text-xl font-bold text-gray-800 dark:text-white">التقارير والتحليلات المالية</h2>
 <p class="text-xs text-gray-500">ملخص الأداء المالي، الأرباح الصافية، الأكثر مبيعاً، النواقص، وسجل الورديات وحركة الصندوق</p>
 </div>
-<div class="flex items-center gap-3">
-<input id="f-date" type="date" class="bg-white dark:bg-card-dark rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm shadow-sm font-num"/>
+<div class="flex flex-wrap items-center gap-2">
+<div class="flex items-center gap-1.5 bg-white dark:bg-card-dark rounded-xl border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-xs shadow-sm">
+  <span class="text-gray-500 font-bold">من تاريخ:</span>
+  <input id="f-date-from" type="date" class="bg-transparent font-num font-bold focus:outline-none"/>
+  <span class="text-gray-400 mx-1">←</span>
+  <span class="text-gray-500 font-bold">إلى تاريخ:</span>
+  <input id="f-date-to" type="date" class="bg-transparent font-num font-bold focus:outline-none"/>
+</div>
+<button type="button" id="btn-rep-today" class="px-3 py-2 rounded-xl bg-primary text-white text-xs font-bold shadow-sm">اليوم</button>
 <button onclick="toggleTheme()" class="p-2 text-gray-500 hover:text-primary transition-colors relative" title="تبديل الوضع الليلي / النهاري">
 <span class="material-icons-round dark:hidden">dark_mode</span>
 <span class="material-icons-round hidden dark:inline">light_mode</span>
@@ -38,7 +45,7 @@
 <select id="f-month" class="bg-white dark:bg-card-dark border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm"></select>
 </div>
 <div class="flex gap-2 text-sm" id="tabs">
-<button data-p="day" class="px-4 py-2 rounded-lg bg-primary text-white font-medium">يومي</button>
+<button data-p="day" class="px-4 py-2 rounded-lg bg-primary text-white font-medium">حسب الفترة (من / إلى)</button>
 <button data-p="month" class="px-4 py-2 rounded-lg bg-white dark:bg-card-dark border border-gray-200 dark:border-gray-700 font-medium">شهري</button>
 </div>
 </div>
@@ -111,10 +118,11 @@ function barRow(label, val, max) {
 }
 
 async function load() {
-  const date = document.getElementById('f-date').value || todayISO();
+  const df = document.getElementById('f-date-from').value || todayISO();
+  const dt = document.getElementById('f-date-to').value || todayISO();
   const [y, m] = document.getElementById('f-month').value.split('-').map(Number);
   let d;
-  if (PERIOD === 'day') d = await guard(() => api('report_daily', { date }));
+  if (PERIOD === 'day') d = await guard(() => api('report_daily', { date_from: df, date_to: dt }));
   else d = await guard(() => api('report_monthly', { year: y, month: m }));
   if (!d) return;
 
@@ -132,8 +140,8 @@ async function load() {
     </div>` +
     ['cash', 'wallet', 'credit'].map((k) => barRow(AR[k], d.payments[k] || 0, max)).join('');
 
-  const from = PERIOD === 'day' ? date : `${y}-${String(m).padStart(2, '0')}-01`;
-  const to = PERIOD === 'day' ? date : `${y}-${String(m).padStart(2, '0')}-31`;
+  const from = PERIOD === 'day' ? df : `${y}-${String(m).padStart(2, '0')}-01`;
+  const to = PERIOD === 'day' ? dt : `${y}-${String(m).padStart(2, '0')}-31`;
   const [top, profit, low, moves, shifts] = await Promise.all([
     guard(() => api('report_top', { date_from: from, date_to: to, limit: 6 })),
     guard(() => api('report_profit', { date_from: from, date_to: to })),
@@ -194,13 +202,23 @@ document.querySelectorAll('#tabs button').forEach((b) => b.addEventListener('cli
   b.className = 'px-4 py-2 rounded-lg bg-primary text-white font-medium';
   load();
 }));
-document.getElementById('f-date').addEventListener('change', load);
+document.getElementById('f-date-from').addEventListener('change', () => { PERIOD = 'day'; load(); });
+document.getElementById('f-date-to').addEventListener('change', () => { PERIOD = 'day'; load(); });
+document.getElementById('btn-rep-today').addEventListener('click', () => {
+  const t = todayISO();
+  document.getElementById('f-date-from').value = t;
+  document.getElementById('f-date-to').value = t;
+  PERIOD = 'day';
+  load();
+});
 document.getElementById('f-month').addEventListener('change', load);
 
 (async () => {
   if (!(await pageInit('reports', { perm: 'reports_view' }))) return;
   const d = new Date();
-  document.getElementById('f-date').value = todayISO();
+  const t = todayISO();
+  document.getElementById('f-date-from').value = t;
+  document.getElementById('f-date-to').value = t;
   let opts = '';
   for (let i = 0; i < 6; i++) {
     const t = new Date(d.getFullYear(), d.getMonth() - i, 1);

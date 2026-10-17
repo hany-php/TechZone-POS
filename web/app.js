@@ -170,6 +170,16 @@ async function api(name, payload) {
 /* ===== تنسيق وصلاحيات ===== */
 let CURRENCY = 'ج.م';
 let SETTINGS = {};
+function whatsappEnabled() {
+  return !SETTINGS || SETTINGS.whatsapp_send_enabled !== '0';
+}
+function applyWhatsappVisibility() {
+  const on = whatsappEnabled();
+  if (document.body) document.body.classList.toggle('wa-disabled', !on);
+  document.querySelectorAll('[data-wa-toggle]').forEach((el) => {
+    el.style.display = on ? '' : 'none';
+  });
+}
 let CURRENT_USER = null;
 
 function hasPerm(key, u) {
@@ -369,6 +379,7 @@ async function pageInit(current, opts) {
   }
   try { SETTINGS = await api('settings'); } catch (e) { SETTINGS = {}; }
   CURRENCY = SETTINGS.currency || 'ج.م';
+  applyWhatsappVisibility();
   const savedLocalTheme = localStorage.getItem('tz-theme');
   const prefTheme = user.theme_mode || savedLocalTheme || SETTINGS.os_default_theme || 'light';
   applyThemeEverywhere(prefTheme === 'dark');
@@ -567,6 +578,7 @@ function renderInvoiceToJpeg(s) {
 }
 
 async function sendInvoicePdfToWhatsapp(saleId, phoneOverride = '') {
+  if (!whatsappEnabled()) { toast('إرسال WhatsApp معطّل من قبل المدير', 'warn'); return null; }
   const s = await guard(() => api('sale', { id: +saleId }));
   if (!s) return null;
   let phone = (phoneOverride || s.customer_phone || '').trim();
@@ -724,6 +736,9 @@ function buildA4InvoiceHtml(rawDoc, a4Cfg = {}) {
     custom_terms: "",
   }, a4Cfg || {});
 
+  const st = (typeof SETTINGS !== "undefined" && SETTINGS) ? SETTINGS : {};
+  const globalTaxEnabled = st.tax_enabled !== "0";
+  const showTaxCol = globalTaxEnabled && (cfg.show_tax_col !== false);
   const info = normalizeDocForA4(rawDoc, cfg);
   const cur = cfg.currency_symbol || "LE";
   const fmtCur = (cents) => `${cur} ${fmt(cents)}`;
@@ -764,7 +779,7 @@ function buildA4InvoiceHtml(rawDoc, a4Cfg = {}) {
         <td style="padding:10px 14px;text-align:right;font-weight:500;color:#1e293b;border-left:1px solid #e2e8f0">${descHtml}</td>
         <td style="padding:10px 10px;text-align:center;font-family:monospace,sans-serif;color:#334155;border-left:1px solid #e2e8f0">${Number(it.qty || 0).toFixed(2)}</td>
         <td style="padding:10px 10px;text-align:center;font-family:monospace,sans-serif;color:#334155;border-left:1px solid #e2e8f0">${fmt(it.unit_price)}</td>
-        ${cfg.show_tax_col !== false ? `<td style="padding:10px 10px;text-align:center;font-size:12px;color:#475569;border-left:1px solid #e2e8f0">${esc(it.tax_label || "")}</td>` : ""}
+        ${showTaxCol ? `<td style="padding:10px 10px;text-align:center;font-size:12px;color:#475569;border-left:1px solid #e2e8f0">${esc(it.tax_label || "")}</td>` : ""}
         <td style="padding:10px 14px;text-align:left;font-family:monospace,sans-serif;font-weight:700;color:#0f172a;direction:ltr">${esc(fmtCur(it.line_total))}</td>
       </tr>
     `;
@@ -858,7 +873,7 @@ function buildA4InvoiceHtml(rawDoc, a4Cfg = {}) {
               <th style="padding:11px 14px;text-align:right;border-left:1px solid rgba(255,255,255,0.25)">الوصف</th>
               <th style="padding:11px 10px;text-align:center;width:76px;border-left:1px solid rgba(255,255,255,0.25)">الكمية</th>
               <th style="padding:11px 10px;text-align:center;width:105px;border-left:1px solid rgba(255,255,255,0.25)">سعر الوحدة</th>
-              ${cfg.show_tax_col !== false ? `<th style="padding:11px 10px;text-align:center;width:110px;border-left:1px solid rgba(255,255,255,0.25)">الضرائب</th>` : ""}
+              ${showTaxCol ? `<th style="padding:11px 10px;text-align:center;width:110px;border-left:1px solid rgba(255,255,255,0.25)">الضرائب</th>` : ""}
               <th style="padding:11px 14px;text-align:left;width:125px">المبلغ</th>
             </tr>
           </thead>
@@ -888,7 +903,7 @@ ${esc(info.notes)}</div>` : ""}
           <table style="width:100%;border-collapse:collapse">
             <tbody>
               <tr style="border-bottom:1px solid #cbd5e1">
-                <td style="padding:8px 12px;text-align:right;color:#1e293b;border-left:1px solid #cbd5e1">المبلغ دون الضريبة</td>
+                <td style="padding:8px 12px;text-align:right;color:#1e293b;border-left:1px solid #cbd5e1">${showTaxCol ? "المبلغ دون الضريبة" : "المجموع الفرعي"}</td>
                 <td style="padding:8px 12px;text-align:left;font-family:monospace,sans-serif;direction:ltr;width:125px">${esc(fmtCur(info.subtotal))}</td>
               </tr>
               ${info.discount > 0 ? `
@@ -896,7 +911,7 @@ ${esc(info.notes)}</div>` : ""}
                 <td style="padding:8px 12px;text-align:right;color:#dc2626;border-left:1px solid #cbd5e1">الخصم</td>
                 <td style="padding:8px 12px;text-align:left;font-family:monospace,sans-serif;direction:ltr;color:#dc2626">- ${esc(fmtCur(info.discount))}</td>
               </tr>` : ""}
-              ${(cfg.show_tax_col !== false && info.tax > 0) ? `
+              ${(showTaxCol && info.tax > 0) ? `
               <tr style="border-bottom:1px solid #cbd5e1">
                 <td style="padding:8px 12px;text-align:right;color:#475569;border-left:1px solid #cbd5e1">الضرائب</td>
                 <td style="padding:8px 12px;text-align:left;font-family:monospace,sans-serif;direction:ltr">${esc(fmtCur(info.tax))}</td>
@@ -946,6 +961,9 @@ async function renderA4DocumentToJpeg(rawDoc, a4Cfg = {}) {
     custom_terms: "",
   }, a4Cfg || {});
 
+  const st = (typeof SETTINGS !== "undefined" && SETTINGS) ? SETTINGS : {};
+  const globalTaxEnabled = st.tax_enabled !== "0";
+  const showTaxCol = globalTaxEnabled && (cfg.show_tax_col !== false);
   const info = normalizeDocForA4(rawDoc, cfg);
   const cur = cfg.currency_symbol || "LE";
   const fmtCur = (cents) => `${cur} ${fmt(cents)}`;
@@ -1071,7 +1089,7 @@ async function renderA4DocumentToJpeg(rawDoc, a4Cfg = {}) {
   ctx.textAlign = "center";
   ctx.fillText("الكمية", 545, y + 36);
   ctx.fillText("سعر الوحدة", 415, y + 36);
-  if (cfg.show_tax_col !== false) ctx.fillText("الضرائب", 275, y + 36);
+  if (showTaxCol) ctx.fillText("الضرائب", 275, y + 36);
   ctx.textAlign = "left";
   ctx.fillText("المبلغ", 84, y + 36);
   y += th;
@@ -1091,7 +1109,7 @@ async function renderA4DocumentToJpeg(rawDoc, a4Cfg = {}) {
     ctx.font = "20px monospace";
     ctx.fillText(Number(it.qty || 0).toFixed(2), 545, y + 35);
     ctx.fillText(fmt(it.unit_price), 415, y + 35);
-    if (cfg.show_tax_col !== false) {
+    if (showTaxCol) {
       ctx.font = "17px sans-serif";
       ctx.fillText(it.tax_label || "", 275, y + 35);
     }
@@ -1156,9 +1174,9 @@ async function renderA4DocumentToJpeg(rawDoc, a4Cfg = {}) {
     y += sh;
   };
 
-  drawSumRow("المبلغ دون الضريبة", fmtCur(info.subtotal));
+  drawSumRow(showTaxCol ? "المبلغ دون الضريبة" : "المجموع الفرعي", fmtCur(info.subtotal));
   if (info.discount > 0) drawSumRow("الخصم", `- ${fmtCur(info.discount)}`);
-  if (cfg.show_tax_col !== false && info.tax > 0) drawSumRow("الضرائب", fmtCur(info.tax));
+  if (showTaxCol && info.tax > 0) drawSumRow("الضرائب", fmtCur(info.tax));
   drawSumRow("الإجمالي", fmtCur(info.total), true, true);
   if (!info.isQuote && cfg.show_payments_detail !== false) {
     if (info.paymentsList && info.paymentsList.length > 0) {
@@ -1185,6 +1203,7 @@ async function renderA4DocumentToJpeg(rawDoc, a4Cfg = {}) {
 }
 
 async function sendQuoteOrA4PdfToWhatsapp(quoteId, phoneOverride = "", a4CfgOverride = null) {
+  if (!whatsappEnabled()) { toast("إرسال WhatsApp معطّل من قبل المدير", "warn"); return null; }
   const qDoc = await guard(() => api("quotation", { id: +quoteId }));
   if (!qDoc) return null;
   let phone = (phoneOverride || qDoc.customer_phone || "").trim();
@@ -1324,6 +1343,85 @@ function buildPosThermalReceiptHtml(sale, posCfg = {}, stOverride = null) {
       ` : ''}
       ${cfg.thanks_text ? `<div style="text-align:center;margin-top:7px;font-size:11.5px;font-weight:bold">${esc(cfg.thanks_text)}</div>` : ''}
       ${cfg.footer_text ? `<div style="text-align:center;font-size:10px;color:#444;margin-top:2px">${esc(cfg.footer_text)}</div>` : ''}
+    </div>
+  `;
+}
+
+
+/* ===== بناء إيصال / تذكرة صيانة قابل للطباعة في أي حالة ===== */
+function buildRepairTicketPrintHtml(rep, posCfg = {}, stOverride = null) {
+  const st = stOverride || SETTINGS || {};
+  const cfg = Object.assign({
+    paper_width: "80mm",
+    show_logo: st.receipt_show_logo !== "0",
+    show_store_address: true,
+    show_store_phone: true,
+    repair_receipt_title: "إيصال استلام وصيانة جهاز",
+    repair_terms: "المحل غير مسؤول عن الأجهزة التي لا يُسأل عنها خلال 30 يوماً من تاريخ الإبلاغ.",
+    thanks_text: st.receipt_thanks || "شكراً لزيارتكم",
+  }, posCfg || {});
+  const r = rep || {};
+  const cur = st.currency || CURRENCY || "ج.م";
+  const STATUS_AR = {
+    received: "تم الاستلام",
+    in_review: "تحت الفحص",
+    pending_approval: "بانتظار موافقة العميل",
+    repaired: "تم الإصلاح — جاهز للتسليم",
+    delivered: "تم التسليم للعميل",
+    rejected: "مرفوض / غير قابل للإصلاح",
+  };
+  const parts = Array.isArray(r.parts) ? r.parts : [];
+  const logoSrc = st.receipt_logo || "";
+  return `
+    <div dir="rtl" style="font-family:'IBM Plex Sans Arabic',monospace,sans-serif;max-width:340px;margin:0 auto;padding:12px;color:#000;background:#fff;line-height:1.5;border:1px solid #cbd5e1;border-radius:10px">
+      <div style="text-align:center;border-bottom:1.5px dashed #000;padding-bottom:8px;margin-bottom:8px">
+        ${(cfg.show_logo && logoSrc) ? `<img src="${esc(logoSrc)}" style="width:52px;height:52px;object-fit:contain;margin:0 auto 4px;display:block"/>` : ""}
+        <div style="font-size:16px;font-weight:800">${esc(st.store_name || "تك زون للإلكترونيات")}</div>
+        ${(cfg.show_store_address && st.store_address) ? `<div style="font-size:11px;color:#333">${esc(st.store_address)}</div>` : ""}
+        ${(cfg.show_store_phone && st.store_phone) ? `<div style="font-size:11px;color:#333">هاتف: ${esc(st.store_phone)}</div>` : ""}
+        <div style="margin-top:6px;display:inline-block;padding:3px 10px;border:1.5px solid #000;border-radius:6px;font-size:12.5px;font-weight:800">
+          ${esc(cfg.repair_receipt_title || "إيصال استلام وصيانة جهاز")}
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:6px">
+        <div>رقم التذكرة: <b style="font-family:monospace">${esc(r.ref || "RPR-001")}</b></div>
+        <div style="font-family:monospace">${esc((r.created_at || todayISO()).slice(0, 16))}</div>
+      </div>
+
+      <div style="padding:6px 8px;border:1px solid #000;border-radius:6px;margin-bottom:8px;font-size:11.5px;display:flex;justify-content:space-between;align-items:center">
+        <span>حالة التذكرة الحالية:</span>
+        <b>${esc(STATUS_AR[r.status] || r.status || "تم الاستلام")}</b>
+      </div>
+
+      <div style="font-size:12px;border-bottom:1px dashed #000;padding-bottom:6px;margin-bottom:6px">
+        <div><b>العميل:</b> ${esc(r.customer_name || "—")}</div>
+        <div><b>الهاتف:</b> <span style="font-family:monospace">${esc(r.customer_phone || "—")}</span></div>
+        ${r.address ? `<div><b>العنوان:</b> ${esc(r.address)}</div>` : ""}
+      </div>
+
+      <div style="font-size:12px;border-bottom:1px dashed #000;padding-bottom:6px;margin-bottom:6px">
+        <div><b>نوع وموديل الجهاز:</b> ${esc(r.device_type || "—")} ${r.priority ? "(مستعجل ★)" : ""}</div>
+        ${r.serial ? `<div><b>السيريال / IMEI:</b> <span style="font-family:monospace">${esc(r.serial)}</span></div>` : ""}
+        ${r.accessories ? `<div><b>الملحقات المستلمة:</b> ${esc(r.accessories)}</div>` : ""}
+        <div style="margin-top:4px"><b>وصف العطل / المشكلة:</b><br/>${esc(r.problem || "—")}</div>
+        ${r.notes ? `<div style="margin-top:3px"><b>ملاحظات الفحص:</b> ${esc(r.notes)}</div>` : ""}
+      </div>
+
+      ${parts.length ? `
+        <div style="font-size:11.5px;border-bottom:1px dashed #000;padding-bottom:6px;margin-bottom:6px">
+          <div style="font-weight:bold;margin-bottom:3px">قطع الغيار المركبة:</div>
+          ${parts.map((p) => `<div style="display:flex;justify-content:space-between"><span>${esc(p.name)} × ${n(p.qty)}</span><span style="font-family:monospace">${fmt(p.line_total)}</span></div>`).join("")}
+        </div>
+      ` : ""}
+
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:800;padding:4px 0;border-bottom:1.5px solid #000;margin-bottom:6px">
+        <span>إجمالي تكلفة الصيانة:</span>
+        <span style="font-family:monospace">${fmt(r.cost || 0)} ${esc(cur)}</span>
+      </div>
+
+      ${cfg.repair_terms ? `<div style="font-size:10px;color:#333;text-align:center;line-height:1.4;margin-bottom:6px">${esc(cfg.repair_terms)}</div>` : ""}
+      ${cfg.thanks_text ? `<div style="text-align:center;font-size:11px;font-weight:bold">${esc(cfg.thanks_text)}</div>` : ""}
     </div>
   `;
 }

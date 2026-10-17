@@ -138,9 +138,8 @@
         <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer"><input id="st-c-barcode" type="checkbox" class="w-4 h-4 accent-blue-600"/> إظهار الباركود</label>
         <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer"><input id="st-c-tax" type="checkbox" class="w-4 h-4 accent-blue-600"/> إظهار الضريبة بالإيصال</label>
         <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer"><input id="st-c-pays" type="checkbox" class="w-4 h-4 accent-blue-600"/> إظهار المدفوعات</label>
+      <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer"><input id="st-whatsapp-enabled" type="checkbox" class="w-4 h-4 accent-blue-600"/> إظهار إرسال الفاتورة عبر واتساب</label>
       </div>
-
-      <!-- شعار المحل الموحد -->
       <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-3">
           <div class="w-14 h-14 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0">
@@ -279,6 +278,17 @@
           <option value="light">الوضع النهاري (Light Mode)</option>
           <option value="dark">الوضع الليلي (Dark Mode)</option>
         </select>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">عدد محاولات تسجيل الدخول قبل الإقفال</label>
+          <input id="cfg-login-max-attempts" type="number" min="1" max="20" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-xs font-bold" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">مدة الإقفال (بالدقائق)</label>
+          <input id="cfg-login-lockout-minutes" type="number" min="1" max="1440" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-xs font-bold" />
+        </div>
       </div>
 
       <button id="btn-save-login-settings" type="button" class="w-full py-3 px-4 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold text-sm shadow-lg shadow-primary/20 flex items-center justify-center gap-2 mt-2">
@@ -441,6 +451,16 @@
           </div>
         </div>
 
+        <div class="p-3 rounded-xl bg-blue-50/70 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+          <div>
+            <label class="block text-xs font-bold text-primary mb-1">بادئة تسلسل فواتير نقاط البيع (POS)</label>
+            <input id="si-pos-prefix" type="text" class="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-num font-bold" placeholder="INV-"/>
+          </div>
+          <div class="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+            تُستخدم هذه البادئة تلقائياً عند إصدار أي فاتورة كاشير جديدة من شاشة نقاط البيع (مثال: <b class="font-num text-primary" id="si-pos-prefix-demo">INV-00001</b>).
+          </div>
+        </div>
+
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-bold mb-1">رسالة ترحيب أعلى الإيصال</label>
@@ -474,7 +494,21 @@
       <!-- ج) إعدادات إيصالات الصيانة وسندات القبض وشراء المستعمل -->
       <div id="inv-form-other" class="hidden flex-col gap-3.5">
         <div class="p-3 rounded-xl bg-blue-50/70 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-xs text-slate-700 dark:text-slate-200">
-          تستخدم جميع إيصالات الصيانة وسندات قبض العملاء وإيصالات شراء المستعمل نفس ترويسة وشعار وبيانات المتجر مع تخصيص العناوين والشروط أدناه:
+          تستخدم جميع إيصالات الصيانة وسندات قبض العملاء وإيصالات شراء المستعمل نفس ترويسة وشعار وبيانات المتجر مع تخصيص بادئة التسلسل والعناوين والشروط لكل قسم أدناه:
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+          <div>
+            <label class="block text-xs font-bold text-primary mb-1">بادئة تسلسل تذكرة الصيانة</label>
+            <input id="si-other-repair-prefix" type="text" class="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-num font-bold" placeholder="RPR-"/>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-emerald-600 dark:text-emerald-400 mb-1">بادئة تسلسل سند القبض</label>
+            <input id="si-other-voucher-prefix" type="text" class="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-num font-bold" placeholder="RCV-"/>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-amber-600 dark:text-amber-400 mb-1">بادئة تسلسل شراء المستعمل</label>
+            <input id="si-other-used-prefix" type="text" class="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-num font-bold" placeholder="TRX-"/>
+          </div>
         </div>
         <div>
           <label class="block text-xs font-bold mb-1">عنوان إيصال استلام/تسليم الصيانة</label>
@@ -583,7 +617,8 @@ function fillStoreTab() {
   $('st-c-logo').checked = show('receipt_show_logo');
   $('st-c-barcode').checked = show('receipt_show_barcode');
   $('st-c-tax').checked = show('receipt_show_tax');
-  $('st-c-pays').checked = show('receipt_show_payments');
+   $('st-c-pays').checked = show('receipt_show_payments');
+   $('st-whatsapp-enabled').checked = show('whatsapp_send_enabled');
   drawLogoPreview(PENDING_LOGO !== null ? PENDING_LOGO : (SETTINGS.receipt_logo || ''));
   renderPayMethodsList();
 }
@@ -652,15 +687,29 @@ $('btn-save-store-settings').addEventListener('click', async () => {
     receipt_show_logo: $('st-c-logo').checked ? '1' : '0',
     receipt_show_barcode: $('st-c-barcode').checked ? '1' : '0',
     receipt_show_tax: $('st-c-tax').checked ? '1' : '0',
-    receipt_show_payments: $('st-c-pays').checked ? '1' : '0',
+     receipt_show_payments: $('st-c-pays').checked ? '1' : '0',
+     whatsapp_send_enabled: $('st-whatsapp-enabled').checked ? '1' : '0',
   };
   if (PENDING_LOGO !== null) {
     payload.receipt_logo = PENDING_LOGO;
   }
   const st = await guard(() => api('settings_save', payload));
   if (!st) return;
-  SETTINGS = st;
-  CURRENCY = SETTINGS.currency || 'ج.م';
+   SETTINGS = st;
+   CURRENCY = SETTINGS.currency || 'ج.م';
+   applyWhatsappVisibility();
+   try {
+     if (window.top && window.top.document) {
+       window.top.document.querySelectorAll('iframe').forEach((f) => {
+         try {
+           if (f.contentWindow) {
+             f.contentWindow.SETTINGS = SETTINGS;
+             if (typeof f.contentWindow.applyWhatsappVisibility === 'function') f.contentWindow.applyWhatsappVisibility();
+           }
+         } catch (e) {}
+       });
+     }
+   } catch (e) {}
 
   A4_TPL.company_title = SETTINGS.store_name || A4_TPL.company_title;
   if (SETTINGS.store_address) A4_TPL.company_address = SETTINGS.store_address;
@@ -694,7 +743,7 @@ $('btn-reset-egypt-defaults').addEventListener('click', () => {
   $('st-currency').value = 'ج.م';
   $('st-tax-rate').value = '14';
   $('st-tax-enabled').checked = false;
-  $('st-c-logo').checked = $('st-c-barcode').checked = $('st-c-tax').checked = $('st-c-pays').checked = true;
+   $('st-c-logo').checked = $('st-c-barcode').checked = $('st-c-tax').checked = $('st-c-pays').checked = $('st-whatsapp-enabled').checked = true;
   toast('أُعيدت الحقول لافتراضي مصر — اضغط حفظ لتثبيتها', 'warn');
 });
 
@@ -741,7 +790,9 @@ function fillLoginTab() {
   syncLoginModeCardsHighlight();
   $('cfg-default-start-page').value = SETTINGS.default_start_page || 'pos';
   $('cfg-default-start-mode').value = SETTINGS.default_start_mode || 'window';
-  $('cfg-default-theme').value = SETTINGS.os_default_theme || 'dark';
+   $('cfg-default-theme').value = SETTINGS.os_default_theme || 'dark';
+   $('cfg-login-max-attempts').value = SETTINGS.login_max_attempts || '5';
+   $('cfg-login-lockout-minutes').value = SETTINGS.login_lockout_minutes || '10';
 }
 
 function syncLoginModeCardsHighlight() {
@@ -763,7 +814,9 @@ $('btn-save-login-settings').addEventListener('click', async () => {
     login_mode: loginMode,
     default_start_page: $('cfg-default-start-page').value || 'pos',
     default_start_mode: $('cfg-default-start-mode').value || 'window',
-    os_default_theme: $('cfg-default-theme').value || 'dark',
+     os_default_theme: $('cfg-default-theme').value || 'dark',
+     login_max_attempts: $('cfg-login-max-attempts').value || '5',
+     login_lockout_minutes: $('cfg-login-lockout-minutes').value || '10',
   };
   const st = await guard(() => api('settings_save', payload));
   if (st) {
@@ -816,6 +869,7 @@ function fillInvoicesTab() {
   $('si-a4-paydet').checked = A4_TPL.show_payments_detail !== false;
   $('si-a4-footer').checked = A4_TPL.show_footer_page !== false;
 
+  $('si-pos-prefix').value = POS_TPL.pos_invoice_prefix || 'INV-';
   $('si-pos-width').value = POS_TPL.paper_width || '80mm';
   $('si-pos-font').value = POS_TPL.font_scale || 'normal';
   $('si-pos-border').value = POS_TPL.border_style || 'dashed';
@@ -834,6 +888,9 @@ function fillInvoicesTab() {
   $('si-pos-pays').checked = POS_TPL.show_payments !== false;
   $('si-pos-barcode').checked = POS_TPL.show_barcode !== false;
 
+  $('si-other-repair-prefix').value = POS_TPL.repair_prefix || 'RPR-';
+  $('si-other-voucher-prefix').value = POS_TPL.voucher_prefix || 'RCV-';
+  $('si-other-used-prefix').value = POS_TPL.used_prefix || 'TRX-';
   $('si-other-repair-title').value = POS_TPL.repair_receipt_title || 'إيصال استلام وصيانة جهاز';
   $('si-other-repair-terms').value = POS_TPL.repair_terms || 'المحل غير مسؤول عن الأجهزة التي لا يُسأل عنها خلال 30 يوماً من تاريخ الإبلاغ.';
   $('si-other-voucher-title').value = POS_TPL.voucher_receipt_title || 'سند قبض نقدية / محفظة';
@@ -864,6 +921,7 @@ function readInvoicesFormIntoState() {
   A4_TPL.show_payments_detail = $('si-a4-paydet').checked;
   A4_TPL.show_footer_page = $('si-a4-footer').checked;
 
+  POS_TPL.pos_invoice_prefix = $('si-pos-prefix').value.trim() || 'INV-';
   POS_TPL.paper_width = $('si-pos-width').value;
   POS_TPL.font_scale = $('si-pos-font').value;
   POS_TPL.border_style = $('si-pos-border').value;
@@ -882,6 +940,9 @@ function readInvoicesFormIntoState() {
   POS_TPL.show_payments = $('si-pos-pays').checked;
   POS_TPL.show_barcode = $('si-pos-barcode').checked;
 
+  POS_TPL.repair_prefix = $('si-other-repair-prefix').value.trim() || 'RPR-';
+  POS_TPL.voucher_prefix = $('si-other-voucher-prefix').value.trim() || 'RCV-';
+  POS_TPL.used_prefix = $('si-other-used-prefix').value.trim() || 'TRX-';
   POS_TPL.repair_receipt_title = $('si-other-repair-title').value;
   POS_TPL.repair_terms = $('si-other-repair-terms').value;
   POS_TPL.voucher_receipt_title = $('si-other-voucher-title').value;
@@ -922,9 +983,12 @@ function renderInvoiceStudioPreview() {
   } else if (INV_SUBTAB === 'pos') {
     lbl.innerHTML = `<span class="material-icons-round text-primary text-base">visibility</span><span>معاينة حية لإيصال الكاشير الحراري (${POS_TPL.paper_width})</span>`;
     const wPx = POS_TPL.paper_width === '58mm' ? '235px' : '320px';
+    const samplePosNo = formatDocSeqClient(POS_TPL.pos_invoice_prefix || 'INV-', 101);
+    const demoEl = $('si-pos-prefix-demo');
+    if (demoEl) demoEl.textContent = samplePosNo;
     const sampleSale = {
       id: 101,
-      invoice_no: 'INV-00101',
+      invoice_no: samplePosNo,
       user_name: (CURRENT_USER && CURRENT_USER.name) || 'المدير',
       customer_name: 'أحمد محمود',
       customer_phone: '01012345678',
@@ -954,7 +1018,7 @@ function renderInvoiceStudioPreview() {
           <div style="padding:6px 14px;border-radius:8px;background:${A4_TPL.primary_color || '#0e6ba8'};color:#fff;font-weight:700;font-size:13px">${esc(POS_TPL.repair_receipt_title || 'إيصال استلام وصيانة جهاز')}</div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12.5px;margin-bottom:14px;background:#f8fafc;padding:12px;border-radius:10px">
-          <div><b>رقم التذكرة:</b> RPR-20261015</div>
+          <div><b>رقم التذكرة:</b> <span style="font-family:monospace">${esc((POS_TPL.repair_prefix || 'RPR-') + '20261015')}</span></div>
           <div><b>التاريخ:</b> ${esc(todayISO())}</div>
           <div><b>العميل:</b> محمد علي (01012345678)</div>
           <div><b>الجهاز:</b> لابتوب Dell XPS 15</div>
@@ -963,9 +1027,9 @@ function renderInvoiceStudioPreview() {
         <div style="font-size:11.5px;color:#475569;border-top:1px dashed #cbd5e1;padding-top:10px">
           <b>الشروط:</b> ${esc(POS_TPL.repair_terms || '')}
         </div>
-        <div style="margin-top:16px;padding-top:12px;border-top:2px solid #e2e8f0;display:flex;justify-content:space-between;font-size:12px;color:#334155">
-          <span>عنوان سند القبض: <b>${esc(POS_TPL.voucher_receipt_title || 'سند قبض')}</b></span>
-          <span>عنوان إيصال المستعمل: <b>${esc(POS_TPL.used_receipt_title || 'إيصال شراء مستعمل')}</b></span>
+        <div style="margin-top:16px;padding-top:12px;border-top:2px solid #e2e8f0;display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px;color:#334155">
+          <div>سند القبض: <b>${esc(POS_TPL.voucher_receipt_title || 'سند قبض')}</b> (<span style="font-family:monospace">${esc((POS_TPL.voucher_prefix || 'RCV-') + '001')}</span>)</div>
+          <div>شراء المستعمل: <b>${esc(POS_TPL.used_receipt_title || 'إيصال شراء مستعمل')}</b> (<span style="font-family:monospace">${esc((POS_TPL.used_prefix || 'TRX-') + '001')}</span>)</div>
         </div>
       </div>
     `;
