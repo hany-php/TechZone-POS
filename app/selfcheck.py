@@ -141,7 +141,7 @@ r_credit_wallet = call(a, "sale_create", {
         {"method": "credit", "amount": 140},
     ],
     "customer_name": "عميل آجل فحص",
-    "customer_phone": "01012345678",
+    "customer_phone": "01055465603",
 })
 check("tax disabled + wallet ref + credit sale ok", r_credit_wallet["ok"])
 cw_sale_id = r_credit_wallet["data"]["sale_id"]
@@ -204,8 +204,8 @@ import webbrowser
 _orig_wb_open = webbrowser.open
 webbrowser.open = lambda url, *a, **kw: True
 try:
-    r_wa = call(a, "whatsapp_send_invoice", {"sale_id": cw_sale_id, "phone": "01012345678"})
-    check("whatsapp_send_invoice ok & saves valid PDF file + company message", r_wa["ok"] and r_wa["data"]["phone"] == "201012345678" and "لديك فاتورة من" in r_wa["data"]["message"] and r_wa["data"]["pdf_file"].endswith(".pdf") and pathlib.Path(r_wa["data"]["pdf_file"]).read_bytes().startswith(b"%PDF-1.4"))
+    r_wa = call(a, "whatsapp_send_invoice", {"sale_id": cw_sale_id, "phone": "01055465603"})
+    check("whatsapp_send_invoice ok & saves valid PDF file + company message", r_wa["ok"] and r_wa["data"]["phone"] == "201055465603" and "لديك فاتورة من" in r_wa["data"]["message"] and r_wa["data"]["pdf_file"].endswith(".pdf") and pathlib.Path(r_wa["data"]["pdf_file"]).read_bytes().startswith(b"%PDF-1.4"))
 finally:
     webbrowser.open = _orig_wb_open
 

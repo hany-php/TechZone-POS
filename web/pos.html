@@ -29,8 +29,10 @@
   gap: 1rem;
 }
 #pos-print-paper { display: none; }
+@page { margin: 0; }
 @media print {
-  body { background: #fff !important; height: auto !important; overflow: visible !important; }
+  @page { margin: 0; }
+  html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; height: auto !important; overflow: visible !important; }
   body > *:not(#pos-print-paper) { display: none !important; }
   #pos-print-paper {
     display: block !important;

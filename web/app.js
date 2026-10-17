@@ -101,18 +101,50 @@ function toggleTheme() {
 }
 
 /* ===== جسر pywebview (يدعم النافذة الرئيسية وجميع النوافذ الفرعية داخل سطح المكتب) ===== */
-function _resolvePywebview() {
-  if (window.pywebview && window.pywebview.api) return window.pywebview;
+function _hasValidBridge(target) {
   try {
-    if (window.parent && window.parent !== window && window.parent.pywebview && window.parent.pywebview.api) {
+    return Boolean(target && target.pywebview && target.pywebview.api && typeof target.pywebview.api.call === 'function');
+  } catch (e) {
+    return false;
+  }
+}
+
+function _resolvePywebview() {
+  if (window.pywebview && window.pywebview.api && typeof window.pywebview.api.call === 'function') {
+    return window.pywebview;
+  }
+  try {
+    if (window.parent && window.parent !== window && _hasValidBridge(window.parent)) {
       window.pywebview = window.parent.pywebview;
       return window.pywebview;
     }
-    if (window.top && window.top !== window && window.top.pywebview && window.top.pywebview.api) {
+    if (window.top && window.top !== window && _hasValidBridge(window.top)) {
       window.pywebview = window.top.pywebview;
       return window.pywebview;
     }
   } catch (e) {}
+
+  // إذا كنا داخل بيئة WebView2 (ويندوز) أو WebKit الأصلية لتطبيق pywebview، ننتظر حقن الجسر الأصلي ولا نفعّل الـ mock
+  const isNativeWebview = Boolean(
+    (typeof window !== 'undefined' && window.chrome && window.chrome.webview) ||
+    (typeof window !== 'undefined' && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.jsBridge)
+  );
+
+  if (!isNativeWebview && typeof window !== 'undefined' && window.location && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
+    window.pywebview = {
+      api: {
+        call: async (name, payload) => {
+          const res = await fetch('/api/call', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, payload: payload === undefined ? null : payload })
+          });
+          return await res.json();
+        }
+      }
+    };
+    return window.pywebview;
+  }
   return null;
 }
 
@@ -156,7 +188,7 @@ async function api(name, payload) {
   try { await _apiWait; }
   catch (e) { showBridgeError(); throw new Error('انقطاع الاتصال بالبرنامج الداخلي'); }
   const bridge = _resolvePywebview();
-  if (!bridge || !bridge.api) { showBridgeError(); throw new Error('انقطاع الاتصال بالبرنامج الداخلي'); }
+  if (!bridge || !bridge.api || typeof bridge.api.call !== 'function') { showBridgeError(); throw new Error('انقطاع الاتصال بالبرنامج الداخلي'); }
   let res;
   try {
     res = await bridge.api.call(name, payload === undefined ? null : payload);
@@ -823,7 +855,19 @@ function buildA4InvoiceHtml(rawDoc, a4Cfg = {}) {
   }
 
   return `
-    <div class="tz-a4-sheet" dir="rtl" style="position:relative;width:100%;max-width:794px;min-height:1122px;margin:0 auto;background:#ffffff;color:#0f172a;font-family:'IBM Plex Sans Arabic','Cairo',sans-serif;padding:34px 40px 86px 40px;box-sizing:border-box;overflow:hidden;${isClassic ? "border:2px solid #0f172a;" : "box-shadow:0 10px 35px rgba(15,23,42,0.10);"}">
+    <style>
+      @page { size: A4 portrait; margin: 0; }
+      @media print {
+        @page { size: A4 portrait; margin: 0; }
+        .tz-a4-sheet {
+          box-shadow: none !important;
+          margin: 0 auto !important;
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+        }
+      }
+    </style>
+    <div class="tz-a4-sheet" dir="rtl" style="position:relative;width:100%;max-width:794px;min-height:1122px;margin:0 auto;background:#ffffff;color:#0f172a;font-family:'IBM Plex Sans Arabic','Cairo',sans-serif;padding:32px 32px 80px 32px;box-sizing:border-box;overflow:hidden;${isClassic ? "border:2px solid #0f172a;" : "box-shadow:0 10px 35px rgba(15,23,42,0.10);"}">
       ${topWaveSvg}
       <!-- ترويسة الشركة والشعار -->
       <div style="position:relative;z-index:2;display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:26px">
@@ -870,11 +914,11 @@ function buildA4InvoiceHtml(rawDoc, a4Cfg = {}) {
         <table style="width:100%;border-collapse:collapse;font-size:13.5px">
           <thead>
             <tr style="background:${primary};color:#ffffff;font-weight:700">
-              <th style="padding:11px 14px;text-align:right;border-left:1px solid rgba(255,255,255,0.25)">الوصف</th>
-              <th style="padding:11px 10px;text-align:center;width:76px;border-left:1px solid rgba(255,255,255,0.25)">الكمية</th>
-              <th style="padding:11px 10px;text-align:center;width:105px;border-left:1px solid rgba(255,255,255,0.25)">سعر الوحدة</th>
-              ${showTaxCol ? `<th style="padding:11px 10px;text-align:center;width:110px;border-left:1px solid rgba(255,255,255,0.25)">الضرائب</th>` : ""}
-              <th style="padding:11px 14px;text-align:left;width:125px">المبلغ</th>
+              <th style="padding:11px 12px;text-align:right;border-left:1px solid rgba(255,255,255,0.25)">الوصف</th>
+              <th style="padding:11px 8px;text-align:center;width:72px;border-left:1px solid rgba(255,255,255,0.25)">الكمية</th>
+              <th style="padding:11px 8px;text-align:center;width:100px;border-left:1px solid rgba(255,255,255,0.25)">سعر الوحدة</th>
+              ${showTaxCol ? `<th style="padding:11px 8px;text-align:center;width:105px;border-left:1px solid rgba(255,255,255,0.25)">الضرائب</th>` : ""}
+              <th style="padding:11px 12px;text-align:left;width:120px">المبلغ</th>
             </tr>
           </thead>
           <tbody>
@@ -884,7 +928,7 @@ function buildA4InvoiceHtml(rawDoc, a4Cfg = {}) {
       </div>
 
       <!-- قسم الإجماليات والملاحظات وخطة الدفع -->
-      <div style="position:relative;z-index:2;display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-top:8px">
+      <div style="position:relative;z-index:2;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-top:8px">
         <div style="order:1;flex:1;padding-top:18px;text-align:right;font-size:13.5px;color:#1e293b">
           ${(!info.isQuote && cfg.show_payment_comm !== false) ? `
             <div style="margin-bottom:8px">مرجع الفاتورة للسداد: <b style="color:#0f172a">${esc(info.docNo)}</b></div>
@@ -899,12 +943,12 @@ ${esc(info.notes)}</div>` : ""}
         </div>
 
         <!-- يسار: جدول ملخص المبالغ (في عرض السعر يظهر الخصم والإجمالي فقط بدون مدفوعات) -->
-        <div style="order:2;width:320px;border:1.2px solid #cbd5e1;border-radius:6px;overflow:hidden;font-size:13.5px">
+        <div style="order:2;width:300px;border:1.2px solid #cbd5e1;border-radius:6px;overflow:hidden;font-size:13.5px">
           <table style="width:100%;border-collapse:collapse">
             <tbody>
               <tr style="border-bottom:1px solid #cbd5e1">
                 <td style="padding:8px 12px;text-align:right;color:#1e293b;border-left:1px solid #cbd5e1">${showTaxCol ? "المبلغ دون الضريبة" : "المجموع الفرعي"}</td>
-                <td style="padding:8px 12px;text-align:left;font-family:monospace,sans-serif;direction:ltr;width:125px">${esc(fmtCur(info.subtotal))}</td>
+                <td style="padding:8px 12px;text-align:left;font-family:monospace,sans-serif;direction:ltr;width:120px">${esc(fmtCur(info.subtotal))}</td>
               </tr>
               ${info.discount > 0 ? `
               <tr style="border-bottom:1px solid #cbd5e1">

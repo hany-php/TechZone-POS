@@ -6,8 +6,10 @@
 <link href="app.css" rel="stylesheet"/>
 <script>if(localStorage.getItem('tz-theme')==='dark')document.documentElement.classList.add('dark');</script>
 <style>
+@page { margin: 0; }
 @media print {
-  body { background: #fff !important; }
+  @page { margin: 0; }
+  html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
   body > *:not(main) { display: none !important; }
   main { padding: 0 !important; margin: 0 !important; display: block !important; }
   main > div { max-width: none !important; margin: 0 !important; }
@@ -168,7 +170,7 @@
     } else {
       const w = window.open('', '_blank');
       if (w) {
-        w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><style>@page{size:A4 portrait;margin:0}body{margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}</style></head><body>' + htmlA4 + '</body></html>');
+        w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><style>@page{size:A4 portrait;margin:0}body{margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}.tz-a4-sheet{box-shadow:none!important;margin:0 auto!important}</style></head><body>' + htmlA4 + '</body></html>');
         w.document.close();
         setTimeout(() => w.print(), 150);
       }

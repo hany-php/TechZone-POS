@@ -7,9 +7,33 @@
 <link href="app.css" rel="stylesheet"/>
 <script>if(localStorage.getItem('tz-theme')==='dark')document.documentElement.classList.add('dark');</script>
 <style>
+  @page { size: A4 portrait; margin: 0; }
   @media print {
+    @page { size: A4 portrait; margin: 0; }
+    html, body {
+      background: #fff !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
     body > *:not(#history-print-area) { display: none !important; }
-    #history-print-area { display: block !important; margin: 0 auto !important; }
+    #history-print-area {
+      display: block !important;
+      width: 210mm !important;
+      max-width: 210mm !important;
+      margin: 0 auto !important;
+      padding: 0 !important;
+    }
+    #history-print-area .tz-a4-sheet {
+      box-shadow: none !important;
+      width: 210mm !important;
+      max-width: 210mm !important;
+      min-height: 296mm !important;
+      margin: 0 auto !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
   }
   #history-print-area { display: none; }
 </style>
@@ -680,6 +704,13 @@ document.getElementById('d-print').addEventListener('click', () => {
     if (window.parent && window.parent !== window && window.parent.TZOS && window.parent.TZOS.printHtml) {
       window.parent.TZOS.printHtml(html, 'a4');
     } else {
+      let pageStyle = document.getElementById('hist-dynamic-page-style');
+      if (!pageStyle) {
+        pageStyle = document.createElement('style');
+        pageStyle.id = 'hist-dynamic-page-style';
+        document.head.appendChild(pageStyle);
+      }
+      pageStyle.textContent = '@page { size: A4 portrait; margin: 0; }';
       const area = document.getElementById('history-print-area');
       area.innerHTML = html;
       window.print();
@@ -689,6 +720,13 @@ document.getElementById('d-print').addEventListener('click', () => {
     if (window.parent && window.parent !== window && window.parent.TZOS && window.parent.TZOS.printHtml) {
       window.parent.TZOS.printHtml(html, 'pos');
     } else {
+      let pageStyle = document.getElementById('hist-dynamic-page-style');
+      if (!pageStyle) {
+        pageStyle = document.createElement('style');
+        pageStyle.id = 'hist-dynamic-page-style';
+        document.head.appendChild(pageStyle);
+      }
+      pageStyle.textContent = '@page { size: 80mm auto; margin: 0; }';
       const area = document.getElementById('history-print-area');
       area.innerHTML = html;
       window.print();
@@ -770,4 +808,5 @@ document.getElementById('next').addEventListener('click', () => { OFFSET += LIMI
   await loadRows();
 })();
 </script>
+<div id="history-print-area" dir="rtl"></div>
 </body></html>

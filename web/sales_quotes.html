@@ -7,11 +7,33 @@
 <link href="app.css" rel="stylesheet"/>
 <script>if(localStorage.getItem('tz-theme')==='dark')document.documentElement.classList.add('dark');</script>
 <style>
+  @page { size: A4 portrait; margin: 0; }
   @media print {
     @page { size: A4 portrait; margin: 0; }
-    html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    html, body {
+      background: #fff !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
     body > *:not(#standalone-print-area) { display: none !important; }
-    #standalone-print-area { display: block !important; width: 210mm !important; margin: 0 auto !important; }
+    #standalone-print-area {
+      display: block !important;
+      width: 210mm !important;
+      max-width: 210mm !important;
+      margin: 0 auto !important;
+      padding: 0 !important;
+    }
+    #standalone-print-area .tz-a4-sheet {
+      box-shadow: none !important;
+      width: 210mm !important;
+      max-width: 210mm !important;
+      min-height: 296mm !important;
+      margin: 0 auto !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
   }
   #standalone-print-area { display: none; }
   .tab-btn.active {
@@ -1045,6 +1067,13 @@ function printA4HtmlNow(htmlContent) {
   if (window.parent && window.parent !== window && window.parent.TZOS && window.parent.TZOS.printHtml) {
     window.parent.TZOS.printHtml(htmlContent, 'a4');
   } else {
+    let pageStyle = document.getElementById('sq-dynamic-page-style');
+    if (!pageStyle) {
+      pageStyle = document.createElement('style');
+      pageStyle.id = 'sq-dynamic-page-style';
+      document.head.appendChild(pageStyle);
+    }
+    pageStyle.textContent = '@page { size: A4 portrait; margin: 0; }';
     const area = $('standalone-print-area');
     area.innerHTML = htmlContent;
     window.print();

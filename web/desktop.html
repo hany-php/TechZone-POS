@@ -649,8 +649,22 @@
   }
 
   #os-print-stage { display: none; }
+  @page {
+    margin: 0;
+  }
   @media print {
-    html, body { background: #fff !important; height: auto !important; overflow: visible !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    @page {
+      margin: 0;
+    }
+    html, body {
+      background: #fff !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      height: auto !important;
+      overflow: visible !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
     body > *:not(#os-print-stage) { display: none !important; }
     #os-print-stage {
       display: block !important;
@@ -672,9 +686,19 @@
     #os-print-stage[data-print-mode="a4"] {
       width: 210mm !important;
       max-width: 210mm !important;
+      margin: 0 auto !important;
       padding: 0 !important;
       font-family: "IBM Plex Sans Arabic", "Cairo", sans-serif !important;
       font-size: 13px !important;
+    }
+    #os-print-stage[data-print-mode="a4"] .tz-a4-sheet {
+      box-shadow: none !important;
+      width: 210mm !important;
+      max-width: 210mm !important;
+      min-height: 296mm !important;
+      margin: 0 auto !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
     }
   }
 </style>
@@ -1680,6 +1704,19 @@ const TZOS = {
     const stage = document.getElementById('os-print-stage');
     stage.dataset.printMode = mode || 'thermal';
     stage.innerHTML = htmlContent;
+    let pageStyle = document.getElementById('os-dynamic-page-style');
+    if (!pageStyle) {
+      pageStyle = document.createElement('style');
+      pageStyle.id = 'os-dynamic-page-style';
+      document.head.appendChild(pageStyle);
+    }
+    if (mode === 'a4') {
+      pageStyle.textContent = '@page { size: A4 portrait; margin: 0; }';
+    } else if (mode === '58mm') {
+      pageStyle.textContent = '@page { size: 58mm auto; margin: 0; }';
+    } else {
+      pageStyle.textContent = '@page { size: 80mm auto; margin: 0; }';
+    }
     setTimeout(() => window.print(), 90);
   },
 };

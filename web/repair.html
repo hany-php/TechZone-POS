@@ -7,7 +7,10 @@
 <link href="app.css" rel="stylesheet"/>
 <script>if(localStorage.getItem('tz-theme')==='dark')document.documentElement.classList.add('dark');</script>
 <style>
+  @page { margin: 0; }
   @media print {
+    @page { margin: 0; }
+    html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
     body > *:not(#repair-print-area) { display: none !important; }
     #repair-print-area { display: block !important; margin: 0 auto !important; }
   }
@@ -607,4 +610,5 @@ document.addEventListener('click', (e) => {
   await loadList();
 })();
 </script>
+<div id="repair-print-area" dir="rtl"></div>
 </body></html>
