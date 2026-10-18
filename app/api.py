@@ -942,7 +942,7 @@ class Api:
                     "receipt_logo", "receipt_show_logo", "receipt_show_barcode",
                     "receipt_show_tax", "receipt_show_payments", "whatsapp_send_enabled",
                     "login_max_attempts", "login_lockout_minutes",
-                    "template_a4_config", "template_pos_config"}
+                    "template_a4_config", "template_pos_config", "pos_categories_config"}
         show = {"tax_enabled", "receipt_show_logo", "receipt_show_barcode", "receipt_show_tax", "receipt_show_payments", "whatsapp_send_enabled"}
         valid_login_modes = {"pin_only", "select_user_pin", "username_password"}
         valid_start_pages = {"pos", "sales_quotes", "inventory", "customers", "repair", "history", "buy_used", "reports", "settings", "receipt", "desktop"}
@@ -952,7 +952,7 @@ class Api:
                 if k not in allowed or v is None:
                     continue
                 s = str(v)
-                if s == "" and k not in show and k not in ("os_default_custom_bg", "os_default_layout", "receipt_logo"):
+                if s == "" and k not in show and k not in ("os_default_custom_bg", "os_default_layout", "receipt_logo", "pos_categories_config"):
                     continue
                 if k in show:
                     if s not in ("0", "1"):
@@ -1183,6 +1183,24 @@ class Api:
             if not cur.rowcount:
                 raise ApiError("الفئة غير موجودة")
             return True
+
+    def pos_categories_config_save(self, config=None):
+        """حفظ ترتيب وتخصيص الفئات المعروضة في شاشة نقاط البيع (POS)."""
+        self._user()
+        if config is None:
+            config = ""
+        if isinstance(config, (list, dict)):
+            s = json.dumps(config, ensure_ascii=False)
+        else:
+            s = str(config).strip()
+        with db.connect() as conn:
+            conn.execute(
+                "INSERT INTO settings(key, value) VALUES('pos_categories_config', ?) "
+                "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                (s,),
+            )
+            self._settings_cache = None
+            return {"pos_categories_config": s}
 
     # ---------------------------------------------------------- منتجات
     def _product_row(self, r, show_cost):

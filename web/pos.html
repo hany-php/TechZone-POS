@@ -89,8 +89,34 @@
 </div>
 </div>
 </div>
-<!-- Categories -->
-<div class="flex gap-3 overflow-x-auto pb-4 no-scrollbar items-center px-2" id="cats"></div>
+<!-- Categories Section with Scroll, Wrap & Customization Controls -->
+<div class="relative mb-2">
+  <div class="flex items-center gap-1.5 pb-2">
+    <!-- Scroll Right (RTL Forward) -->
+    <button id="cats-scroll-right" type="button" class="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 text-slate-500 hover:text-primary hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 transition-colors flex-shrink-0 flex items-center justify-center" title="تمرير لليمين">
+      <span class="material-icons-outlined text-sm">chevron_right</span>
+    </button>
+
+    <!-- Categories Container -->
+    <div class="flex-1 flex gap-2 overflow-x-auto no-scrollbar items-center px-1 scroll-smooth transition-all duration-300" id="cats"></div>
+
+    <!-- Scroll Left (RTL Backward) -->
+    <button id="cats-scroll-left" type="button" class="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 text-slate-500 hover:text-primary hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 transition-colors flex-shrink-0 flex items-center justify-center" title="تمرير لليسار">
+      <span class="material-icons-outlined text-sm">chevron_left</span>
+    </button>
+
+    <!-- Toggle Wrap Mode (Multi-line) -->
+    <button id="btn-cats-wrap" type="button" class="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 text-slate-500 hover:text-primary hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 transition-colors flex-shrink-0 flex items-center justify-center" title="تبديل العرض (شريط أفقي / مصفوفة متراصة)">
+      <span class="material-icons-outlined text-sm" id="icon-cats-wrap">grid_view</span>
+    </button>
+
+    <!-- Categories Customization Button -->
+    <button id="btn-cats-cfg" type="button" class="px-2.5 py-1.5 rounded-xl bg-primary/10 hover:bg-primary text-primary hover:text-white font-bold text-xs shadow-sm transition-colors flex-shrink-0 flex items-center gap-1" title="تخصيص وترتيب الفئات المعروضة">
+      <span class="material-icons-outlined text-sm">tune</span>
+      <span class="hidden sm:inline">تخصيص الفئات</span>
+    </button>
+  </div>
+</div>
 </header>
 <!-- Products Grid -->
 <main class="flex-1 overflow-y-auto px-6 pb-6">
@@ -409,6 +435,51 @@
 </div>
 </div>
 
+<!-- Modal: تخصيص وترتيب فئات الكاشير -->
+<div id="cats-cfg-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+  <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-xl shadow-2xl max-h-[90vh] flex flex-col">
+    <div class="flex justify-between items-center mb-3">
+      <div>
+        <h3 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="material-icons-outlined text-primary">tune</span>
+          تخصيص وترتيب فئات الكاشير
+        </h3>
+        <p class="text-xs text-slate-500 dark:text-slate-400">رتّب الفئات حسب استخدامك (الأكثر طلباً أولاً) وأخفِ الفئات التي لا تحتاجها في نقاط البيع</p>
+      </div>
+      <button id="cats-cfg-x" type="button" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg">
+        <span class="material-icons-outlined">close</span>
+      </button>
+    </div>
+
+    <!-- Instructions / Tips -->
+    <div class="bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 p-2.5 rounded-xl text-xs flex items-center gap-2 mb-2">
+      <span class="material-icons-outlined text-sm flex-shrink-0">info</span>
+      <span>استخدم الأسهم ⬆ ⬇ أو اسحب الفئة لتحريكها، وقم بتفعيل أو إلغاء علامة الصح لإظهارها أو إخفائها من شريط الكاشير.</span>
+    </div>
+
+    <!-- Categories List with Drag & Reorder + Visibility Toggles -->
+    <div class="flex-1 overflow-y-auto border border-slate-100 dark:border-slate-700/80 rounded-xl divide-y divide-slate-100 dark:divide-slate-700/60 p-2 my-2 space-y-1.5 min-h-[220px]" id="cats-cfg-list">
+      <!-- Items generated dynamically -->
+    </div>
+
+    <!-- Modal Footer Actions -->
+    <div class="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-700 gap-2">
+      <button id="cats-cfg-reset" type="button" class="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-600 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+        استعادة الترتيب التلقائي
+      </button>
+      <div class="flex items-center gap-2">
+        <button id="cats-cfg-cancel" type="button" class="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-600 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700">
+          إلغاء
+        </button>
+        <button id="cats-cfg-save" type="button" class="px-5 py-2 rounded-xl bg-primary text-white text-sm font-bold shadow-md hover:bg-primary/90 flex items-center gap-1.5 transition-colors">
+          <span class="material-icons-outlined text-sm">save</span>
+          حفظ الترتيب والتخصيص
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Direct Thermal Print Container (80mm) -->
 <div id="pos-print-paper" dir="rtl"></div>
 
@@ -558,19 +629,232 @@ document.getElementById('sc-confirm').addEventListener('click', async () => {
   }
 });
 
-/* ===== عرض المنتجات والفئات (مع الصور وشريط نفدت الكمية) ===== */
-async function loadCats() {
-  CATS = (await guard(() => api('categories'))) || [];
-  const el = document.getElementById('cats');
-  el.innerHTML = `<button data-c="" class="flex-shrink-0 px-6 py-2.5 rounded-xl shadow-lg shadow-primary/30 font-medium transition-transform active:scale-95 ${CAT == null ? 'bg-primary text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'}">الكل</button>` +
-    CATS.map((c) => `<button data-c="${c.id}" class="flex-shrink-0 px-6 py-2.5 rounded-xl font-medium transition-all active:scale-95 whitespace-nowrap ${CAT === c.id ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'}">${esc(c.name)}</button>`).join('');
-  el.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { CAT = b.dataset.c ? +b.dataset.c : null; search(); }));
+/* ===== عرض المنتجات والفئات وتخصيص وترتيب الفئات المعروضة ===== */
+let RAW_CATS = [];
+let WORKING_CATS_ORDER = [];
+
+function getCatsConfig() {
+  try {
+    if (SETTINGS && SETTINGS.pos_categories_config) {
+      const parsed = JSON.parse(SETTINGS.pos_categories_config);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (e) {}
+  return [];
 }
+
+async function loadCats(forceRefresh = false) {
+  if (forceRefresh || !RAW_CATS.length) {
+    RAW_CATS = (await guard(() => api('categories'))) || [];
+  }
+  const cfg = getCatsConfig();
+  const map = new Map(RAW_CATS.map((c) => [c.id, c]));
+  let sorted = [];
+
+  if (cfg.length) {
+    cfg.forEach((item) => {
+      if (map.has(item.id)) {
+        sorted.push({ ...map.get(item.id), visible: item.visible !== false });
+        map.delete(item.id);
+      }
+    });
+  }
+  // أي فئات جديدة أو غير مدرجة في الإعداد تضاف للنهاية
+  map.forEach((c) => sorted.push({ ...c, visible: true }));
+
+  CATS = sorted;
+  renderCatsBar();
+}
+
+function renderCatsBar() {
+  const el = document.getElementById('cats');
+  const visibleCats = CATS.filter((c) => c.visible !== false);
+
+  el.innerHTML = `<button data-c="" class="cat-pill flex-shrink-0 px-5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 active:scale-95 ${CAT == null ? 'bg-primary text-white shadow-md shadow-primary/30' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'}">الكل</button>` +
+    visibleCats.map((c) => `<button data-c="${c.id}" class="cat-pill flex-shrink-0 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 active:scale-95 whitespace-nowrap ${CAT === c.id ? 'bg-primary text-white shadow-md shadow-primary/30' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'}">${esc(c.name)}</button>`).join('');
+
+  el.querySelectorAll('.cat-pill').forEach((b) => b.addEventListener('click', () => {
+    CAT = b.dataset.c ? +b.dataset.c : null;
+    updateActiveCatButtons();
+    search();
+  }));
+}
+
+function updateActiveCatButtons() {
+  const el = document.getElementById('cats');
+  el.querySelectorAll('.cat-pill').forEach((b) => {
+    const isAct = (CAT == null && !b.dataset.c) || (CAT !== null && +b.dataset.c === CAT);
+    if (isAct) {
+      b.className = 'cat-pill flex-shrink-0 px-5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 active:scale-95 bg-primary text-white shadow-md shadow-primary/30';
+    } else {
+      b.className = 'cat-pill flex-shrink-0 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 active:scale-95 whitespace-nowrap bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700';
+    }
+  });
+}
+
+// أزرار التمرير الأفقي وعجلة الماوس
+const catsEl = document.getElementById('cats');
+if (catsEl) {
+  catsEl.addEventListener('wheel', (e) => {
+    if (e.deltaY !== 0 && !catsEl.classList.contains('flex-wrap')) {
+      catsEl.scrollLeft += (e.deltaY > 0 ? 120 : -120);
+      e.preventDefault();
+    }
+  }, { passive: false });
+}
+
+document.getElementById('cats-scroll-right').addEventListener('click', () => {
+  catsEl.scrollBy({ left: 240, behavior: 'smooth' });
+});
+document.getElementById('cats-scroll-left').addEventListener('click', () => {
+  catsEl.scrollBy({ left: -240, behavior: 'smooth' });
+});
+
+// زر تبديل العرض بين شريط أفقي ومصفوفة أسطر متراصة (Wrap)
+const wrapBtn = document.getElementById('btn-cats-wrap');
+const wrapIcon = document.getElementById('icon-cats-wrap');
+function applyCatsWrap(isWrapped) {
+  if (isWrapped) {
+    catsEl.classList.add('flex-wrap');
+    catsEl.classList.remove('overflow-x-auto');
+    wrapIcon.textContent = 'view_stream';
+    wrapBtn.title = 'العودة للشريط الأفقي القابل للتمرير';
+    wrapBtn.classList.add('bg-primary/10', 'text-primary');
+  } else {
+    catsEl.classList.remove('flex-wrap');
+    catsEl.classList.add('overflow-x-auto');
+    wrapIcon.textContent = 'grid_view';
+    wrapBtn.title = 'عرض جميع الفئات في عدة أسطر مصفوفة';
+    wrapBtn.classList.remove('bg-primary/10', 'text-primary');
+  }
+}
+wrapBtn.addEventListener('click', () => {
+  const isNowWrapped = !catsEl.classList.contains('flex-wrap');
+  applyCatsWrap(isNowWrapped);
+  localStorage.setItem('tz_pos_cats_wrapped', isNowWrapped ? '1' : '0');
+});
+if (localStorage.getItem('tz_pos_cats_wrapped') === '1') {
+  applyCatsWrap(true);
+}
+
+// نافذة تخصيص وترتيب الفئات
+document.getElementById('btn-cats-cfg').addEventListener('click', openCatsConfigModal);
+document.getElementById('cats-cfg-x').addEventListener('click', closeCatsConfigModal);
+document.getElementById('cats-cfg-cancel').addEventListener('click', closeCatsConfigModal);
+
+function closeCatsConfigModal() {
+  document.getElementById('cats-cfg-modal').classList.replace('flex', 'hidden');
+}
+
+async function openCatsConfigModal() {
+  if (!RAW_CATS.length) {
+    RAW_CATS = (await guard(() => api('categories'))) || [];
+  }
+  const cfg = getCatsConfig();
+  const map = new Map(RAW_CATS.map((c) => [c.id, { ...c }]));
+  WORKING_CATS_ORDER = [];
+
+  if (cfg.length) {
+    cfg.forEach((item) => {
+      if (map.has(item.id)) {
+        WORKING_CATS_ORDER.push({ ...map.get(item.id), visible: item.visible !== false });
+        map.delete(item.id);
+      }
+    });
+  }
+  map.forEach((c) => WORKING_CATS_ORDER.push({ ...c, visible: true }));
+
+  renderCatsConfigList();
+  document.getElementById('cats-cfg-modal').classList.replace('hidden', 'flex');
+}
+
+function renderCatsConfigList() {
+  const listEl = document.getElementById('cats-cfg-list');
+  listEl.innerHTML = WORKING_CATS_ORDER.map((c, idx) => `
+    <div class="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 transition-all ${c.visible ? '' : 'opacity-55 bg-slate-50 dark:bg-slate-800/40'}" data-idx="${idx}">
+      <div class="flex items-center gap-3">
+        <div class="flex flex-col gap-0.5">
+          <button type="button" class="btn-cat-up p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 disabled:opacity-20 transition-colors" ${idx === 0 ? 'disabled' : ''} title="تحريك لأعلى (للأمام)">
+            <span class="material-icons-outlined text-sm">arrow_upward</span>
+          </button>
+          <button type="button" class="btn-cat-down p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 disabled:opacity-20 transition-colors" ${idx === WORKING_CATS_ORDER.length - 1 ? 'disabled' : ''} title="تحريك لأسفل (للخلف)">
+            <span class="material-icons-outlined text-sm">arrow_downward</span>
+          </button>
+        </div>
+        <span class="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center font-bold text-xs font-num">${idx + 1}</span>
+        <div>
+          <span class="font-bold text-sm text-slate-800 dark:text-white">${esc(c.name)}</span>
+          <span class="text-xs text-slate-400 mr-2 font-num">(${c.n || 0} صنف)</span>
+        </div>
+      </div>
+      <label class="flex items-center gap-2 cursor-pointer select-none px-3 py-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+        <input type="checkbox" class="cat-vis-check w-4 h-4 accent-primary rounded" ${c.visible ? 'checked' : ''}/>
+        <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">إظهار في الكاشير</span>
+      </label>
+    </div>
+  `).join('');
+
+  listEl.querySelectorAll('.btn-cat-up').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      const row = e.target.closest('[data-idx]');
+      if (!row) return;
+      const idx = +row.dataset.idx;
+      if (idx > 0) {
+        const item = WORKING_CATS_ORDER.splice(idx, 1)[0];
+        WORKING_CATS_ORDER.splice(idx - 1, 0, item);
+        renderCatsConfigList();
+      }
+    });
+  });
+
+  listEl.querySelectorAll('.btn-cat-down').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      const row = e.target.closest('[data-idx]');
+      if (!row) return;
+      const idx = +row.dataset.idx;
+      if (idx < WORKING_CATS_ORDER.length - 1) {
+        const item = WORKING_CATS_ORDER.splice(idx, 1)[0];
+        WORKING_CATS_ORDER.splice(idx + 1, 0, item);
+        renderCatsConfigList();
+      }
+    });
+  });
+
+  listEl.querySelectorAll('.cat-vis-check').forEach((chk) => {
+    chk.addEventListener('change', (e) => {
+      const row = e.target.closest('[data-idx]');
+      if (!row) return;
+      const idx = +row.dataset.idx;
+      WORKING_CATS_ORDER[idx].visible = e.target.checked;
+      renderCatsConfigList();
+    });
+  });
+}
+
+// استعادة الترتيب الأبجدي الافتراضي
+document.getElementById('cats-cfg-reset').addEventListener('click', () => {
+  WORKING_CATS_ORDER.sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+  WORKING_CATS_ORDER.forEach((c) => { c.visible = true; });
+  renderCatsConfigList();
+  toast('تمت استعادة الترتيب التلقائي، اضغط «حفظ الترتيب والتخصيص» لتأكيد الحفظ');
+});
+
+// حفظ ترتيب وتخصيص الفئات في قاعدة البيانات
+document.getElementById('cats-cfg-save').addEventListener('click', async () => {
+  const savePayload = WORKING_CATS_ORDER.map((c) => ({ id: c.id, visible: c.visible !== false }));
+  const res = await guard(() => api('pos_categories_config_save', { config: savePayload }));
+  if (res) {
+    if (!SETTINGS) SETTINGS = {};
+    SETTINGS.pos_categories_config = typeof res.pos_categories_config === 'string' ? res.pos_categories_config : JSON.stringify(savePayload);
+    await loadCats(true);
+    closeCatsConfigModal();
+    toast('تم حفظ ترتيب وتخصيص الفئات بنجاح وظهرت في الكاشير فوراً');
+  }
+});
 
 async function search() {
   const q = document.getElementById('q').value;
-  PRODUCTS = (await guard(() => api('products_search', { q, limit: 60, category_id: CAT }))) || [];
-  await loadCats();
+  PRODUCTS = (await guard(() => api('products_search', { q, limit: 250, category_id: CAT }))) || [];
   const g = document.getElementById('grid');
   g.innerHTML = PRODUCTS.length ? PRODUCTS.map((p) => {
     const out = p.qty <= 0;
@@ -1391,6 +1675,7 @@ document.getElementById('pay-ok').addEventListener('click', async () => {
   }
 
   await refreshShift();
+  await loadCats(true);
   await search();
   renderCart();
   const editParam = new URLSearchParams(location.search).get('edit_sale');
