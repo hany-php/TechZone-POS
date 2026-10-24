@@ -33,6 +33,14 @@ def store_title():
 
 
 def main():
+    icon_candidates = [
+        ROOT / "icon.ico",
+        _BASE / "icon.ico" if getattr(sys, "frozen", False) else None,
+        WEB / "favicon.ico",
+        WEB / "icon.ico",
+    ]
+    icon_path = next((p for p in icon_candidates if p and p.exists()), None)
+
     window = webview.create_window(
         title=store_title(),
         url=str(WEB / "index.html"),
@@ -42,7 +50,7 @@ def main():
         min_size=(360, 500),
         maximized=True,
     )
-    webview.start()  # ponytail: بدون LocalHTTP server — الملفات تُقرأ كـ file:// (كافٍ لنافذة واحدة)
+    webview.start(icon=str(icon_path) if icon_path else None)  # ponytail: بدون LocalHTTP server — الملفات تُقرأ كـ file:// (كافٍ لنافذة واحدة)
 
 
 if __name__ == "__main__":

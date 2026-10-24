@@ -5,7 +5,7 @@ a = Analysis(
     ['app/main.py'],
     pathex=[],
     binaries=[],
-    datas=[('web', 'web')],
+    datas=[('web', 'web'), ('icon.ico', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -35,4 +35,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=['icon.ico'],
 )

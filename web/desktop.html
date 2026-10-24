@@ -4,6 +4,8 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>سطح المكتب — نظام تك زون للإلكترونيات</title>
+<link rel="icon" type="image/x-icon" href="favicon.ico"/>
+<link rel="icon" type="image/png" href="icon.png"/>
 <link href="app.css" rel="stylesheet"/>
 <script>if(localStorage.getItem('tz-theme')==='dark')document.documentElement.classList.add('dark');</script>
 <style>
@@ -712,7 +714,9 @@
   <header id="os-topbar">
     <div class="flex items-center gap-2">
       <button id="top-logo-btn" class="top-btn" title="قائمة ابدأ">
-        <span class="material-icons-round text-blue-400 text-base">memory</span>
+        <span id="top-logo-wrap" class="w-5 h-5 flex items-center justify-center shrink-0">
+          <img src="icon.png" alt="Logo" class="w-4 h-4 object-contain"/>
+        </span>
         <span id="os-store-name" class="font-bold">تك زون للإلكترونيات</span>
       </button>
       <span class="text-slate-500">|</span>
@@ -805,8 +809,8 @@
     <div id="os-start-menu" class="hidden">
       <div class="flex items-center justify-between mb-3">
         <div class="flex items-center gap-2">
-          <div class="w-8 h-8 rounded-xl bg-primary flex items-center justify-center text-white">
-            <span class="material-icons-round text-lg">apps</span>
+          <div class="w-8 h-8 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center overflow-hidden shrink-0">
+            <img src="icon.png" alt="TechZone" class="w-5 h-5 object-contain"/>
           </div>
           <div>
             <h3 class="font-bold text-sm">قائمة ابدأ — جميع تطبيقات النظام</h3>
@@ -867,7 +871,7 @@
     <div id="os-taskbar-wrap">
       <div class="flex items-center gap-2">
         <button id="os-start-btn" type="button">
-          <span class="material-icons-round text-lg">grid_view</span>
+          <img src="icon.png" alt="TechZone" class="w-4 h-4 object-contain shrink-0"/>
           <span>ابدأ</span>
         </button>
       </div>
@@ -1842,6 +1846,14 @@ document.getElementById('os-workspace').addEventListener('contextmenu', (e) => {
   document.getElementById('os-store-name').textContent = stName;
   const wBrand = document.getElementById('w-os-brand');
   if (wBrand) wBrand.textContent = stName;
+  const topLogoWrap = document.getElementById('top-logo-wrap');
+  if (topLogoWrap) {
+    if (SETTINGS.receipt_logo && SETTINGS.receipt_logo.startsWith('data:image/')) {
+      topLogoWrap.innerHTML = `<img src="${esc(SETTINGS.receipt_logo)}" alt="${esc(stName)}" class="w-4 h-4 object-contain rounded-sm"/>`;
+    } else {
+      topLogoWrap.innerHTML = `<img src="icon.png" alt="${esc(stName)}" class="w-4 h-4 object-contain"/>`;
+    }
+  }
   TZOS.refreshUserHeader(user);
   TZOS.onThemeChanged(document.documentElement.classList.contains('dark'));
 
