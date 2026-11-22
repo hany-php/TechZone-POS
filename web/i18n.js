@@ -3,6 +3,18 @@
  */
 (function () {
   const EXACT_MAP = {
+    'استيراد وتصدير Excel': 'Excel Import & Export',
+    'استيراد / تصدير Excel': 'Excel Import / Export',
+    'استيراد Excel': 'Import Excel',
+    'قالب': 'Template',
+    'تحديث الأقسام': 'Refresh Modules',
+    'مركز الاستيراد والتصدير الشامل لملفات Excel (.xlsx / .csv)': 'Universal Excel Import & Export Hub (.xlsx / .csv)',
+    'تصدير كل المنتجات (Excel)': 'Export All Products (Excel)',
+    'تصدير كل التصنيفات (Excel)': 'Export All Categories (Excel)',
+    'استيراد منتجات من ملف Excel / CSV': 'Import Products from Excel / CSV',
+    'استيراد تصنيفات من ملف Excel / CSV': 'Import Categories from Excel / CSV',
+    'تصدير الموردين Excel': 'Export Suppliers Excel',
+    'استيراد الموردين Excel': 'Import Suppliers Excel',
     // Full Login Screen Phrases
     'كلمة المرور / الرمز السري': 'Password / PIN Code',
     'دخول إلى النظام': 'Sign In to System',

@@ -17,6 +17,10 @@
 <p class="text-slate-500 dark:text-slate-400 text-sm">تتبع المنتجات، رفع الصور، تحديث الكميات، وإدارة الأسعار.</p>
 </div>
 <div class="flex flex-wrap gap-3">
+<button id="btn-inv-excel" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2.5 rounded-lg flex items-center gap-2 transition-all shadow-sm">
+<span class="material-icons-outlined text-[20px]">table_view</span>
+<span class="text-sm font-bold">استيراد / تصدير Excel</span>
+</button>
 <button id="btn-barcode-studio" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg flex items-center gap-2 transition-all shadow-sm">
 <span class="material-icons-outlined text-[20px]">qr_code_2</span>
 <span class="text-sm font-bold">استوديو طباعة ملصقات الباركود</span>
@@ -259,6 +263,43 @@
           <div class="text-[11px] font-bold text-slate-500 mb-3">معاينة حية لملصق الباركود (Code-128B SVG)</div>
           <div id="bc-preview-box" class="bg-white text-slate-900 rounded-xl shadow-md border border-slate-300 p-3 flex flex-col items-center justify-between text-center w-[210px] min-h-[135px]"></div>
           <div id="bc-total-labels" class="text-xs font-bold text-indigo-600 dark:text-indigo-400 mt-3">إجمالي الملصقات: 1</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- نافذة استيراد وتصدير المنتجات والتصنيفات عبر Excel -->
+<div id="modal-inv-excel" class="hidden fixed inset-0 z-50 bg-black/60 items-center justify-center p-4">
+  <div class="bg-white dark:bg-surface-dark rounded-2xl w-full max-w-2xl border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden">
+    <div class="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+      <div>
+        <h3 class="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="material-icons-outlined text-teal-600">table_view</span>
+          <span>استيراد وتصدير المنتجات والتصنيفات (Excel .xlsx / CSV)</span>
+        </h3>
+        <p class="text-xs text-slate-500 mt-0.5">يدعم إضافة منتجات جديدة وتحديث المنتجات الموجودة تلقائياً حسب كود SKU وإنشاء التصنيفات الجديدة تلقائياً</p>
+      </div>
+      <button id="inv-xl-close" type="button" class="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold">إغلاق</button>
+    </div>
+    <div class="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
+        <h4 class="font-bold text-sm text-slate-900 dark:text-white">1. المنتجات والمخزون</h4>
+        <p class="text-[11px] text-slate-500">الأعمدة: الكود/SKU، الاسم، التصنيف، السعر، التكلفة، الكمية، الحد الأدنى، السيريال، الملاحظات</p>
+        <div class="flex flex-col gap-2">
+          <button id="inv-xl-exp-prod" type="button" class="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold">تصدير كل المنتجات (Excel)</button>
+          <button id="inv-xl-tpl-prod" type="button" class="w-full py-2 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs font-bold">تحميل قالب منتجات فارغ (.xlsx)</button>
+          <button id="inv-xl-imp-prod" type="button" class="w-full py-2 px-3 rounded-xl bg-primary hover:bg-blue-600 text-white text-xs font-bold">استيراد منتجات من ملف Excel / CSV</button>
+        </div>
+      </div>
+      <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
+        <h4 class="font-bold text-sm text-slate-900 dark:text-white">2. التصنيفات / الفئات</h4>
+        <p class="text-[11px] text-slate-500">الأعمدة: اسم التصنيف (يُضيف التصنيفات الجديدة ويتخطى المكررة بأمان)</p>
+        <div class="flex flex-col gap-2">
+          <button id="inv-xl-exp-cat" type="button" class="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold">تصدير كل التصنيفات (Excel)</button>
+          <button id="inv-xl-tpl-cat" type="button" class="w-full py-2 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs font-bold">تحميل قالب تصنيفات فارغ (.xlsx)</button>
+          <button id="inv-xl-imp-cat" type="button" class="w-full py-2 px-3 rounded-xl bg-primary hover:bg-blue-600 text-white text-xs font-bold">استيراد تصنيفات من ملف Excel / CSV</button>
         </div>
       </div>
     </div>
@@ -663,6 +704,16 @@ function updateBarcodePreview() {
     </div>
   `;
 }
+
+
+document.getElementById('btn-inv-excel').addEventListener('click', () => openModal(document.getElementById('modal-inv-excel')));
+document.getElementById('inv-xl-close').addEventListener('click', () => closeModal(document.getElementById('modal-inv-excel')));
+document.getElementById('inv-xl-exp-prod').addEventListener('click', () => tzExcelExportEntity('products'));
+document.getElementById('inv-xl-tpl-prod').addEventListener('click', () => tzExcelDownloadTemplate('products'));
+document.getElementById('inv-xl-imp-prod').addEventListener('click', () => tzExcelPickAndImport('products', async () => { await loadCats(); await stats(); await load(); }));
+document.getElementById('inv-xl-exp-cat').addEventListener('click', () => tzExcelExportEntity('categories'));
+document.getElementById('inv-xl-tpl-cat').addEventListener('click', () => tzExcelDownloadTemplate('categories'));
+document.getElementById('inv-xl-imp-cat').addEventListener('click', () => tzExcelPickAndImport('categories', async () => { await loadCats(); await load(); }));
 
 document.getElementById('btn-barcode-studio').addEventListener('click', () => openBarcodeStudio());
 document.getElementById('bc-close').addEventListener('click', () => closeModal(document.getElementById('modal-barcode-studio')));

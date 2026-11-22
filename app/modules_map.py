@@ -16,6 +16,12 @@ CORE_METHODS = {
     "translations_save",
     "translations_delete",
     "translations_scan_project",
+    "excel_entities_list",
+    "excel_template",
+    "excel_export_preview",
+    "excel_export",
+    "excel_import_preview",
+    "excel_import",
     "users",
     "permissions_schema",
     # الإعدادات والنسخ الاحتياطي والقوالب (settings قسم أساسي)

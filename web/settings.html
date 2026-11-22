@@ -78,6 +78,10 @@
         <span class="material-icons-round text-base">translate</span>
         <span>الترجمة واللغات</span>
       </button>
+      <button type="button" data-stab="excel" class="settings-tab-btn px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 transition-all">
+        <span class="material-icons-round text-base">table_view</span>
+        <span>استيراد وتصدير Excel</span>
+      </button>
     </div>
   </div>
 
@@ -961,6 +965,28 @@
       </div>
     </div>
   </section>
+
+  <!-- ==================== التبويب 7: مركز الاستيراد والتصدير الشامل لملفات Excel (.xlsx / .csv) ==================== -->
+  <section id="spane-excel" class="hidden space-y-5">
+    <div class="bg-white dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-slate-800 p-5 md:p-6 shadow-sm space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+        <div>
+          <h2 class="text-base md:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <span class="material-icons-round text-emerald-600">table_view</span>
+            <span>مركز الاستيراد والتصدير الشامل لملفات Excel (.xlsx / .csv)</span>
+          </h2>
+          <p class="text-xs text-slate-500 mt-0.5">صدّر بيانات أي قسم مفعّل في النظام أو حمّل قالباً فارغاً جاهزاً أو استورد بياناتك دفعة واحدة من Excel أو CSV بدون إنترنت (الأقسام المعطّلة تُخفى تلقائياً حسب هندسة العزل)</p>
+        </div>
+        <button type="button" id="btn-excel-refresh" class="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-bold flex items-center gap-1">
+          <span class="material-icons-round text-sm">refresh</span>
+          <span>تحديث الأقسام</span>
+        </button>
+      </div>
+      <div id="excel-entities-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div class="col-span-full p-8 text-center text-slate-400 text-xs">جاري تحميل الأقسام المتاحة...</div>
+      </div>
+    </div>
+  </section>
 </main>
 
 <script src="i18n.js"></script>
@@ -977,7 +1003,7 @@ let PENDING_LOGO = null;
 
 function switchSettingsTab(tabId) {
   ACTIVE_STAB = tabId;
-  ['store', 'login', 'invoices', 'backups', 'audit', 'translations'].forEach((id) => {
+  ['store', 'login', 'invoices', 'backups', 'audit', 'translations', 'excel'].forEach((id) => {
     const pane = $('spane-' + id);
     if (pane) pane.classList.toggle('hidden', id !== tabId);
   });
@@ -988,6 +1014,7 @@ function switchSettingsTab(tabId) {
   if (tabId === 'backups') loadBackupsList();
   if (tabId === 'audit') loadAuditLogList();
   if (tabId === 'translations') loadTranslationsList();
+  if (tabId === 'excel') loadExcelHub();
 }
 
 document.querySelectorAll('[data-stab]').forEach((btn) => {
@@ -1905,6 +1932,52 @@ if ($('tr-q')) $('tr-q').addEventListener('input', () => { clearTimeout(window._
 if ($('tr-sec-filter')) $('tr-sec-filter').addEventListener('change', loadTranslationsList);
 if ($('tr-untranslated-only')) $('tr-untranslated-only').addEventListener('change', loadTranslationsList);
 
+
+/* ==================== 7) تبويب مركز الاستيراد والتصدير الشامل لملفات Excel ==================== */
+async function loadExcelHub() {
+  const grid = $('excel-entities-grid');
+  if (!grid) return;
+  const rows = await guard(() => api('excel_entities_list'));
+  if (!rows) return;
+  grid.innerHTML = rows.length ? rows.map((e) => `
+    <div class="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 flex flex-col justify-between gap-3">
+      <div class="flex items-start justify-between gap-2">
+        <div>
+          <h3 class="text-sm font-bold text-slate-900 dark:text-white">${esc(e.title_ar)}</h3>
+          <p class="text-[11px] text-slate-500 mt-0.5">${e.can_import ? 'يدعم التصدير + الاستيراد + قالب جاهز' : 'يدعم التصدير إلى Excel (.xlsx)'}</p>
+        </div>
+        <span class="px-2.5 py-1 rounded-full text-xs font-num font-bold bg-primary/10 text-primary">${n(e.count || 0)} سجل</span>
+      </div>
+      <div class="text-[10px] text-slate-400 leading-relaxed truncate" title="${esc((e.headers || []).join(' • '))}">الأعمدة: ${esc((e.headers || []).slice(0, 5).join(' • '))}</div>
+      <div class="flex flex-wrap items-center gap-2 pt-1">
+        <button type="button" data-xl-exp="${esc(e.key)}" class="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1">
+          <span class="material-icons-round text-sm">download</span>
+          <span>تصدير Excel</span>
+        </button>
+        ${e.can_import ? `
+          <button type="button" data-xl-tpl="${esc(e.key)}" class="py-2 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:border-primary text-xs font-bold" title="تحميل قالب فارغ للتعبئة">قالب</button>
+          <button type="button" data-xl-imp="${esc(e.key)}" class="flex-1 py-2 px-3 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-bold flex items-center justify-center gap-1">
+            <span class="material-icons-round text-sm">upload_file</span>
+            <span>استيراد Excel</span>
+          </button>
+        ` : ''}
+      </div>
+    </div>
+  `).join('') : '<div class="col-span-full p-8 text-center text-slate-400 text-xs">لا توجد أقسام متاحة حالياً</div>';
+
+  grid.querySelectorAll('[data-xl-exp]').forEach((b) => b.addEventListener('click', () => tzExcelExportEntity(b.dataset.xlExp)));
+  grid.querySelectorAll('[data-xl-tpl]').forEach((b) => b.addEventListener('click', () => tzExcelDownloadTemplate(b.dataset.xlTpl)));
+  grid.querySelectorAll('[data-xl-imp]').forEach((b) => b.addEventListener('click', () => {
+    tzExcelPickAndImport(b.dataset.xlImp, () => {
+      loadExcelHub();
+      if (b.dataset.xlImp === 'translations' && window.TZI18N && window.TZI18N.reloadCustomTranslations) {
+        window.TZI18N.reloadCustomTranslations();
+      }
+    });
+  }));
+}
+if ($('btn-excel-refresh')) $('btn-excel-refresh').addEventListener('click', loadExcelHub);
+
 (async () => {
   const user = await pageInit('settings', { perm: ['settings_view_edit', 'templates_manage', 'backups_manage'] });
   if (!user) return;
@@ -1938,6 +2011,7 @@ if ($('tr-untranslated-only')) $('tr-untranslated-only').addEventListener('chang
     canBackups ? 'backups' : null,
     canStore ? 'audit' : null,
     canStore ? 'translations' : null,
+    canStore ? 'excel' : null,
   ].filter(Boolean);
   const reqTab = new URLSearchParams(location.search).get('tab');
   if (reqTab && allowedTabs.includes(reqTab)) {

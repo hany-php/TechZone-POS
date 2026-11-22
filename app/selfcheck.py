@@ -2125,6 +2125,64 @@ check("Translation Manager scans project strings, saves custom translations & se
       and "spane-translations" in (ROOT / "web" / "settings.html").read_text(encoding="utf-8")
       and "isLtr ? (18 + col * 108)" in (ROOT / "web" / "desktop.html").read_text(encoding="utf-8"))
 
+
+# ف) فحص محرك الاستيراد والتصدير الشامل لملفات Excel (.xlsx / .csv) لجميع الأقسام
+_xl_ents = call(a, "excel_entities_list")
+_xl_tpl_p = call(a, "excel_template", {"entity": "products"})
+_xl_exp_p = call(a, "excel_export", {"entity": "products"})
+_xl_exp_c = call(a, "excel_export", {"entity": "categories"})
+import base64 as _b64_xl
+_csv_cats = "اسم التصنيف\nتصنيف اكسل جديد 1\nتصنيف اكسل جديد 2\n".encode("utf-8-sig")
+_imp_cats = call(a, "excel_import", {"entity": "categories", "file_base64": _b64_xl.b64encode(_csv_cats).decode(), "filename": "cats.csv"})
+_imp_prods = call(a, "excel_import", {"entity": "products", "file_base64": _xl_tpl_p["data"]["base64_data"], "filename": "template_products.xlsx"})
+_csv_custs = "اسم العميل,رقم الهاتف,حد الائتمان\nعميل اكسل اختبار,01055544433,2500\n".encode("utf-8-sig")
+_imp_custs = call(a, "excel_import", {"entity": "customers", "file_base64": _b64_xl.b64encode(_csv_custs).decode(), "filename": "custs.csv"})
+check("Universal Excel Import/Export (.xlsx & .csv) works for products, categories, customers & lists active modules only",
+      _xl_ents["ok"] and len(_xl_ents["data"]) >= 6
+      and _xl_tpl_p["ok"] and pathlib.Path(_xl_tpl_p["data"]["file_path"]).exists()
+      and _xl_exp_p["ok"] and pathlib.Path(_xl_exp_p["data"]["file_path"]).exists()
+      and _xl_exp_c["ok"]
+      and _imp_cats["ok"] and _imp_cats["data"]["inserted"] == 2
+      and _imp_prods["ok"] and _imp_prods["data"]["inserted"] >= 1
+      and _imp_custs["ok"] and _imp_custs["data"]["inserted"] == 1
+      and "spane-excel" in (ROOT / "web" / "settings.html").read_text(encoding="utf-8")
+      and "modal-inv-excel" in (ROOT / "web" / "inventory.html").read_text(encoding="utf-8"))
+
+# ف2) فحص معاينة التصدير وتحديد الصفوف/الأعمدة + معاينة ومقارنة الاستيراد (Diff) + ربط نافذة الحفظ الأصلية
+_xl_prev_exp = call(a, "excel_export_preview", {"entity": "products"})
+_xl_sel_exp = call(a, "excel_export", {"entity": "products", "selected_indices": [0], "selected_columns": [0, 1], "prompt_save": False})
+from api_excel import _parse_xlsx_bytes as _parse_xl_chk
+_parsed_sel = _parse_xl_chk(_b64_xl.b64decode(_xl_sel_exp["data"]["base64_data"]))
+_csv_diff_prods = (
+    "الكود / SKU,اسم المنتج,التصنيف,سعر البيع,التكلفة,الكمية,الحد الأدنى\n"
+    "SKU-1001,شاحن سريع 65 واط مطور,إكسسوارات,520,310,20,3\n"
+    "SKU-NEW-99,كابل شحن جديد 100 واط,كابلات حديثة,180,95,12,2\n"
+    "SKU-SKIP-88,منتج غير محدد للاستيراد,إكسسوارات,90,40,5,1\n"
+    "SKU-BAD-00,,إكسسوارات,100,50,1,1\n"
+).encode("utf-8-sig")
+_b64_diff = _b64_xl.b64encode(_csv_diff_prods).decode()
+_xl_prev_imp = call(a, "excel_import_preview", {"entity": "products", "file_base64": _b64_diff, "filename": "diff_test.csv"})
+_xl_imp_sel = call(a, "excel_import", {"entity": "products", "file_base64": _b64_diff, "filename": "diff_test.csv", "selected_indices": [0, 1]})
+_prev_rows = _xl_prev_imp["data"]["rows"] if _xl_prev_imp["ok"] else []
+_upd_row = next((r for r in _prev_rows if r["status"] == "update"), None)
+_app_js_xl = (ROOT / "web" / "app.js").read_text(encoding="utf-8")
+_main_py_xl = (ROOT / "app" / "main.py").read_text(encoding="utf-8")
+check("Excel Export Preview, Selective Row/Col Export, Import Diff Preview & Selective Import + Save Dialog wiring",
+      _xl_prev_exp["ok"] and _xl_prev_exp["data"]["total"] >= 1
+      and _xl_sel_exp["ok"] and _xl_sel_exp["data"]["rows_count"] == 1
+      and len(_parsed_sel) == 2 and len(_parsed_sel[0]) == 2
+      and _xl_prev_imp["ok"]
+      and _xl_prev_imp["data"]["summary"]["update"] >= 1
+      and _xl_prev_imp["data"]["summary"]["new"] >= 2
+      and _xl_prev_imp["data"]["summary"]["error"] == 1
+      and _upd_row is not None and any(d["field"] == "سعر البيع" and d["old"] == "450.00" and d["new"] == "520.00" for d in _upd_row["diffs"])
+      and _xl_imp_sel["ok"] and _xl_imp_sel["data"]["updated"] == 1 and _xl_imp_sel["data"]["inserted"] == 1 and _xl_imp_sel["data"]["skipped"] >= 2
+      and "tz-excel-studio-modal" in _app_js_xl
+      and "excel_export_preview" in _app_js_xl
+      and "excel_import_preview" in _app_js_xl
+      and '_STATE["window"] = window' in _main_py_xl)
+
+
 check("all documentation files enforce Modular Plug-and-Play rule & document latest features",
       all(df.exists() and "Modular Plug-and-Play" in df.read_text(encoding="utf-8") for df in _required_doc_files)
       and all(tok in (ROOT / "AGENTS.md").read_text(encoding="utf-8") for tok in ("close_exit_app", "_hidden_desktop", "sales_cogs", "account_move", "report_comprehensive", "tzGenerateBarcodeSvg", "verify_lock_pin", "activity_audit_list", "db_optimize_images"))

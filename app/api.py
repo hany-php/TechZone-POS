@@ -18,6 +18,7 @@ from api_common import (  # noqa: F401
     _upsert_customer,
 )
 from api_accounting import AccountingMixin
+from api_excel import ExcelMixin
 from api_auth import AuthSettingsMixin
 from api_customers import CustomersMixin
 from api_installments import InstallmentsMixin
@@ -39,6 +40,7 @@ class Api(
     InstallmentsMixin,
     PurchasesMixin,
     AccountingMixin,
+    ExcelMixin,
     SalesMixin,
     QuotesMixin,
     ServicesMixin,

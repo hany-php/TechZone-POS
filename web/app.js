@@ -1856,3 +1856,458 @@ function tzImgSrc(val) {
   }
   return '../data/images/' + s.replace(/^\/+/, '');
 }
+
+/* ===== دوال مساعدة موحدة لتحميل ومعاينة ومقارنة وتصدير واستيراد ملفات Excel (.xlsx / .csv) لجميع الأقسام ===== */
+function tzDownloadBase64Xlsx(b64, filename) {
+  try {
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename || 'export.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 300);
+  } catch (e) {}
+}
+
+function _ensureTzExcelStudioModal() {
+  let el = document.getElementById('tz-excel-studio-modal');
+  if (el) return el;
+  el = document.createElement('div');
+  el.id = 'tz-excel-studio-modal';
+  el.className = 'fixed inset-0 z-[1200] bg-slate-950/60 backdrop-blur-sm hidden items-center justify-center p-3 md:p-5';
+  el.innerHTML = `
+    <div class="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 w-full max-w-[1180px] max-h-[90vh] rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden">
+      <div class="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 bg-slate-50/90 dark:bg-slate-800/70">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div id="tz-xls-icon-box" class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
+            <span id="tz-xls-icon" class="material-icons-round text-xl">table_view</span>
+          </div>
+          <div class="min-w-0">
+            <h3 id="tz-xls-title" class="text-sm md:text-base font-extrabold truncate">معاينة ملف Excel</h3>
+            <p id="tz-xls-sub" class="text-[11px] text-slate-500 dark:text-slate-400 truncate"></p>
+          </div>
+        </div>
+        <button type="button" id="tz-xls-close" class="w-8 h-8 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center text-slate-500 shrink-0" title="إغلاق">
+          <span class="material-icons-round text-lg">close</span>
+        </button>
+      </div>
+
+      <div id="tz-xls-summary" class="px-5 py-3 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center gap-2 bg-white dark:bg-slate-900"></div>
+
+      <div id="tz-xls-cols-bar" class="hidden px-5 py-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 flex flex-wrap items-center gap-2 text-xs"></div>
+
+      <div class="px-5 py-2.5 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 bg-white dark:bg-slate-900">
+        <div class="flex items-center gap-2 flex-1 min-w-[220px] max-w-md">
+          <span class="material-icons-round text-slate-400 text-base">search</span>
+          <input id="tz-xls-search" type="text" class="w-full px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="ابحث في العناصر..."/>
+        </div>
+        <div id="tz-xls-actions" class="flex flex-wrap items-center gap-1.5"></div>
+      </div>
+
+      <div id="tz-xls-table-wrap" class="flex-1 overflow-auto">
+        <table class="w-full text-right text-xs border-collapse">
+          <thead id="tz-xls-thead" class="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold border-b border-slate-200 dark:border-slate-700"></thead>
+          <tbody id="tz-xls-tbody" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody>
+        </table>
+      </div>
+
+      <div class="px-5 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-800/70 flex flex-wrap items-center justify-between gap-3">
+        <div id="tz-xls-foot-note" class="text-xs font-bold text-slate-600 dark:text-slate-300"></div>
+        <div class="flex items-center gap-2">
+          <button type="button" id="tz-xls-cancel" class="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-bold">إلغاء</button>
+          <button type="button" id="tz-xls-confirm" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"></button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(el);
+
+  const closeFn = () => {
+    el.classList.add('hidden');
+    el.classList.remove('flex');
+  };
+  el.querySelector('#tz-xls-close').addEventListener('click', closeFn);
+  el.querySelector('#tz-xls-cancel').addEventListener('click', closeFn);
+  el.addEventListener('click', (ev) => {
+    if (ev.target === el) closeFn();
+  });
+  return el;
+}
+
+function _closeTzExcelStudioModal() {
+  const el = document.getElementById('tz-excel-studio-modal');
+  if (el) {
+    el.classList.add('hidden');
+    el.classList.remove('flex');
+  }
+}
+
+async function tzExcelExportEntity(entity) {
+  const preview = await guard(() => api('excel_export_preview', { entity }));
+  if (!preview) return null;
+  const rows = preview.rows || [];
+  if (!rows.length) {
+    toast('لا توجد بيانات حالياً في هذا القسم للتصدير', 'warn');
+    return null;
+  }
+
+  const modal = _ensureTzExcelStudioModal();
+  const isEn = typeof tzLang === 'function' && tzLang() === 'en';
+  const titleText = isEn ? (preview.title_en || preview.title_ar) : preview.title_ar;
+  modal.querySelector('#tz-xls-icon').textContent = 'file_download';
+  modal.querySelector('#tz-xls-icon-box').className = 'w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0';
+  modal.querySelector('#tz-xls-title').textContent = isEn ? `Export Preview — ${titleText}` : `معاينة وتحديد عناصر التصدير — ${titleText}`;
+  modal.querySelector('#tz-xls-sub').textContent = isEn
+    ? 'Select the rows and columns to export, then choose where to save the Excel (.xlsx) file'
+    : 'حدّد الصفوف والأعمدة التي تريد تصديرها، ثم اضغط حفظ لاختيار مكان حفظ ملف Excel (.xlsx)';
+
+  const headers = preview.headers || [];
+  const selectedRows = new Set(rows.map((r) => r.idx));
+  const selectedCols = new Set(headers.map((_, i) => i));
+  let searchTerm = '';
+
+  const searchInp = modal.querySelector('#tz-xls-search');
+  searchInp.value = '';
+  const summaryEl = modal.querySelector('#tz-xls-summary');
+  const colsBarEl = modal.querySelector('#tz-xls-cols-bar');
+  const actionsEl = modal.querySelector('#tz-xls-actions');
+  const theadEl = modal.querySelector('#tz-xls-thead');
+  const tbodyEl = modal.querySelector('#tz-xls-tbody');
+  const footNoteEl = modal.querySelector('#tz-xls-foot-note');
+  const confirmBtn = modal.querySelector('#tz-xls-confirm');
+
+  const getFiltered = () => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) => (r.cells || []).some((c) => String(c == null ? '' : c).toLowerCase().includes(q)));
+  };
+
+  const renderColsBar = () => {
+    colsBarEl.classList.remove('hidden');
+    colsBarEl.innerHTML = `<span class="font-bold text-slate-500 shrink-0">${isEn ? 'Columns:' : 'الأعمدة المصدرة:'}</span>` + headers.map((h, i) => `
+      <label class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border cursor-pointer select-none ${selectedCols.has(i) ? 'bg-primary/10 border-primary/40 text-primary font-bold' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-500'}">
+        <input type="checkbox" data-xl-col="${i}" class="w-3.5 h-3.5 accent-blue-600" ${selectedCols.has(i) ? 'checked' : ''}/>
+        <span>${esc(h)}</span>
+      </label>
+    `).join('');
+    colsBarEl.querySelectorAll('[data-xl-col]').forEach((cb) => {
+      cb.addEventListener('change', () => {
+        const ci = parseInt(cb.dataset.xlCol, 10);
+        if (cb.checked) selectedCols.add(ci);
+        else if (selectedCols.size > 1) selectedCols.delete(ci);
+        else cb.checked = true;
+        renderColsBar();
+        renderTable();
+      });
+    });
+  };
+
+  const renderTable = () => {
+    const filtered = getFiltered();
+    const activeCols = headers.map((h, i) => ({ h, i })).filter((x) => selectedCols.has(x.i));
+
+    summaryEl.innerHTML = `
+      <span class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-bold">${isEn ? 'Total:' : 'إجمالي السجلات:'} <b class="font-num">${rows.length}</b></span>
+      <span class="px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs font-bold">${isEn ? 'Selected:' : 'المحدد للتصدير:'} <b class="font-num">${selectedRows.size}</b></span>
+      <span class="px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-xs font-bold">${isEn ? 'Columns:' : 'الأعمدة:'} <b class="font-num">${activeCols.length}/${headers.length}</b></span>
+      ${searchTerm.trim() ? `<span class="px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-xs font-bold">${isEn ? 'Shown:' : 'نتائج البحث:'} <b class="font-num">${filtered.length}</b></span>` : ''}
+    `;
+
+    actionsEl.innerHTML = `
+      <button type="button" id="tz-xls-sel-vis" class="px-2.5 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 text-[11px] font-bold">${isEn ? 'Select Shown' : 'تحديد الظاهر'}</button>
+      <button type="button" id="tz-xls-sel-all" class="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-[11px] font-bold">${isEn ? 'Select All' : 'تحديد الكل'}</button>
+      <button type="button" id="tz-xls-sel-none" class="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-[11px] font-bold">${isEn ? 'Clear' : 'إلغاء التحديد'}</button>
+    `;
+    actionsEl.querySelector('#tz-xls-sel-vis').onclick = () => { filtered.forEach((r) => selectedRows.add(r.idx)); renderTable(); };
+    actionsEl.querySelector('#tz-xls-sel-all').onclick = () => { rows.forEach((r) => selectedRows.add(r.idx)); renderTable(); };
+    actionsEl.querySelector('#tz-xls-sel-none').onclick = () => { selectedRows.clear(); renderTable(); };
+
+    const allVisSelected = filtered.length > 0 && filtered.every((r) => selectedRows.has(r.idx));
+    theadEl.innerHTML = `
+      <tr>
+        <th class="p-2.5 w-10 text-center"><input id="tz-xls-chk-head" type="checkbox" class="w-4 h-4 accent-emerald-600" ${allVisSelected ? 'checked' : ''}/></th>
+        <th class="p-2.5 w-12 text-center">#</th>
+        ${activeCols.map((c) => `<th class="p-2.5 whitespace-nowrap">${esc(c.h)}</th>`).join('')}
+      </tr>
+    `;
+    theadEl.querySelector('#tz-xls-chk-head').onchange = (ev) => {
+      filtered.forEach((r) => { if (ev.target.checked) selectedRows.add(r.idx); else selectedRows.delete(r.idx); });
+      renderTable();
+    };
+
+    const MAX_RENDER = 500;
+    const slice = filtered.slice(0, MAX_RENDER);
+    tbodyEl.innerHTML = slice.length
+      ? slice.map((r, pos) => {
+          const checked = selectedRows.has(r.idx);
+          return `
+            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/60 ${checked ? '' : 'opacity-50'}">
+              <td class="p-2 text-center"><input type="checkbox" data-xl-row="${r.idx}" class="w-4 h-4 accent-emerald-600" ${checked ? 'checked' : ''}/></td>
+              <td class="p-2 text-center font-num text-slate-400">${pos + 1}</td>
+              ${activeCols.map((c) => `<td class="p-2 whitespace-nowrap max-w-[260px] truncate" title="${esc(r.cells[c.i] ?? '')}">${esc(r.cells[c.i] ?? '')}</td>`).join('')}
+            </tr>
+          `;
+        }).join('') + (filtered.length > MAX_RENDER ? `<tr><td colspan="${activeCols.length + 2}" class="p-3 text-center text-slate-400 font-bold">يتم عرض أول ${MAX_RENDER} صف للمعاينة السريعة (سيتم تصدير جميع الصفوف المحددة: ${selectedRows.size})</td></tr>` : '')
+      : `<tr><td colspan="${activeCols.length + 2}" class="p-8 text-center text-slate-400">لا توجد نتائج مطابقة للبحث</td></tr>`;
+
+    tbodyEl.querySelectorAll('[data-xl-row]').forEach((cb) => {
+      cb.onchange = () => {
+        const ri = parseInt(cb.dataset.xlRow, 10);
+        if (cb.checked) selectedRows.add(ri);
+        else selectedRows.delete(ri);
+        renderTable();
+      };
+    });
+
+    footNoteEl.textContent = isEn
+      ? `Ready to save ${selectedRows.size} of ${rows.length} rows`
+      : `جاهز لحفظ ${selectedRows.size} من أصل ${rows.length} عنصر في ملف Excel (.xlsx)`;
+    confirmBtn.disabled = selectedRows.size === 0;
+    confirmBtn.className = 'px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed';
+    confirmBtn.innerHTML = `<span class="material-icons-round text-sm">save_as</span><span>${isEn ? `Save Excel (${selectedRows.size})...` : `حفظ الملف (${selectedRows.size} عنصر)...`}</span>`;
+  };
+
+  searchInp.oninput = () => { searchTerm = searchInp.value; renderTable(); };
+  confirmBtn.onclick = async () => {
+    confirmBtn.disabled = true;
+    const res = await guard(() => api('excel_export', {
+      entity,
+      selected_indices: Array.from(selectedRows).sort((a, b) => a - b),
+      selected_columns: Array.from(selectedCols).sort((a, b) => a - b),
+      prompt_save: true,
+    }));
+    confirmBtn.disabled = false;
+    if (!res) return;
+    if (res.cancelled) {
+      toast(isEn ? 'Save cancelled' : 'تم إلغاء حفظ الملف', 'info');
+      return;
+    }
+    _closeTzExcelStudioModal();
+    if (res.saved_via_dialog) {
+      toast(isEn ? `Saved ${res.rows_count} rows to: ${res.file_path}` : `تم حفظ ${res.rows_count || 0} عنصر بنجاح في: ${res.file_path}`, 'success');
+    } else {
+      if (res.base64_data) tzDownloadBase64Xlsx(res.base64_data, res.file_name);
+      toast(`تم تصدير ${res.rows_count || 0} عنصر إلى ملف Excel (${res.file_name})`, 'success');
+    }
+  };
+
+  renderColsBar();
+  renderTable();
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+  return preview;
+}
+
+async function tzExcelDownloadTemplate(entity) {
+  const isEn = typeof tzLang === 'function' && tzLang() === 'en';
+  const res = await guard(() => api('excel_template', { entity, prompt_save: true }));
+  if (!res) return null;
+  if (res.cancelled) {
+    toast(isEn ? 'Template save cancelled' : 'تم إلغاء حفظ القالب', 'info');
+    return res;
+  }
+  if (res.saved_via_dialog) {
+    toast(isEn ? `Template saved to: ${res.file_path}` : `تم حفظ قالب Excel بنجاح في: ${res.file_path}`, 'success');
+  } else {
+    if (res.base64_data) tzDownloadBase64Xlsx(res.base64_data, res.file_name);
+    toast(`تم تحميل قالب Excel الجاهز (${res.file_name})`, 'success');
+  }
+  return res;
+}
+
+function tzExcelPickAndImport(entity, onDone = null) {
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = '.xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv';
+  inp.addEventListener('change', async () => {
+    const file = inp.files && inp.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const dataUrl = String(reader.result || '');
+      const preview = await guard(() => api('excel_import_preview', { entity, file_base64: dataUrl, filename: file.name }));
+      if (!preview) return;
+      _openTzExcelImportPreview(preview, dataUrl, file.name, onDone);
+    };
+    reader.readAsDataURL(file);
+  });
+  inp.click();
+}
+
+function _openTzExcelImportPreview(preview, dataUrl, filename, onDone = null) {
+  const modal = _ensureTzExcelStudioModal();
+  const isEn = typeof tzLang === 'function' && tzLang() === 'en';
+  const titleText = isEn ? (preview.title_en || preview.title_ar) : preview.title_ar;
+
+  modal.querySelector('#tz-xls-icon').textContent = 'compare_arrows';
+  modal.querySelector('#tz-xls-icon-box').className = 'w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center shrink-0';
+  modal.querySelector('#tz-xls-title').textContent = isEn ? `Import Preview & Comparison — ${titleText}` : `معاينة ومقارنة الاستيراد — ${titleText}`;
+  modal.querySelector('#tz-xls-sub').textContent = `${filename} — ${isEn ? 'Compare changes with database and select rows to import' : 'قارن التعديلات مع قاعدة البيانات الحالية وحدّد العناصر التي ترغب في استيرادها'}`;
+
+  const rows = preview.rows || [];
+  const headers = preview.headers || [];
+  const sum = preview.summary || { total: rows.length, new: 0, update: 0, unchanged: 0, error: 0 };
+
+  // افتراضياً نحدد العناصر الجديدة والمعدلة فقط (ونترك المطابقة بدون تحديد)
+  const selectedRows = new Set(rows.filter((r) => r.status === 'new' || r.status === 'update').map((r) => r.row_idx));
+  let statusFilter = 'all';
+  let searchTerm = '';
+
+  const searchInp = modal.querySelector('#tz-xls-search');
+  searchInp.value = '';
+  const summaryEl = modal.querySelector('#tz-xls-summary');
+  const colsBarEl = modal.querySelector('#tz-xls-cols-bar');
+  colsBarEl.classList.add('hidden');
+  colsBarEl.innerHTML = '';
+  const actionsEl = modal.querySelector('#tz-xls-actions');
+  const theadEl = modal.querySelector('#tz-xls-thead');
+  const tbodyEl = modal.querySelector('#tz-xls-tbody');
+  const footNoteEl = modal.querySelector('#tz-xls-foot-note');
+  const confirmBtn = modal.querySelector('#tz-xls-confirm');
+
+  const getFiltered = () => {
+    const q = searchTerm.trim().toLowerCase();
+    return rows.filter((r) => {
+      if (statusFilter !== 'all' && r.status !== statusFilter) return false;
+      if (!q) return true;
+      const inCells = (r.cells || []).some((c) => String(c == null ? '' : c).toLowerCase().includes(q));
+      const inNote = String(r.note || '').toLowerCase().includes(q);
+      const inDiff = (r.diffs || []).some((d) => `${d.field} ${d.old} ${d.new}`.toLowerCase().includes(q));
+      return inCells || inNote || inDiff;
+    });
+  };
+
+  const statusMeta = {
+    new: { ar: 'جديد', en: 'New', cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' },
+    update: { ar: 'تعديل ومقارنة', en: 'Changed', cls: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' },
+    unchanged: { ar: 'مطابق', en: 'Unchanged', cls: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' },
+    error: { ar: 'خطأ', en: 'Error', cls: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300' },
+  };
+
+  const renderTable = () => {
+    const filtered = getFiltered();
+    const pills = [
+      { k: 'all', lbl: isEn ? `All (${sum.total})` : `الكل (${sum.total})`, activeCls: 'bg-slate-800 text-white dark:bg-white dark:text-slate-900', idleCls: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200' },
+      { k: 'new', lbl: isEn ? `New (${sum.new})` : `جديد (${sum.new})`, activeCls: 'bg-emerald-600 text-white', idleCls: 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300' },
+      { k: 'update', lbl: isEn ? `Changed (${sum.update})` : `تعديل ومقارنة (${sum.update})`, activeCls: 'bg-amber-600 text-white', idleCls: 'bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300' },
+      { k: 'unchanged', lbl: isEn ? `Unchanged (${sum.unchanged})` : `مطابق (${sum.unchanged})`, activeCls: 'bg-slate-600 text-white', idleCls: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300' },
+      { k: 'error', lbl: isEn ? `Errors (${sum.error})` : `أخطاء (${sum.error})`, activeCls: 'bg-rose-600 text-white', idleCls: 'bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300' },
+    ];
+    summaryEl.innerHTML = pills.map((p) => `
+      <button type="button" data-xl-flt="${p.k}" class="px-3 py-1.5 rounded-full text-xs font-bold transition ${statusFilter === p.k ? p.activeCls : p.idleCls}">${p.lbl}</button>
+    `).join('');
+    summaryEl.querySelectorAll('[data-xl-flt]').forEach((b) => {
+      b.onclick = () => { statusFilter = b.dataset.xlFlt; renderTable(); };
+    });
+
+    actionsEl.innerHTML = `
+      <button type="button" id="tz-xls-imp-nu" class="px-2.5 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 text-[11px] font-bold">${isEn ? 'New & Changed' : 'تحديد الجديد والمعدل'}</button>
+      <button type="button" id="tz-xls-imp-all" class="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-[11px] font-bold">${isEn ? 'All Valid' : 'تحديد الكل الصالح'}</button>
+      <button type="button" id="tz-xls-imp-none" class="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-[11px] font-bold">${isEn ? 'Clear' : 'إلغاء التحديد'}</button>
+    `;
+    actionsEl.querySelector('#tz-xls-imp-nu').onclick = () => {
+      selectedRows.clear();
+      rows.forEach((r) => { if (r.status === 'new' || r.status === 'update') selectedRows.add(r.row_idx); });
+      renderTable();
+    };
+    actionsEl.querySelector('#tz-xls-imp-all').onclick = () => {
+      rows.forEach((r) => { if (r.status !== 'error') selectedRows.add(r.row_idx); });
+      renderTable();
+    };
+    actionsEl.querySelector('#tz-xls-imp-none').onclick = () => { selectedRows.clear(); renderTable(); };
+
+    const validFiltered = filtered.filter((r) => r.status !== 'error');
+    const allVisSelected = validFiltered.length > 0 && validFiltered.every((r) => selectedRows.has(r.row_idx));
+    theadEl.innerHTML = `
+      <tr>
+        <th class="p-2.5 w-10 text-center"><input id="tz-xls-chk-head" type="checkbox" class="w-4 h-4 accent-blue-600" ${allVisSelected ? 'checked' : ''}/></th>
+        <th class="p-2.5 w-12 text-center">${isEn ? 'Row' : 'صف'}</th>
+        <th class="p-2.5 whitespace-nowrap">${isEn ? 'Status' : 'الحالة'}</th>
+        <th class="p-2.5 min-w-[230px]">${isEn ? 'Comparison (Current → New)' : 'المقارنة والتغييرات (الحالي ← الجديد)'}</th>
+        ${headers.map((h) => `<th class="p-2.5 whitespace-nowrap">${esc(h)}</th>`).join('')}
+      </tr>
+    `;
+    theadEl.querySelector('#tz-xls-chk-head').onchange = (ev) => {
+      validFiltered.forEach((r) => { if (ev.target.checked) selectedRows.add(r.row_idx); else selectedRows.delete(r.row_idx); });
+      renderTable();
+    };
+
+    const MAX_RENDER = 500;
+    const slice = filtered.slice(0, MAX_RENDER);
+    tbodyEl.innerHTML = slice.length
+      ? slice.map((r) => {
+          const sm = statusMeta[r.status] || statusMeta.unchanged;
+          const isErr = r.status === 'error';
+          const checked = !isErr && selectedRows.has(r.row_idx);
+          let compHtml = '';
+          if (r.status === 'update' && r.diffs && r.diffs.length) {
+            compHtml = `<div class="flex flex-col gap-1">` + r.diffs.map((d) => `
+              <div class="text-[11px] leading-snug bg-amber-50/70 dark:bg-amber-900/20 px-2 py-0.5 rounded border border-amber-200/70 dark:border-amber-800/60">
+                <b class="text-slate-700 dark:text-slate-200">${esc(d.field)}:</b>
+                <span class="line-through text-rose-600 dark:text-rose-400 mx-1">${esc(d.old)}</span>
+                <span class="text-slate-400">←</span>
+                <span class="font-extrabold text-emerald-700 dark:text-emerald-400 mx-1">${esc(d.new)}</span>
+              </div>
+            `).join('') + (r.note ? `<div class="text-[10px] text-blue-600 font-bold">${esc(r.note)}</div>` : '') + `</div>`;
+          } else if (r.status === 'new') {
+            compHtml = `<span class="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">${esc(r.note || (isEn ? 'New record' : 'إضافة سجل جديد'))}</span>`;
+          } else if (r.status === 'error') {
+            compHtml = `<span class="text-[11px] font-bold text-rose-600 dark:text-rose-400">${esc(r.note || (isEn ? 'Invalid row' : 'بيانات غير صالحة'))}</span>`;
+          } else {
+            compHtml = `<span class="text-[11px] text-slate-400">${esc(r.note || (isEn ? 'Matches existing record' : 'مطابق لقاعدة البيانات'))}</span>`;
+          }
+          return `
+            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/60 ${isErr ? 'bg-rose-50/40 dark:bg-rose-950/20' : (checked ? '' : 'opacity-55')}">
+              <td class="p-2 text-center"><input type="checkbox" data-xl-row="${r.row_idx}" class="w-4 h-4 accent-blue-600" ${checked ? 'checked' : ''} ${isErr ? 'disabled' : ''}/></td>
+              <td class="p-2 text-center font-num text-slate-400">${r.line_no}</td>
+              <td class="p-2 whitespace-nowrap"><span class="px-2 py-0.5 rounded-full text-[11px] font-bold ${sm.cls}">${isEn ? sm.en : sm.ar}</span></td>
+              <td class="p-2">${compHtml}</td>
+              ${headers.map((_, ci) => `<td class="p-2 whitespace-nowrap max-w-[220px] truncate" title="${esc((r.cells && r.cells[ci]) ?? '')}">${esc((r.cells && r.cells[ci]) ?? '')}</td>`).join('')}
+            </tr>
+          `;
+        }).join('') + (filtered.length > MAX_RENDER ? `<tr><td colspan="${headers.length + 4}" class="p-3 text-center text-slate-400 font-bold">يتم عرض أول ${MAX_RENDER} صف للمعاينة السريعة (سيتم استيراد جميع الصفوف المحددة: ${selectedRows.size})</td></tr>` : '')
+      : `<tr><td colspan="${headers.length + 4}" class="p-8 text-center text-slate-400">لا توجد صفوف مطابقة للفلتر أو البحث</td></tr>`;
+
+    tbodyEl.querySelectorAll('[data-xl-row]').forEach((cb) => {
+      cb.onchange = () => {
+        const ri = parseInt(cb.dataset.xlRow, 10);
+        if (cb.checked) selectedRows.add(ri);
+        else selectedRows.delete(ri);
+        renderTable();
+      };
+    });
+
+    footNoteEl.textContent = isEn
+      ? `Selected ${selectedRows.size} of ${rows.length} rows to import`
+      : `تم تحديد ${selectedRows.size} عنصر للاستيراد (جديد: ${sum.new} | تعديل: ${sum.update} | مطابق: ${sum.unchanged})`;
+    confirmBtn.disabled = selectedRows.size === 0;
+    confirmBtn.className = 'px-5 py-2 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-extrabold flex items-center gap-1.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed';
+    confirmBtn.innerHTML = `<span class="material-icons-round text-sm">check_circle</span><span>${isEn ? `Confirm Import (${selectedRows.size})` : `تأكيد واستيراد المحدد (${selectedRows.size})`}</span>`;
+  };
+
+  searchInp.oninput = () => { searchTerm = searchInp.value; renderTable(); };
+  confirmBtn.onclick = async () => {
+    confirmBtn.disabled = true;
+    const res = await guard(() => api('excel_import', {
+      entity: preview.entity,
+      file_base64: dataUrl,
+      filename,
+      selected_indices: Array.from(selectedRows).sort((a, b) => a - b),
+    }));
+    confirmBtn.disabled = false;
+    if (!res) return;
+    _closeTzExcelStudioModal();
+    const errPart = (res.errors && res.errors.length) ? ` — تنبيهات: ${res.errors.length}` : '';
+    toast(`تم الاستيراد بنجاح: إضافة ${res.inserted} | تحديث ${res.updated} | تخطي ${res.skipped}${errPart}`, res.errors && res.errors.length ? 'warn' : 'success');
+    if (typeof onDone === 'function') onDone(res);
+  };
+
+  renderTable();
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+}

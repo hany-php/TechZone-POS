@@ -270,6 +270,7 @@ def main():
         maximized=not start_in_tray,
         hidden=start_in_tray,
     )
+    _STATE["window"] = window
 
     def _on_window_shown():
         _setup_winforms_tray(window, icon_path, start_hidden=False)
@@ -295,6 +296,7 @@ def main():
         _dispose_tray_icon()
         _STATE["owner"] = None
         _STATE["user"] = None
+        _STATE["window"] = None
 
     window.events.shown += _on_window_shown
     window.events.closing += _on_window_closing
