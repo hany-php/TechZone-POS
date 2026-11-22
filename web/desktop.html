@@ -575,6 +575,18 @@
     box-shadow: 0 30px 70px -10px rgba(0, 0, 0, 0.65);
   }
   #os-start-menu.hidden { display: none; }
+  html[dir="ltr"] #os-start-menu {
+    right: auto !important;
+    left: 16px !important;
+  }
+  html[dir="ltr"] #os-widgets {
+    left: auto !important;
+    right: 20px !important;
+  }
+  html[dir="ltr"] .ctx-item {
+    text-align: left !important;
+  }
+
   .start-app-card {
     display: flex;
     flex-direction: column;
@@ -772,6 +784,10 @@
       <button id="top-settings-btn" onclick="TZOS.openApp('settings')" class="top-btn hidden" title="فتح صفحة إعدادات النظام الشاملة">
         <span class="material-icons-round text-sm text-primary">settings</span>
         <span class="hidden md:inline">الإعدادات</span>
+      </button>
+      <button id="top-lang-btn" data-no-i18n="1" onclick="TZOS.toggleLanguage()" class="top-btn os-top-pill px-2.5 py-1 rounded-full" title="تبديل لغة الواجهة (العربية / English)">
+        <span class="material-icons-round text-sm text-indigo-500">translate</span>
+        <span id="top-lang-label" data-no-i18n="1" class="text-xs font-bold">EN</span>
       </button>
       <button id="top-lock-btn" onclick="TZOS.lockScreen()" class="top-btn os-top-pill px-2.5 py-1 rounded-full" title="قفل الشاشة السريع (مع الحفاظ على النوافذ المفتوحة)">
         <span class="material-icons-round text-sm text-amber-500">lock</span>
@@ -1042,6 +1058,7 @@
     </form>
   </div>
 </div>
+<script src="i18n.js"></script>
 <script src="app.js"></script>
 <script>
 const OS_APPS = [
@@ -1467,7 +1484,8 @@ const TZOS = {
     const maxRows = Math.max(3, Math.floor((ws.height - 96) / 104));
     const col = Math.floor(index / maxRows);
     const row = index % maxRows;
-    const x = Math.max(16, (ws.width || window.innerWidth) - 114 - col * 108);
+    const isLtr = document.documentElement.dir === 'ltr' || (window.TZI18N && window.TZI18N.getLang() === 'en');
+    const x = isLtr ? (18 + col * 108) : Math.max(16, (ws.width || window.innerWidth) - 114 - col * 108);
     const y = 18 + row * 104;
     return { x, y };
   },
@@ -1873,8 +1891,9 @@ window.TZOS = TZOS;
 
 function updateClocks() {
   const now = new Date();
-  const t = now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
-  const d = now.toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const loc = (window.TZI18N && window.TZI18N.getLang() === 'en') ? 'en-US' : 'ar-EG';
+  const t = now.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' });
+  const d = now.toLocaleDateString(loc, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   document.getElementById('os-clock').textContent = t;
   document.getElementById('w-big-time').textContent = t;
   document.getElementById('w-big-date').textContent = d;
@@ -1952,6 +1971,20 @@ document.getElementById('btn-wp-reset-default').addEventListener('click', async 
 
   TZOS.resetIdleTimer = () => {
     if (!_IS_SCREEN_LOCKED) _IDLE_LAST_TS = Date.now();
+  };
+
+
+  TZOS.onLanguageChanged = (lang) => {
+    const lbl = document.getElementById('top-lang-label');
+    if (lbl) lbl.textContent = lang === 'en' ? 'عربي' : 'EN';
+    if (typeof updateClock === 'function') updateClock();
+    if (typeof TZOS.renderDesktopIcons === 'function') TZOS.renderDesktopIcons();
+  };
+  TZOS.toggleLanguage = async () => {
+    const cur = window.TZI18N ? window.TZI18N.getLang() : 'ar';
+    const next = cur === 'en' ? 'ar' : 'en';
+    if (typeof applyLanguageEverywhere === 'function') applyLanguageEverywhere(next);
+    await api('user_pref_save', { lang: next }).catch(() => {});
   };
 
   TZOS.isLocked = () => Boolean(_IS_SCREEN_LOCKED);
@@ -2119,6 +2152,7 @@ document.getElementById('os-workspace').addEventListener('contextmenu', (e) => {
   }
   TZOS.refreshUserHeader(user);
   TZOS.onThemeChanged(document.documentElement.classList.contains('dark'));
+  TZOS.onLanguageChanged((user && user.lang) || (window.TZI18N ? window.TZI18N.getLang() : 'ar'));
 
   // تحميل الخلفية الخاصة بالمستخدم من قاعدة البيانات أولاً، وإلا فافتراضي المدير
   let wp = 'win11-bloom';

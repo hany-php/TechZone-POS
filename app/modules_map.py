@@ -11,6 +11,11 @@ CORE_METHODS = {
     "user_pref_save",
     "verify_lock_pin",
     "activity_audit_list",
+    "translations_map",
+    "translations_list",
+    "translations_save",
+    "translations_delete",
+    "translations_scan_project",
     "users",
     "permissions_schema",
     # الإعدادات والنسخ الاحتياطي والقوالب (settings قسم أساسي)

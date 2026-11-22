@@ -74,6 +74,10 @@
         <span class="material-icons-round text-base">policy</span>
         <span>سجل رقابة العمليات (Audit Log)</span>
       </button>
+      <button type="button" data-stab="translations" class="settings-tab-btn px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 transition-all">
+        <span class="material-icons-round text-base">translate</span>
+        <span>الترجمة واللغات</span>
+      </button>
     </div>
   </div>
 
@@ -850,8 +854,116 @@
       </div>
     </div>
   </section>
+
+  <!-- ==================== التبويب 6: إدارة الترجمة وقاموس النظام (عربي / إنجليزي) ==================== -->
+  <section id="spane-translations" class="hidden space-y-5">
+    <div class="bg-white dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-slate-800 p-5 md:p-6 shadow-sm space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+        <div>
+          <h2 class="text-base md:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <span class="material-icons-round text-indigo-600">translate</span>
+            <span>إدارة الترجمة وقاموس النظام (عربي / إنجليزي)</span>
+          </h2>
+          <p class="text-xs text-slate-500 mt-0.5">جدول مركزي يحتوي على جميع كلمات وجمل المشروع لتعديلها أو إكمال ترجمتها بالطريقة المناسبة لك وتطبيقها فوراً على كافة الشاشات</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button type="button" id="btn-tr-scan" class="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-bold flex items-center gap-1">
+            <span class="material-icons-round text-sm">manage_search</span>
+            <span>فحص واستخراج كلمات المشروع</span>
+          </button>
+          <button type="button" id="btn-tr-save-all" class="px-4 py-2 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-bold flex items-center gap-1 shadow-sm">
+            <span class="material-icons-round text-sm">save</span>
+            <span>حفظ جميع التعديلات وتطبيقها فوراً</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- إحصائيات سريعة للترجمة -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div class="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800">
+          <div class="text-[11px] font-bold text-blue-700 dark:text-blue-300">إجمالي الكلمات في القاموس</div>
+          <div id="tr-stat-all" class="text-xl font-black font-num">0</div>
+        </div>
+        <div class="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800">
+          <div class="text-[11px] font-bold text-emerald-700 dark:text-emerald-300">الكلمات المترجمة</div>
+          <div id="tr-stat-done" class="text-xl font-black font-num">0</div>
+        </div>
+        <div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800">
+          <div class="text-[11px] font-bold text-amber-700 dark:text-amber-300">بانتظار الترجمة</div>
+          <div id="tr-stat-todo" class="text-xl font-black font-num">0</div>
+        </div>
+      </div>
+
+      <!-- إضافة كلمة جديدة -->
+      <div class="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 grid grid-cols-1 md:grid-cols-12 gap-2.5 items-end">
+        <div class="md:col-span-4">
+          <label class="block text-[11px] font-bold text-slate-500 mb-1">النص العربي الجديد</label>
+          <input id="tr-new-ar" type="text" class="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs" placeholder="اكتب الكلمة أو الجملة العربية..."/>
+        </div>
+        <div class="md:col-span-4">
+          <label class="block text-[11px] font-bold text-slate-500 mb-1">الترجمة الإنجليزية</label>
+          <input id="tr-new-en" type="text" dir="ltr" class="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs" placeholder="English translation..."/>
+        </div>
+        <div class="md:col-span-2">
+          <label class="block text-[11px] font-bold text-slate-500 mb-1">القسم</label>
+          <select id="tr-new-sec" class="w-full px-2.5 py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs font-bold">
+            <option value="general">عام</option>
+            <option value="login">تسجيل الدخول</option>
+            <option value="desktop">سطح المكتب</option>
+            <option value="pos">نقاط البيع</option>
+            <option value="inventory">المخزون</option>
+            <option value="customers">العملاء</option>
+            <option value="purchases">المشتريات</option>
+            <option value="accounting">المحاسبة</option>
+            <option value="reports">التقارير</option>
+            <option value="settings">الإعدادات</option>
+          </select>
+        </div>
+        <div class="md:col-span-2">
+          <button type="button" id="btn-tr-add" class="w-full py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold">+ إضافة للجدول</button>
+        </div>
+      </div>
+
+      <!-- فلاتر البحث -->
+      <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+        <div class="sm:col-span-5">
+          <input id="tr-q" type="text" class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs" placeholder="ابحث بأي كلمة عربية أو إنجليزية..."/>
+        </div>
+        <div class="sm:col-span-4">
+          <select id="tr-sec-filter" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold">
+            <option value="">كل الأقسام والشاشات</option>
+          </select>
+        </div>
+        <div class="sm:col-span-3">
+          <label class="flex items-center gap-2 text-xs font-bold cursor-pointer">
+            <input id="tr-untranslated-only" type="checkbox" class="w-4 h-4 accent-blue-600"/>
+            <span>غير المترجمة فقط</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- جدول الترجمة -->
+      <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 max-h-[520px] overflow-y-auto">
+        <table class="w-full text-right text-xs">
+          <thead class="bg-slate-50 dark:bg-slate-800/90 text-slate-600 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10">
+            <tr>
+              <th class="p-2.5 font-bold w-12">#</th>
+              <th class="p-2.5 font-bold w-28">القسم</th>
+              <th class="p-2.5 font-bold">النص العربي (Arabic)</th>
+              <th class="p-2.5 font-bold">الترجمة الإنجليزية (English)</th>
+              <th class="p-2.5 font-bold w-28 text-center">إجراء</th>
+            </tr>
+          </thead>
+          <tbody id="tr-tbody" class="divide-y divide-slate-100 dark:divide-slate-800" data-no-i18n="1">
+            <tr><td colspan="5" class="p-8 text-center text-slate-400">جاري تحميل قاموس الترجمة...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
 </main>
 
+<script src="i18n.js"></script>
 <script src="app.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
@@ -865,7 +977,7 @@ let PENDING_LOGO = null;
 
 function switchSettingsTab(tabId) {
   ACTIVE_STAB = tabId;
-  ['store', 'login', 'invoices', 'backups', 'audit'].forEach((id) => {
+  ['store', 'login', 'invoices', 'backups', 'audit', 'translations'].forEach((id) => {
     const pane = $('spane-' + id);
     if (pane) pane.classList.toggle('hidden', id !== tabId);
   });
@@ -875,6 +987,7 @@ function switchSettingsTab(tabId) {
   if (tabId === 'invoices') renderInvoiceStudioPreview();
   if (tabId === 'backups') loadBackupsList();
   if (tabId === 'audit') loadAuditLogList();
+  if (tabId === 'translations') loadTranslationsList();
 }
 
 document.querySelectorAll('[data-stab]').forEach((btn) => {
@@ -1668,6 +1781,130 @@ if ($('btn-aud-print')) {
   });
 }
 
+
+/* ==================== 6) تبويب إدارة الترجمة وقاموس النظام (عربي / إنجليزي) ==================== */
+let TR_DIRTY_MAP = {};
+async function loadTranslationsList() {
+  const tbody = $('tr-tbody');
+  if (!tbody) return;
+  const res = await guard(() => api('translations_list', {
+    q: ($('tr-q') && $('tr-q').value.trim()) || '',
+    section: ($('tr-sec-filter') && $('tr-sec-filter').value) || '',
+    untranslated_only: Boolean($('tr-untranslated-only') && $('tr-untranslated-only').checked),
+    limit: 500,
+  }));
+  if (!res) return;
+  if ($('tr-stat-all')) $('tr-stat-all').textContent = n(res.all_total || 0);
+  if ($('tr-stat-done')) $('tr-stat-done').textContent = n(res.translated_total || 0);
+  if ($('tr-stat-todo')) $('tr-stat-todo').textContent = n(res.untranslated_total || 0);
+
+  const secSel = $('tr-sec-filter');
+  if (secSel && secSel.options.length <= 1 && Array.isArray(res.sections)) {
+    const curVal = secSel.value;
+    secSel.innerHTML = '<option value="">كل الأقسام والشاشات</option>' +
+      res.sections.map((s) => `<option value="${esc(s.section)}">${esc(s.section)} (${s.count})</option>`).join('');
+    secSel.value = curVal;
+  }
+
+  const rows = res.rows || [];
+  tbody.innerHTML = rows.length ? rows.map((r, i) => `
+    <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-800/40" data-no-i18n="1">
+      <td class="p-2.5 font-num text-slate-400">${i + 1}</td>
+      <td class="p-2.5"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">${esc(r.section || 'general')}</span></td>
+      <td class="p-2.5 font-bold text-slate-800 dark:text-slate-100" dir="rtl" data-no-i18n="1">${esc(r.ar_text)}</td>
+      <td class="p-2.5">
+        <input type="text" dir="ltr" data-tr-en="${r.id}" data-tr-ar="${esc(r.ar_text)}" data-tr-sec="${esc(r.section || 'general')}" value="${esc(r.en_text || '')}" class="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border ${r.en_text ? 'border-slate-200 dark:border-slate-700' : 'border-amber-400 dark:border-amber-600'} text-xs focus:outline-none focus:border-primary" placeholder="Write English translation..."/>
+      </td>
+      <td class="p-2.5 text-center">
+        <div class="flex items-center justify-center gap-1">
+          <button type="button" data-tr-save="${r.id}" class="px-2.5 py-1 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white text-[11px] font-bold">حفظ</button>
+          <button type="button" data-tr-del="${r.id}" class="p-1 rounded-lg text-red-500 hover:bg-red-50" title="حذف"><span class="material-icons-round text-sm">delete</span></button>
+        </div>
+      </td>
+    </tr>
+  `).join('') : '<tr><td colspan="5" class="p-8 text-center text-slate-400">لا توجد كلمات مطابقة للبحث</td></tr>';
+
+  tbody.querySelectorAll('[data-tr-en]').forEach((inp) => {
+    inp.addEventListener('input', () => {
+      TR_DIRTY_MAP[inp.dataset.trAr] = {
+        ar_text: inp.dataset.trAr,
+        en_text: inp.value.trim(),
+        section: inp.dataset.trSec || 'general',
+      };
+    });
+  });
+
+  tbody.querySelectorAll('[data-tr-save]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.trSave;
+      const inp = tbody.querySelector(`[data-tr-en="${id}"]`);
+      if (!inp) return;
+      const saved = await guard(() => api('translations_save', {
+        ar_text: inp.dataset.trAr,
+        en_text: inp.value.trim(),
+        section: inp.dataset.trSec || 'general',
+      }));
+      if (saved) {
+        delete TR_DIRTY_MAP[inp.dataset.trAr];
+        if (window.TZI18N && window.TZI18N.reloadCustomTranslations) await window.TZI18N.reloadCustomTranslations();
+        toast('تم حفظ الترجمة وتطبيقها');
+      }
+    });
+  });
+
+  tbody.querySelectorAll('[data-tr-del]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('حذف هذه الكلمة من جدول الترجمة؟')) return;
+      if (await guard(() => api('translations_delete', { id: +btn.dataset.trDel }))) {
+        toast('تم الحذف');
+        loadTranslationsList();
+      }
+    });
+  });
+}
+
+if ($('btn-tr-scan')) {
+  $('btn-tr-scan').addEventListener('click', async () => {
+    const res = await guard(() => api('translations_scan_project'));
+    if (res) {
+      toast(`تم فحص المشروع: أُضيفت ${res.inserted} كلمة جديدة (الإجمالي ${res.total})`, 'success');
+      loadTranslationsList();
+    }
+  });
+}
+if ($('btn-tr-add')) {
+  $('btn-tr-add').addEventListener('click', async () => {
+    const ar = $('tr-new-ar').value.trim();
+    const en = $('tr-new-en').value.trim();
+    const sec = $('tr-new-sec').value || 'general';
+    if (!ar) { toast('اكتب النص العربي أولاً', 'warn'); return; }
+    const res = await guard(() => api('translations_save', { ar_text: ar, en_text: en, section: sec }));
+    if (res) {
+      $('tr-new-ar').value = '';
+      $('tr-new-en').value = '';
+      if (window.TZI18N && window.TZI18N.reloadCustomTranslations) await window.TZI18N.reloadCustomTranslations();
+      toast('تمت إضافة الكلمة للقاموس بنجاح');
+      loadTranslationsList();
+    }
+  });
+}
+if ($('btn-tr-save-all')) {
+  $('btn-tr-save-all').addEventListener('click', async () => {
+    const items = Object.values(TR_DIRTY_MAP);
+    if (!items.length) { toast('لا توجد تعديلات غير محفوظة حالياً', 'warn'); return; }
+    const res = await guard(() => api('translations_save', { items }));
+    if (res) {
+      TR_DIRTY_MAP = {};
+      if (window.TZI18N && window.TZI18N.reloadCustomTranslations) await window.TZI18N.reloadCustomTranslations();
+      toast(`تم حفظ وتطبيق ${res.saved} ترجمة بنجاح`, 'success');
+      loadTranslationsList();
+    }
+  });
+}
+if ($('tr-q')) $('tr-q').addEventListener('input', () => { clearTimeout(window._trT); window._trT = setTimeout(loadTranslationsList, 200); });
+if ($('tr-sec-filter')) $('tr-sec-filter').addEventListener('change', loadTranslationsList);
+if ($('tr-untranslated-only')) $('tr-untranslated-only').addEventListener('change', loadTranslationsList);
+
 (async () => {
   const user = await pageInit('settings', { perm: ['settings_view_edit', 'templates_manage', 'backups_manage'] });
   if (!user) return;
@@ -1700,6 +1937,7 @@ if ($('btn-aud-print')) {
     canTpls ? 'invoices' : null,
     canBackups ? 'backups' : null,
     canStore ? 'audit' : null,
+    canStore ? 'translations' : null,
   ].filter(Boolean);
   const reqTab = new URLSearchParams(location.search).get('tab');
   if (reqTab && allowedTabs.includes(reqTab)) {

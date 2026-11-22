@@ -160,6 +160,7 @@ class AuthSettingsMixin:
             "start_mode": row["start_mode"] if "start_mode" in keys else None,
             "theme_mode": row["theme_mode"] if "theme_mode" in keys else None,
             "avatar": row["avatar"] if "avatar" in keys else None,
+            "lang": (row["lang"] if "lang" in keys and row["lang"] in ("ar", "en") else "ar"),
         }
 
     def user_pref_save(
@@ -172,6 +173,7 @@ class AuthSettingsMixin:
         start_page=None,
         start_mode=None,
         theme_mode=None,
+        lang=None,
         reset_theme=False,
     ):
         """حفظ تفضيلات العرض والفتح الخاصة بالمستخدم الحالي في قاعدة البيانات بشكل دائم لكل مستخدم."""
@@ -220,6 +222,11 @@ class AuthSettingsMixin:
                 if sm not in valid_modes:
                     raise ApiError("وضع فتح الصفحة غير صالح")
                 conn.execute("UPDATE users SET start_mode=? WHERE id=?", (sm or None, uid))
+            if lang is not None:
+                lv = str(lang).strip().lower()
+                if lv not in ("ar", "en"):
+                    raise ApiError("اللغة غير صالحة (استخدم ar أو en)")
+                conn.execute("UPDATE users SET lang=? WHERE id=?", (lv, uid))
             if theme_mode is not None:
                 tm = str(theme_mode).strip()
                 if tm not in valid_themes:
@@ -256,6 +263,7 @@ class AuthSettingsMixin:
         wallpaper=None,
         custom_bg=None,
         desktop_layout=None,
+        lang=None,
         pin=None,
     ):
         """تحديث الملف الشخصي للموظف الحالي (الاسم، معرف الدخول، الصورة الشخصية، كلمة السر/الرمز السري، وإعدادات الفتح والمظهر)."""
@@ -717,6 +725,187 @@ class AuthSettingsMixin:
             ]
             return {"rows": out, "total": total, "by_type": by_type}
 
+    # ---------------------------------------------------------- إدارة الترجمة (عربي / إنجليزي)
+    def _scan_web_translations(self, conn) -> dict:
+        """مسح ملفات web/*.html و web/i18n.js واستخراج كافة النصوص العربية وتحديث جدول translations دون الكتابة فوق تعديلات المستخدم."""
+        import re
+        web_dir = pathlib.Path(__file__).resolve().parent.parent / "web"
+        if not web_dir.exists():
+            return {"inserted": 0, "total": 0}
+        ar_re = re.compile(r"[\u0600-\u06FF]")
+
+        # 1) قراءة القاموس الافتراضي من web/i18n.js (EXACT_MAP)
+        default_map = {}
+        i18n_file = web_dir / "i18n.js"
+        if i18n_file.exists():
+            itxt = i18n_file.read_text(encoding="utf-8", errors="ignore")
+            for m in re.finditer(r"['\"]([^'\"]*[\u0600-\u06FF][^'\"]*)['\"]\s*:\s*['\"]([^'\"]*)['\"]", itxt):
+                ar_k = " ".join(m.group(1).split()).strip()
+                en_v = m.group(2).strip()
+                if ar_k:
+                    default_map[ar_k] = en_v
+
+        section_map = {
+            "index.html": "login",
+            "desktop.html": "desktop",
+            "pos.html": "pos",
+            "inventory.html": "inventory",
+            "customers.html": "customers",
+            "customer_details.html": "customers",
+            "installments.html": "installments",
+            "purchases.html": "purchases",
+            "accounting.html": "accounting",
+            "reports.html": "reports",
+            "settings.html": "settings",
+            "profile.html": "profile",
+            "staff.html": "staff",
+            "repair.html": "repair",
+            "buy_used.html": "buy_used",
+            "history.html": "history",
+            "sales_quotes.html": "sales_quotes",
+            "receipt.html": "receipt",
+            "owner.html": "owner",
+        }
+
+        discovered = {}  # ar_text -> (en_text, section)
+        for ar_k, en_v in default_map.items():
+            discovered[ar_k] = (en_v, "general")
+
+        for p in sorted(web_dir.glob("*.html")):
+            sec = section_map.get(p.name, "general")
+            txt = p.read_text(encoding="utf-8", errors="ignore")
+            # strip <script> and <style> blocks to capture clean UI text
+            clean_html = re.sub(r"<script[\s\S]*?</script>", " ", txt, flags=re.I)
+            clean_html = re.sub(r"<style[\s\S]*?</style>", " ", clean_html, flags=re.I)
+            for m in re.finditer(r">([^<>{}`$]{2,110})<", clean_html):
+                s = " ".join(m.group(1).split()).strip()
+                if s and ar_re.search(s):
+                    en_v = default_map.get(s, "")
+                    if s not in discovered or (not discovered[s][0] and en_v) or discovered[s][1] == "general":
+                        discovered[s] = (en_v or (discovered[s][0] if s in discovered else ""), sec)
+            for m in re.finditer(r'(?:placeholder|title)="([^"]{2,110})"', clean_html):
+                s = " ".join(m.group(1).split()).strip()
+                if s and ar_re.search(s):
+                    en_v = default_map.get(s, "")
+                    if s not in discovered or (not discovered[s][0] and en_v) or discovered[s][1] == "general":
+                        discovered[s] = (en_v or (discovered[s][0] if s in discovered else ""), sec)
+
+        now_ts = db.now()
+        inserted = 0
+        for ar_k, (en_v, sec) in discovered.items():
+            ex = conn.execute("SELECT id, en_text, section FROM translations WHERE ar_text=?", (ar_k,)).fetchone()
+            if not ex:
+                conn.execute(
+                    "INSERT INTO translations(ar_text, en_text, section, updated_at) VALUES(?,?,?,?)",
+                    (ar_k, en_v, sec, now_ts),
+                )
+                inserted += 1
+            elif not (ex["en_text"] or "").strip() and en_v:
+                conn.execute("UPDATE translations SET en_text=?, updated_at=? WHERE id=?", (en_v, now_ts, ex["id"]))
+        total = conn.execute("SELECT COUNT(*) c FROM translations").fetchone()["c"]
+        return {"inserted": inserted, "total": total}
+
+    def translations_map(self):
+        """إرجاع قاموس الترجمات المخصصة (عربي -> إنجليزي) لاستخدامه في كافة الصفحات بما فيها شاشة الدخول."""
+        with db.connect() as conn:
+            rows = conn.execute(
+                "SELECT ar_text, en_text FROM translations WHERE TRIM(en_text) != ''"
+            ).fetchall()
+            return {r["ar_text"]: r["en_text"] for r in rows}
+
+    def translations_list(self, q="", section="", untranslated_only=False, limit=500):
+        """عرض جدول الكلمات والترجمات في قسم إدارة الترجمة مع البحث والفلترة."""
+        self._perm_any("settings_view_edit", "templates_manage")
+        lim = min(2000, max(1, _int(limit, 500)))
+        with db.connect() as conn:
+            cnt = conn.execute("SELECT COUNT(*) c FROM translations").fetchone()["c"]
+            if cnt == 0:
+                self._scan_web_translations(conn)
+            where, args = ["1=1"], []
+            if q and str(q).strip():
+                qs = f"%{str(q).strip()}%"
+                where.append("(ar_text LIKE ? OR en_text LIKE ?)")
+                args.extend([qs, qs])
+            if section and str(section).strip():
+                where.append("section=?")
+                args.append(str(section).strip())
+            if untranslated_only:
+                where.append("TRIM(COALESCE(en_text,'')) = ''")
+            w_sql = " AND ".join(where)
+            total = conn.execute(f"SELECT COUNT(*) c FROM translations WHERE {w_sql}", args).fetchone()["c"]
+            translated_cnt = conn.execute("SELECT COUNT(*) c FROM translations WHERE TRIM(COALESCE(en_text,'')) != ''").fetchone()["c"]
+            all_cnt = conn.execute("SELECT COUNT(*) c FROM translations").fetchone()["c"]
+            rows = conn.execute(
+                f"SELECT id, ar_text, en_text, section, updated_at FROM translations WHERE {w_sql} ORDER BY CASE WHEN TRIM(COALESCE(en_text,''))='' THEN 0 ELSE 1 END, section, id DESC LIMIT ?",
+                args + [lim],
+            ).fetchall()
+            sections = [
+                dict(r)
+                for r in conn.execute(
+                    "SELECT section, COUNT(*) count FROM translations GROUP BY section ORDER BY count DESC"
+                ).fetchall()
+            ]
+            return {
+                "rows": [dict(r) for r in rows],
+                "total": total,
+                "all_total": all_cnt,
+                "translated_total": translated_cnt,
+                "untranslated_total": max(0, all_cnt - translated_cnt),
+                "sections": sections,
+            }
+
+    def translations_scan_project(self):
+        """فحص واستخراج كافة الكلمات العربية من صفحات المشروع وإضافتها لجدول الترجمة دون المساس بالترجمات المحفوظة."""
+        self._perm_any("settings_view_edit", "templates_manage")
+        with db.connect() as conn:
+            res = self._scan_web_translations(conn)
+            self._log_activity(conn, "translations_scan", "translations", None, f"فحص كلمات المشروع للترجمة (جديد: {res['inserted']}، الإجمالي: {res['total']})", res, module_key="settings")
+            return res
+
+    def translations_save(self, items=None, ar_text=None, en_text=None, section="general"):
+        """حفظ ترجمة مفردة أو دفعة ترجمات في قاعدة البيانات وتطبيقها فوراً."""
+        self._perm_any("settings_view_edit", "templates_manage")
+        batch = []
+        if isinstance(items, list) and items:
+            for it in items:
+                if not isinstance(it, dict):
+                    continue
+                ar = " ".join(str(it.get("ar_text") or "").split()).strip()
+                en = str(it.get("en_text") or "").strip()
+                sec = str(it.get("section") or "general").strip() or "general"
+                if ar:
+                    batch.append((ar, en, sec))
+        elif ar_text is not None:
+            ar = " ".join(str(ar_text or "").split()).strip()
+            en = str(en_text or "").strip()
+            sec = str(section or "general").strip() or "general"
+            if not ar:
+                raise ApiError("النص العربي مطلوب")
+            batch.append((ar, en, sec))
+        if not batch:
+            raise ApiError("لا توجد ترجمات للحفظ")
+        now_ts = db.now()
+        with db.connect() as conn:
+            for ar, en, sec in batch:
+                conn.execute(
+                    """INSERT INTO translations(ar_text, en_text, section, updated_at)
+                       VALUES(?,?,?,?)
+                       ON CONFLICT(ar_text) DO UPDATE SET en_text=excluded.en_text, section=excluded.section, updated_at=excluded.updated_at""",
+                    (ar, en, sec, now_ts),
+                )
+            self._log_activity(conn, "translations_save", "translations", None, f"حفظ وتحديث {len(batch)} ترجمة في قاموس النظام", {"count": len(batch)}, module_key="settings")
+        return {"saved": len(batch)}
+
+    def translations_delete(self, id):
+        """حذف صف ترجمة من جدول الترجمة."""
+        self._perm_any("settings_view_edit", "templates_manage")
+        tid = _int(id)
+        with db.connect() as conn:
+            cur = conn.execute("DELETE FROM translations WHERE id=?", (tid,))
+            if not cur.rowcount:
+                raise ApiError("الترجمة غير موجودة")
+            return True
+
     def logout(self):
         _STATE["user"] = None
         _STATE["owner"] = None
@@ -741,7 +930,7 @@ class AuthSettingsMixin:
                     "store_email", "store_cr", "store_vat", "receipt_thanks", "receipt_footer",
                     "receipt_logo", "receipt_show_logo", "receipt_show_barcode",
                     "receipt_show_tax", "receipt_show_payments", "whatsapp_send_enabled",
-                    "pos_print_preview", "print_show_dialog", "print_printer_name", "close_exit_app",
+                    "pos_print_preview", "print_show_dialog", "print_printer_name", "close_exit_app", "app_default_lang",
                     "idle_lock_minutes", "pos_sound_enabled", "pos_low_stock_alert", "customer_default_credit_limit", "enforce_credit_limit",
                     "login_max_attempts", "login_lockout_minutes",
                     "template_a4_config", "template_pos_config", "pos_categories_config"}
@@ -768,6 +957,9 @@ class AuthSettingsMixin:
                 elif k == "default_start_mode":
                     if s not in valid_start_modes:
                         raise ApiError("وضع فتح الصفحة الافتراضية غير صالح")
+                elif k == "app_default_lang":
+                    if s not in ("ar", "en"):
+                        raise ApiError("اللغة الافتراضية غير صالحة (ar أو en)")
                 elif k == "os_default_theme":
                     if s not in ("light", "dark"):
                         raise ApiError("وضع المظهر الافتراضي غير صالح")

@@ -96,6 +96,13 @@
             <span id="login-mobile-store-name" class="font-bold text-base text-slate-800 dark:text-white font-arabic">تك
               زون للإلكترونيات</span>
           </div>
+          <!-- شريط اختيار لغة البرنامج (عربي / إنجليزي) من صفحة الدخول -->
+          <div class="flex items-center justify-center mb-4">
+            <div class="inline-flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700" data-no-i18n="1">
+              <button type="button" id="login-lang-ar" data-no-i18n="1" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-primary text-white shadow-sm">العربية</button>
+              <button type="button" id="login-lang-en" data-no-i18n="1" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-600 dark:text-slate-300 hover:text-primary">English</button>
+            </div>
+          </div>
           <div class="text-center mb-5">
             <h2 class="text-2xl font-bold text-slate-800 dark:text-white mb-2 font-arabic">تسجيل الدخول</h2>
             <p id="login-subtitle" class="text-slate-500 dark:text-slate-400 text-sm font-arabic">أدخل الرمز السري فقط —
@@ -303,7 +310,8 @@
       </form>
     </div>
   </div>
-  <script src="app.js"></script>
+  <script src="i18n.js"></script>
+<script src="app.js"></script>
   <script>
     let PIN = '', USERNAME = '', USERS = [], LOGIN_MODE = 'pin_only', LOGIN_CFG = {};
 
@@ -538,7 +546,40 @@
       }
     });
 
-    function redirectAfterLogin(u, bypass = false) {
+
+    let EXPLICIT_LOGIN_LANG = null;
+    function syncLoginLangButtons(lang) {
+      const isEn = lang === 'en';
+      const bAr = document.getElementById('login-lang-ar');
+      const bEn = document.getElementById('login-lang-en');
+      if (bAr) {
+        bAr.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ' + (!isEn ? 'bg-primary text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:text-primary');
+      }
+      if (bEn) {
+        bEn.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ' + (isEn ? 'bg-primary text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:text-primary');
+      }
+    }
+    ['ar', 'en'].forEach((lv) => {
+      const btn = document.getElementById('login-lang-' + lv);
+      if (btn) {
+        btn.addEventListener('click', () => {
+          EXPLICIT_LOGIN_LANG = lv;
+          if (typeof applyLanguageEverywhere === 'function') applyLanguageEverywhere(lv);
+          syncLoginLangButtons(lv);
+        });
+      }
+    });
+    syncLoginLangButtons(window.TZI18N ? window.TZI18N.getLang() : 'ar');
+
+    async function redirectAfterLogin(u, bypass = false) {
+      try {
+        if (EXPLICIT_LOGIN_LANG) {
+          await api('user_pref_save', { lang: EXPLICIT_LOGIN_LANG }).catch(() => {});
+          localStorage.setItem('tz-lang', EXPLICIT_LOGIN_LANG);
+        } else if (u && u.lang) {
+          localStorage.setItem('tz-lang', u.lang);
+        }
+      } catch (e) {}
       if (!u) return;
       if (!bypass && u.force_change_pin) {
         showForceChangePinModal(u);

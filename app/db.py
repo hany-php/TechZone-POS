@@ -129,6 +129,7 @@ CREATE TABLE IF NOT EXISTS users (
   start_mode TEXT,
   theme_mode TEXT,
   avatar TEXT,
+  lang TEXT DEFAULT 'ar',
   created_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS categories (
@@ -511,6 +512,15 @@ CREATE TABLE IF NOT EXISTS permission_roles (
   is_builtin INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS translations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ar_text TEXT NOT NULL UNIQUE,
+  en_text TEXT NOT NULL DEFAULT '',
+  section TEXT NOT NULL DEFAULT 'general',
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_translations_section ON translations(section);
+
 CREATE TABLE IF NOT EXISTS activity_audit_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   created_at TEXT NOT NULL,
@@ -1544,6 +1554,10 @@ def _ensure_schema_columns(conn: sqlite3.Connection):
         conn.execute("INSERT OR IGNORE INTO settings(key, value) VALUES('print_show_dialog', '0')")
         conn.execute("INSERT OR IGNORE INTO settings(key, value) VALUES('print_printer_name', '')")
         conn.execute("INSERT OR IGNORE INTO settings(key, value) VALUES('close_exit_app', '0')")
+        conn.execute("INSERT OR IGNORE INTO settings(key, value) VALUES('app_default_lang', 'ar')")
+        u_cols = {r["name"] for r in conn.execute("PRAGMA table_info(users)").fetchall()}
+        if "lang" not in u_cols:
+            conn.execute("ALTER TABLE users ADD COLUMN lang TEXT DEFAULT 'ar'")
         conn.execute("INSERT OR IGNORE INTO settings(key, value) VALUES('idle_lock_minutes', '0')")
         conn.execute("INSERT OR IGNORE INTO settings(key, value) VALUES('pos_sound_enabled', '1')")
         conn.execute("INSERT OR IGNORE INTO settings(key, value) VALUES('pos_low_stock_alert', '1')")
@@ -1567,6 +1581,14 @@ def _ensure_schema_columns(conn: sqlite3.Connection):
         )""")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_activity_audit_created ON activity_audit_log(created_at DESC)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_activity_audit_action ON activity_audit_log(action, entity_type)")
+        conn.execute("""CREATE TABLE IF NOT EXISTS translations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ar_text TEXT NOT NULL UNIQUE,
+            en_text TEXT NOT NULL DEFAULT '',
+            section TEXT NOT NULL DEFAULT 'general',
+            updated_at TEXT NOT NULL
+        )""")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_translations_section ON translations(section)")
         conn.commit()
     except Exception as e:
         print(f"Schema upgrade error: {e}")

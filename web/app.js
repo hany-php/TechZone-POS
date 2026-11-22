@@ -494,6 +494,8 @@ async function pageInit(current, opts) {
   applyThemeEverywhere(prefTheme === 'dark');
   const activeAccent = user.accent_color || SETTINGS.os_default_accent || '#137fec';
   applyAccentColorEverywhere(activeAccent);
+  const prefLang = user.lang || localStorage.getItem('tz-lang') || (SETTINGS && SETTINGS.app_default_lang) || 'ar';
+  if (typeof applyLanguageEverywhere === 'function') applyLanguageEverywhere(prefLang);
   if (current && current !== 'desktop' && current !== 'index' && !isModuleEnabled(current)) {
     document.body.innerHTML = `
       <div class="min-h-screen w-full flex items-center justify-center p-6 bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-100">

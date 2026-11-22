@@ -2092,6 +2092,39 @@ check("Windows autostart launches silently in System Tray (--tray) via main.py &
       and 'Parameters: "--tray"' in _iss_src
       and "VersionInfoVersion={#MyAppVersionClean}" in _iss_src)
 
+
+# س) فحص دعم اللغتين (العربية والإنجليزية) وحفظ اللغة لكل مستخدم بشكل مستقل
+call(a, "login", {"username": "cashier", "pin": "1111"})
+_c_lang = call(a, "user_pref_save", {"lang": "en"})
+_c_sess_lang = call(a, "session")["data"]["user"]["lang"]
+call(a, "login", {"username": "admin", "pin": "8642"})
+_adm_sess_lang = call(a, "session")["data"]["user"]["lang"]
+_i18n_js = (ROOT / "web" / "i18n.js").read_text(encoding="utf-8")
+_idx_html = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
+_pf_html2 = (ROOT / "web" / "profile.html").read_text(encoding="utf-8")
+check("per-user bilingual language (AR/EN) persisted per user & wired in login, profile & i18n.js",
+      _c_lang["ok"] and _c_sess_lang == "en" and _adm_sess_lang == "ar"
+      and "applyLanguageEverywhere" in _i18n_js
+      and "login-lang-en" in _idx_html
+      and "EXPLICIT_LOGIN_LANG" in _idx_html
+      and 'html[dir="ltr"] #os-start-menu' in _desk_html
+      and "المحاسبة والمالية" in _i18n_js
+      and "pf-lang-en" in _pf_html2)
+
+
+# ع) فحص قسم إدارة الترجمة وقاموس النظام (translations_scan_project / translations_list / translations_save / translations_map)
+_tr_scan = call(a, "translations_scan_project")
+_tr_save = call(a, "translations_save", {"ar_text": "كلمة اختبار ترجمة", "en_text": "Test Translation Word", "section": "general"})
+_tr_map = call(a, "translations_map")
+_tr_list = call(a, "translations_list", {"q": "كلمة اختبار ترجمة"})
+check("Translation Manager scans project strings, saves custom translations & serves translations_map",
+      _tr_scan["ok"] and _tr_scan["data"]["total"] >= 100
+      and _tr_save["ok"] and _tr_save["data"]["saved"] == 1
+      and _tr_map["ok"] and _tr_map["data"].get("كلمة اختبار ترجمة") == "Test Translation Word"
+      and _tr_list["ok"] and len(_tr_list["data"]["rows"]) == 1
+      and "spane-translations" in (ROOT / "web" / "settings.html").read_text(encoding="utf-8")
+      and "isLtr ? (18 + col * 108)" in (ROOT / "web" / "desktop.html").read_text(encoding="utf-8"))
+
 check("all documentation files enforce Modular Plug-and-Play rule & document latest features",
       all(df.exists() and "Modular Plug-and-Play" in df.read_text(encoding="utf-8") for df in _required_doc_files)
       and all(tok in (ROOT / "AGENTS.md").read_text(encoding="utf-8") for tok in ("close_exit_app", "_hidden_desktop", "sales_cogs", "account_move", "report_comprehensive", "tzGenerateBarcodeSvg", "verify_lock_pin", "activity_audit_list", "db_optimize_images"))
