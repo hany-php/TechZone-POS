@@ -2235,10 +2235,19 @@ _desk_upd = (ROOT / "web" / "desktop.html").read_text(encoding="utf-8")
 _set_upd = (ROOT / "web" / "settings.html").read_text(encoding="utf-8")
 _main_upd = (ROOT / "app" / "main.py").read_text(encoding="utf-8")
 _spec_upd = (ROOT / "TechZone.spec").read_text(encoding="utf-8")
+_env_bak = os.environ.get("_PYI_APPLICATION_HOME_DIR")
+os.environ["_PYI_APPLICATION_HOME_DIR"] = r"C:\Temp\_MEI12345"
+_cleaned_env = _upd_mod._clean_spawn_env()
+if _env_bak is None:
+    os.environ.pop("_PYI_APPLICATION_HOME_DIR", None)
+else:
+    os.environ["_PYI_APPLICATION_HOME_DIR"] = _env_bak
+
 check("Auto-Updater API, RBAC, GitHub Actions auto-release on push to main & UI wiring verified",
       _vinfo_r["ok"] and bool(_vinfo_r["data"].get("current_version"))
       and _ust_r["ok"] and _ust_r["data"].get("state") == "idle"
       and not _bad_dl["ok"]
+      and "_PYI_APPLICATION_HOME_DIR" not in _cleaned_env and "_MEIPASS2" not in _cleaned_env
       and _auto_upd_save["ok"] and _auto_upd_save["data"].get("auto_update_check") == "0"
       and _auto_upd_restore["ok"] and _auto_upd_restore["data"].get("auto_update_check") == "1"
       and _cash_dl_denied and _cash_inst_denied

@@ -233,6 +233,34 @@ def _trigger_clean_shutdown_delayed(delay_sec: float = 0.45):
     threading.Thread(target=_runner, daemon=True).start()
 
 
+def _clean_spawn_env() -> dict[str, str]:
+    """تنظيف متغيرات بيئة PyInstaller (_MEIPASS2 / _PYI_* / مسارات _MEI في PATH) حتى يعمل الـ EXE الجديد بعد الترقية دون خطأ Failed to load Python DLL."""
+    env = dict(os.environ)
+    for k in list(env.keys()):
+        ku = k.upper()
+        if (
+            ku.startswith("_PYI_")
+            or ku.startswith("PYI_")
+            or ku in ("_MEIPASS2", "PYTHONHOME", "PYTHONPATH", "TCL_LIBRARY", "TK_LIBRARY")
+        ):
+            env.pop(k, None)
+    meipass = getattr(sys, "_MEIPASS", None)
+    if "PATH" in env:
+        meipass_norm = str(pathlib.Path(meipass).resolve()).lower() if meipass else ""
+        parts = []
+        for entry in env["PATH"].split(os.pathsep):
+            el = entry.strip().lower()
+            if not el:
+                continue
+            if meipass_norm and el.rstrip("\\/") == meipass_norm.rstrip("\\/"):
+                continue
+            if "\\_mei" in el or "/_mei" in el:
+                continue
+            parts.append(entry)
+        env["PATH"] = os.pathsep.join(parts)
+    return env
+
+
 def _build_windows_update_script(
     downloaded_exe: pathlib.Path,
     install_mode: str,
@@ -257,6 +285,13 @@ def _build_windows_update_script(
         "@echo off",
         "chcp 65001 >nul",
         "setlocal",
+        "set \"_MEIPASS2=\"",
+        "set \"_PYI_APPLICATION_HOME_DIR=\"",
+        "set \"_PYI_ARCHIVE_FILE=\"",
+        "set \"_PYI_PARENT_PROCESS_LEVEL=\"",
+        "set \"_PYI_SPLASH_IPC=\"",
+        "set \"PYTHONHOME=\"",
+        "set \"PYTHONPATH=\"",
         f"echo [%DATE% %TIME%] Starting TechZone update > \"{log_str}\"",
         f"set \"TARGET_PID={pid}\"",
         "set /a TRIES=0",
@@ -282,7 +317,7 @@ def _build_windows_update_script(
             f"\"{dl_str}\" /SILENT /NORESTART /SUPPRESSMSGBOXES /CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS /DIR=\"{dir_str}\"",
             f"echo [%DATE% %TIME%] Installer exited with code %ERRORLEVEL% >> \"{log_str}\"",
             "ping -n 2 127.0.0.1 >nul",
-            f"if exist \"{dir_str}\\TechZone.exe\" start \"\" \"{dir_str}\\TechZone.exe\"",
+            f"if exist \"{dir_str}\\TechZone.exe\" start \"\" /D \"{dir_str}\" \"{dir_str}\\TechZone.exe\"",
         ])
     else:
         # استبدال مباشر للنسخة المحمولة (Portable TechZone.exe) مع نسخة احتياطية .bak
@@ -579,9 +614,11 @@ class UpdaterMixin:
             current_exe=pathlib.Path(sys.executable).resolve(),
             pid=os.getpid(),
         )
+        clean_env = _clean_spawn_env()
         try:
             subprocess.Popen(
                 ["wscript.exe", "//B", "//Nologo", str(vbs_launcher)],
+                env=clean_env,
                 close_fds=True,
             )
         except Exception:
@@ -592,6 +629,7 @@ class UpdaterMixin:
                 ["cmd.exe", "/c", str(script)],
                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
                 startupinfo=si,
+                env=clean_env,
                 close_fds=True,
             )
         _trigger_clean_shutdown_delayed(0.45)
