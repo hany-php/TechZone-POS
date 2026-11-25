@@ -2265,6 +2265,38 @@ check("All bundled web/fonts (.woff2 icons & Arabic fonts) are tracked (not giti
       and "TZ_IMAGES_BASE" in (ROOT / "web" / "app.js").read_text(encoding="utf-8"))
 
 
+# ك) فحص التحديد والحذف الجماعي للمنتجات والتصنيفات في إدارة المخزون (products_bulk_delete & categories_bulk_delete)
+_bc1 = call(a, "categories_save", {"name": "فئة جماعية فارغة 1"})["data"]["id"]
+_bc2 = call(a, "categories_save", {"name": "فئة جماعية فارغة 2"})["data"]["id"]
+_bc3 = call(a, "categories_save", {"name": "فئة جماعية بها منتج"})["data"]["id"]
+_bp1 = call(a, "product_save", {"sku": "BLK-DEL-1", "name": "منتج حذف جماعي 1", "category_id": _bc3, "price": 120, "cost": 80})["data"]["id"]
+_bp2 = call(a, "product_save", {"sku": "BLK-DEL-2", "name": "منتج حذف جماعي 2", "category_id": _bc3, "price": 150, "cost": 90})["data"]["id"]
+_bp3 = call(a, "product_save", {"sku": "BLK-DEL-3", "name": "منتج يبقى بدون فئة", "category_id": _bc3, "price": 200, "cost": 110})["data"]["id"]
+
+call(a, "login", {"username": "cashier", "pin": "1111"})
+_cash_pbd_denied = not call(a, "products_bulk_delete", {"ids": [_bp1]})["ok"]
+_cash_cbd_denied = not call(a, "categories_bulk_delete", {"ids": [_bc1]})["ok"]
+call(a, "login", {"username": "admin", "pin": "8642"})
+
+_cbd_safe = call(a, "categories_bulk_delete", {"ids": [_bc1, _bc2, _bc3], "detach_products": False})
+_cbd_detach = call(a, "categories_bulk_delete", {"ids": [_bc3], "detach_products": True})
+_bp3_after = call(a, "product", {"id": _bp3})["data"]
+_pbd_res = call(a, "products_bulk_delete", {"ids": [_bp1, _bp2]})
+_bp1_gone = not call(a, "product", {"id": _bp1})["ok"]
+_bp2_gone = not call(a, "product", {"id": _bp2})["ok"]
+_bp3_still = call(a, "product", {"id": _bp3})["ok"]
+call(a, "product_delete", {"id": _bp3})
+_inv_bulk_html = (ROOT / "web" / "inventory.html").read_text(encoding="utf-8")
+check("Inventory bulk select & delete (products_bulk_delete & categories_bulk_delete with safe/detach modes & RBAC)",
+      _cash_pbd_denied and _cash_cbd_denied
+      and _cbd_safe["ok"] and _cbd_safe["data"]["deleted"] == 2 and len(_cbd_safe["data"]["skipped"]) == 1
+      and _cbd_detach["ok"] and _cbd_detach["data"]["deleted"] == 1 and _cbd_detach["data"]["detached_products"] == 3
+      and _bp3_after["category_id"] is None
+      and _pbd_res["ok"] and _pbd_res["data"]["deleted"] == 2
+      and _bp1_gone and _bp2_gone and _bp3_still
+      and all(tok in _inv_bulk_html for tok in ("cat-bulk-bar", "btn-cat-bulk-del", "prod-bulk-bar", "btn-prod-bulk-del", "modal-bulk-confirm", "products_bulk_delete", "categories_bulk_delete")))
+
+
 check("all documentation files enforce Modular Plug-and-Play rule & document latest features",
       all(df.exists() and "Modular Plug-and-Play" in df.read_text(encoding="utf-8") for df in _required_doc_files)
       and all(tok in (ROOT / "AGENTS.md").read_text(encoding="utf-8") for tok in ("close_exit_app", "_hidden_desktop", "sales_cogs", "account_move", "report_comprehensive", "tzGenerateBarcodeSvg", "verify_lock_pin", "activity_audit_list", "db_optimize_images"))

@@ -171,6 +171,13 @@ Defined in `app/permissions.py`:
 
 ## 8. Changelog
 
+### 2026-11-25 — Inventory Bulk Select & Delete for Products & Categories (`app/api_inventory.py`, `app/modules_map.py`, `web/inventory.html`, `web/app.css`)
+- **Bulk Delete Backend (`app/api_inventory.py`, `app/modules_map.py`)**:
+  1. Added `products_bulk_delete(ids)` (soft-deleting active products atomically with `activity_audit_log` summary while preserving historical sales/invoices) and `categories_bulk_delete(ids, detach_products=False)` (deleting empty categories by default with skipped reporting, or unlinking active products to `category_id=NULL` before deleting when `detach_products=True`), both gated by `inventory_edit` and mapped under `"inventory"` in `API_MODULE_MAP`.
+- **Inventory Bulk Selection UI (`web/inventory.html`, `web/app.css`)**:
+  1. Added category search (`#cat-search`), multi-select checkboxes on category chips, quick actions (`تحديد المعروض`, `تحديد الفارغة (0)`, `إلغاء التحديد`, `حذف المحدد`), and confirmation modal `#modal-bulk-confirm` with optional product detachment (`#bulk-detach-chk`).
+  2. Added product table checkbox column (`#prod-sel-all`, persistent cross-page `SELECTED_PRODS`), `#prod-bulk-bar` with "Select all filtered results" (`#btn-prod-sel-filtered`) and bulk delete (`#btn-prod-bulk-del`), plus `tzImgSrc` preview fix in `openEdit()`.
+
 ### 2026-11-25 — GitHub Auto-Releases on Push to `main` & Offline-Safe In-App Auto-Updater (`app/version.py`, `app/api_updater.py`, `.github/workflows/build-installer.yml`, `web/desktop.html`, `web/settings.html`)
 - **Automated GitHub Releases Pipeline (`.github/workflows/build-installer.yml`, `version.txt`, `TechZone.spec`, `build-installer-version.bat`)**:
   1. Configured GitHub Actions (`Auto Release & Build TechZone Installer`) to trigger automatically on every `push` to `main` (in addition to `v*` tags and manual `workflow_dispatch` with `patch`/`minor`/`major` or custom version override), using `concurrency` to queue sequential releases cleanly.

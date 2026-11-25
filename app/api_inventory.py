@@ -73,6 +73,65 @@ class InventoryMixin:
             conn.execute("DELETE FROM categories WHERE id=?", (id,))
             return True
 
+    def categories_bulk_delete(self, ids=None, detach_products=False):
+        """حذف مجموعة محددة من الفئات/التصنيفات دفعة واحدة (مع خيار فك ارتباط المنتجات تلقائياً)."""
+        self._perm("inventory_edit")
+        if not isinstance(ids, list) or not ids:
+            raise ApiError("يرجى تحديد فئة واحدة على الأقل للحذف")
+        clean_ids = sorted({_int(x) for x in ids if _int(x) > 0})
+        if not clean_ids:
+            raise ApiError("معرّفات الفئات المحددة غير صالحة")
+        detach = bool(detach_products)
+        placeholders = ",".join("?" for _ in clean_ids)
+        with db.connect() as conn:
+            rows = conn.execute(
+                f"""SELECT c.id, c.name, COUNT(p.id) active_products
+                    FROM categories c
+                    LEFT JOIN products p ON p.category_id=c.id AND p.active=1
+                    WHERE c.id IN ({placeholders})
+                    GROUP BY c.id""",
+                clean_ids,
+            ).fetchall()
+            if not rows:
+                raise ApiError("لم يتم العثور على الفئات المحددة")
+
+            to_delete = []
+            skipped = []
+            for r in rows:
+                if r["active_products"] > 0 and not detach:
+                    skipped.append({"id": r["id"], "name": r["name"], "products_count": r["active_products"]})
+                else:
+                    to_delete.append({"id": r["id"], "name": r["name"], "products_count": r["active_products"]})
+
+            detached_products = 0
+            deleted_ids = [d["id"] for d in to_delete]
+            if deleted_ids:
+                del_ph = ",".join("?" for _ in deleted_ids)
+                if detach:
+                    cur_u = conn.execute(
+                        f"UPDATE products SET category_id=NULL WHERE category_id IN ({del_ph}) AND active=1",
+                        deleted_ids,
+                    )
+                    detached_products = cur_u.rowcount
+                conn.execute(f"DELETE FROM categories WHERE id IN ({del_ph})", deleted_ids)
+                sample_names = [d["name"] for d in to_delete[:10]]
+                self._log_activity(
+                    conn,
+                    "categories_bulk_delete",
+                    "categories",
+                    None,
+                    f"حذف جماعي لعدد {len(deleted_ids)} فئة" + (f" (مع فك ارتباط {detached_products} منتج)" if detached_products else ""),
+                    {"deleted_count": len(deleted_ids), "skipped_count": len(skipped), "detached_products": detached_products, "sample_names": sample_names},
+                    module_key="inventory",
+                )
+
+            return {
+                "deleted": len(deleted_ids),
+                "skipped": skipped,
+                "detached_products": detached_products,
+                "requested": len(clean_ids),
+            }
+
     def categories_update(self, id, name):
         self._perm("inventory_edit")
         name = (name or "").strip()
@@ -247,6 +306,37 @@ class InventoryMixin:
                 module_key="inventory",
             )
             return True
+
+    def products_bulk_delete(self, ids=None):
+        """حذف/إيقاف مجموعة محددة من المنتجات دفعة واحدة مع الحفاظ الكامل على سجل الفواتير السابقة."""
+        self._perm("inventory_edit")
+        if not isinstance(ids, list) or not ids:
+            raise ApiError("يرجى تحديد منتج واحد على الأقل للحذف")
+        clean_ids = sorted({_int(x) for x in ids if _int(x) > 0})
+        if not clean_ids:
+            raise ApiError("معرّفات المنتجات المحددة غير صالحة")
+        placeholders = ",".join("?" for _ in clean_ids)
+        with db.connect() as conn:
+            targets = conn.execute(
+                f"SELECT id, name, sku FROM products WHERE id IN ({placeholders}) AND active=1",
+                clean_ids,
+            ).fetchall()
+            if not targets:
+                raise ApiError("لم يتم العثور على منتجات نشطة ضمن التحديد")
+            target_ids = [r["id"] for r in targets]
+            t_ph = ",".join("?" for _ in target_ids)
+            cur = conn.execute(f"UPDATE products SET active=0 WHERE id IN ({t_ph})", target_ids)
+            sample = [f"{r['name']} ({r['sku']})" for r in targets[:10]]
+            self._log_activity(
+                conn,
+                "products_bulk_delete",
+                "products",
+                None,
+                f"حذف جماعي لعدد {cur.rowcount} منتج من المخزون",
+                {"deleted_count": cur.rowcount, "sample_products": sample},
+                module_key="inventory",
+            )
+            return {"deleted": cur.rowcount, "requested": len(clean_ids)}
 
     def products_search(self, q=None, limit=60, category_id=None):
         self._perm_any("pos_sell", "inventory_view", "quotes_view", "quotes_create_edit", "repair_edit", "purchases_view", "purchases_create_post")
