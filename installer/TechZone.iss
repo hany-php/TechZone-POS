@@ -91,6 +91,7 @@ Name: "{app}\data\backups"; Permissions: users-modify
 Name: "{app}\data\receipts"; Permissions: users-modify
 Name: "{app}\data\images"; Permissions: users-modify
 Name: "{app}\data\reports"; Permissions: users-modify
+Name: "{app}\data\updates"; Permissions: users-modify
 
 [Files]
 Source: "..\dist\TechZone.exe"; DestDir: "{app}"; Flags: ignoreversion

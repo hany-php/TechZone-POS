@@ -171,6 +171,18 @@ Defined in `app/permissions.py`:
 
 ## 8. Changelog
 
+### 2026-11-25 — GitHub Auto-Releases on Push to `main` & Offline-Safe In-App Auto-Updater (`app/version.py`, `app/api_updater.py`, `.github/workflows/build-installer.yml`, `web/desktop.html`, `web/settings.html`)
+- **Automated GitHub Releases Pipeline (`.github/workflows/build-installer.yml`, `version.txt`, `TechZone.spec`, `build-installer-version.bat`)**:
+  1. Configured GitHub Actions (`Auto Release & Build TechZone Installer`) to trigger automatically on every `push` to `main` (in addition to `v*` tags and manual `workflow_dispatch` with `patch`/`minor`/`major` or custom version override), using `concurrency` to queue sequential releases cleanly.
+  2. Automatically reads the highest existing SemVer release/tag (starting from `v1.0.0` → `v1.0.1` → `v1.0.2`, with optional `[minor]` / `[major]` commit keywords), injects the resolved version into `version.txt` and `app/version.py`, runs `python app/selfcheck.py`, builds `TechZone.exe` (bundling `version.txt`), builds `TechZone-Setup-v<version>.exe`, generates `SHA256SUMS.txt`, and publishes a GitHub Release titled `TechZone V<version>` with auto-generated release notes and all 3 assets.
+- **Offline-Safe Auto-Updater Backend (`app/version.py`, `app/api_updater.py`, `app/api.py`, `app/modules_map.py`, `app/main.py`, `app/db.py`, `app/api_auth.py`, `installer/TechZone.iss`)**:
+  1. Added `UpdaterMixin` (`app_version_info`, `update_check`, `update_status`, `update_download`, `update_install`) registered in `CORE_METHODS` with zero impact when offline (silent 6s check, zero third-party packages).
+  2. Enforces HTTPS-only GitHub download host allowlist, verifies `SHA256SUMS.txt` integrity before installing, creates an automatic pre-update SQLite backup (`db.backup_database("before_update")`), supports silent in-place Inno Setup upgrade (`/SILENT /DIR="..."` preserving `data/`) and portable `TechZone.exe` swap, and uses `request_app_shutdown()` in `app/main.py` to exit cleanly even in System Tray mode before relaunching the upgraded executable.
+  3. Added `auto_update_check` setting (default `'1'`) and RBAC gating (`settings_view_edit` required for download/install).
+- **Arabic Upgrade Modal & Settings Update Center (`web/desktop.html`, `web/settings.html`)**:
+  1. Added automatic background check on desktop launch showing `#update-available-modal` ("هناك إصدار جديد متاح للترقية!") with release notes, live download progress bar, one-click upgrade, and persistent `#top-update-pill` topbar badge.
+  2. Added the Software Updates card in `web/settings.html` (`#st-app-version`, `#st-auto-update-check`, `#btn-check-updates-now`) and 3 new automated checks in `app/selfcheck.py`.
+
 ### 2026-11-18 — Accounting Fixes (Separated Sale/COGS Entries, Single-Run Opening Wizard, COA Drag-and-Drop, Universal Print), Comprehensive Financial Reports Hub (Excel/PDF/WhatsApp), & Mandatory Plug-and-Play Documentation (`main`)
 - **Separated Financial Invoice vs. COGS Journal Entries (`app/erp_hooks.py`, `web/accounting.html`)**:
   1. Fixed the issue where auto-posted sale journal entries combined both the sale revenue lines and the perpetual inventory `COGS` lines into a single journal entry, causing the entry's displayed `total_debit`/`total_credit` to exceed the actual sale invoice total.

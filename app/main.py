@@ -66,6 +66,39 @@ def _dispose_tray_icon():
         _TRAY_STATE["notify_icon"] = None
 
 
+def request_app_shutdown():
+    """إغلاق البرنامج نهائياً بنعومة (يُستخدم أثناء تثبيت التحديثات التلقائية لتجاوز وضع التصغير بجوار الساعة)."""
+    _TRAY_STATE["force_exit"] = True
+    _dispose_tray_icon()
+    form = _TRAY_STATE.get("form")
+    if sys.platform == "win32" and form is not None:
+        try:
+            from System import Action
+
+            def _do_close():
+                try:
+                    form.Close()
+                except Exception:
+                    pass
+
+            if form.InvokeRequired:
+                form.Invoke(Action(_do_close))
+            else:
+                _do_close()
+            return
+        except Exception:
+            pass
+    win = _STATE.get("window")
+    if win is not None:
+        try:
+            win.destroy()
+            return
+        except Exception:
+            pass
+    import os
+    os._exit(0)
+
+
 def _restore_from_tray(window):
     """إظهار وإعادة تنشيط نافذة البرنامج من شريط النظام بجوار الساعة."""
     form = _TRAY_STATE.get("form")

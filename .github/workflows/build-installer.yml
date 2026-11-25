@@ -1,83 +1,187 @@
-name: Build TechZone Installer
+name: Auto Release & Build TechZone Installer
 
 on:
-  # 1. التشغيل التلقائي عند رفع إصدار جديد (Tag) يبدأ بحرف v مثل v2.0.5
+  # 1. التشغيل التلقائي عند رفع أي تعديل جديد على فرع main (يولّد إصداراً جديداً وينشر Release تلقائياً)
   push:
+    branches:
+      - main
     tags:
       - 'v*'
-  # 2. إمكانية التشغيل اليدوي بضغطة زر من تبويب Actions في GitHub
+  # 2. إمكانية التشغيل اليدوي بضغطة زر من تبويب Actions مع اختيار نوع الزيادة أو رقم مخصص
   workflow_dispatch:
     inputs:
+      bump:
+        description: 'نوع ترقية الإصدار التلقائي (patch / minor / major)'
+        required: false
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
       version:
-        description: 'رقم الإصدار (اتركه فارغاً للتوليد التلقائي)'
+        description: 'رقم إصدار مخصص (اختياري — اتركه فارغاً للترقية التلقائية مثل 1.0.1)'
         required: false
         default: ''
 
 permissions:
   contents: write
 
+concurrency:
+  group: techzone-auto-release
+  cancel-in-progress: false
+
 jobs:
-  build-windows:
+  build-and-release:
     runs-on: windows-latest
 
     steps:
-      - name: 1. جلب كود المشروع
+      - name: 1. جلب كود المشروع وسجل الإصدارات (Tags)
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: 2. تجهيز بيئة بايثون
+      - name: 2. تجهيز بيئة بايثون 3.13
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
 
-      - name: 3. تثبيت المكتبات المطلوبة
+      - name: 3. تثبيت المكتبات المطلوبة للبناء
         run: |
           python -m pip install --upgrade pip
           pip install pyinstaller pywebview
           if (Test-Path "requirements.txt") { pip install -r requirements.txt }
 
-      - name: 4. تحديد رقم الإصدار تلقائياً
+      - name: 4. حساب رقم الإصدار الجديد تلقائياً وحقنه في التطبيق
         id: ver
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if ("${{ github.event.inputs.version }}" -ne "") {
-            $v = "${{ github.event.inputs.version }}"
-          } elseif ("${{ github.ref_type }}" -eq "tag") {
-            $v = "${{ github.ref_name }}".TrimStart('v')
-          } else {
-            # يولد رقماً فريداً تلقائياً في كل تشغيل مثل 2.0.1 ثم 2.0.2
-            $v = "2.0.${{ github.run_number }}"
+          $ErrorActionPreference = "Stop"
+
+          function Parse-SemVer([string]$s) {
+            if ($s -match '^v?(\d+)\.(\d+)\.(\d+)$') {
+              return [PSCustomObject]@{
+                Major = [int]$Matches[1]
+                Minor = [int]$Matches[2]
+                Patch = [int]$Matches[3]
+                Text  = "$($Matches[1]).$($Matches[2]).$($Matches[3])"
+              }
+            }
+            return $null
           }
+
+          $manualVer = "${{ github.event.inputs.version }}".Trim()
+          $bumpMode  = "${{ github.event.inputs.bump }}".Trim().ToLower()
+          if (-not $bumpMode) { $bumpMode = "patch" }
+
+          # جمع كافة الـ Tags الموجودة محلياً ومن صفحة GitHub Releases لضمان عدم التكرار أبداً
+          $allTags = New-Object System.Collections.Generic.HashSet[string]
+          foreach ($t in (git tag -l "v*")) {
+            $tt = "$t".Trim()
+            if ($tt) { [void]$allTags.Add($tt) }
+          }
+          try {
+            $relTags = gh release list --limit 100 --json tagName --jq '.[].tagName' 2>$null
+            foreach ($rt in $relTags) {
+              $tt = "$rt".Trim()
+              if ($tt) { [void]$allTags.Add($tt) }
+            }
+          } catch {}
+
+          if ($manualVer -ne "") {
+            $v = $manualVer.TrimStart('v', 'V')
+          } elseif ("${{ github.ref_type }}" -eq "tag") {
+            $v = "${{ github.ref_name }}".TrimStart('v', 'V')
+          } else {
+            # إيجاد أعلى إصدار SemVer حالي (مثلاً v1.0.0) ثم ترقيته تلقائياً إلى 1.0.1 وهكذا
+            $best = $null
+            foreach ($t in $allTags) {
+              $sv = Parse-SemVer $t
+              if ($null -ne $sv) {
+                if ($null -eq $best -or
+                    $sv.Major -gt $best.Major -or
+                    ($sv.Major -eq $best.Major -and $sv.Minor -gt $best.Minor) -or
+                    ($sv.Major -eq $best.Major -and $sv.Minor -eq $best.Minor -and $sv.Patch -gt $best.Patch)) {
+                  $best = $sv
+                }
+              }
+            }
+
+            if ($null -eq $best) {
+              $maj = 1; $min = 0; $pat = 0
+            } else {
+              $commitMsg = (git log -1 --pretty=%B) -join "`n"
+              if ($bumpMode -eq "major" -or $commitMsg -match '\[major\]|BREAKING CHANGE') {
+                $maj = $best.Major + 1; $min = 0; $pat = 0
+              } elseif ($bumpMode -eq "minor" -or $commitMsg -match '\[minor\]') {
+                $maj = $best.Major; $min = $best.Minor + 1; $pat = 0
+              } else {
+                $maj = $best.Major; $min = $best.Minor; $pat = $best.Patch + 1
+              }
+            }
+
+            # ضمان أن الـ Tag الناتج غير مستخدم مسبقاً
+            while ($allTags.Contains("v$maj.$min.$pat")) {
+              $pat += 1
+            }
+            $v = "$maj.$min.$pat"
+          }
+
+          $tag = "v$v"
+          Write-Host "Resolved Version: $v (Tag: $tag)"
+
+          # كتابة رقم الإصدار داخل version.txt وحقنه في app/version.py قبل البناء بـ PyInstaller
+          [System.IO.File]::WriteAllText((Join-Path (Get-Location) "version.txt"), "$v`n", (New-Object System.Text.UTF8Encoding($false)))
+          $verPyPath = Join-Path (Get-Location) "app\version.py"
+          if (Test-Path $verPyPath) {
+            $verPy = Get-Content -Raw -Encoding UTF8 $verPyPath
+            $verPy = [System.Text.RegularExpressions.Regex]::Replace($verPy, 'FALLBACK_VERSION\s*=\s*"[^"]*"', "FALLBACK_VERSION = `"$v`"")
+            [System.IO.File]::WriteAllText($verPyPath, $verPy, (New-Object System.Text.UTF8Encoding($false)))
+          }
+
           echo "APP_VERSION=$v" >> $env:GITHUB_ENV
-          echo "Building version: $v"
+          echo "RELEASE_TAG=$tag" >> $env:GITHUB_ENV
 
-      - name: 5. بناء البرنامج التنفيذي (PyInstaller)
+      - name: 5. تشغيل اختبارات الفحص الذاتي (Selfcheck) قبل النشر
         run: |
-          python -m PyInstaller --noconfirm --clean --name TechZone --windowed --onefile --icon "icon.ico" --add-data "web;web" --add-data "icon.ico;." app\main.py
+          python app\selfcheck.py
 
-      - name: 6. تجميع ملف السطب (Inno Setup)
+      - name: 6. بناء البرنامج التنفيذي (PyInstaller)
+        run: |
+          python -m PyInstaller --noconfirm --clean --name TechZone --windowed --onefile --icon "icon.ico" --add-data "web;web" --add-data "icon.ico;." --add-data "version.txt;." app\main.py
+
+      - name: 7. تجميع ملف التثبيت (Inno Setup 6)
         run: |
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DMyAppVersion=$env:APP_VERSION" "installer\TechZone.iss"
 
-      - name: 7. توليد بصمة التحقق SHA-256
+      - name: 8. توليد بصمة التحقق الأمنية SHA-256
         shell: pwsh
         run: |
           Get-ChildItem 'dist\TechZone*.exe' | ForEach-Object {
             $h = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
             "$h  $($_.Name)"
           } | Set-Content -Encoding UTF8 'dist\SHA256SUMS.txt'
+          Get-Content 'dist\SHA256SUMS.txt'
 
-      - name: 8. حفظ الملفات للتحميل المباشر (Artifacts)
+      - name: 9. حفظ الملفات للتحميل المباشر (Artifacts)
         uses: actions/upload-artifact@v4
         with:
           name: TechZone-Setup-v${{ env.APP_VERSION }}
           path: |
             dist/TechZone-Setup-v${{ env.APP_VERSION }}.exe
+            dist/TechZone.exe
             dist/SHA256SUMS.txt
 
-      - name: 9. نشر الإصدار في صفحة Releases تلقائياً
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: 10. إنشاء ونشر الإصدار في GitHub Releases تلقائياً
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: TechZone V${{ env.APP_VERSION }}
+          generate_release_notes: true
+          make_latest: true
           files: |
             dist/TechZone-Setup-v${{ env.APP_VERSION }}.exe
+            dist/TechZone.exe
             dist/SHA256SUMS.txt

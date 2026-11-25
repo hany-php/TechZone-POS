@@ -214,6 +214,33 @@
           </div>
         </label>
       </div>
+      <!-- إعدادات تحديثات البرنامج التلقائية عبر GitHub Releases -->
+      <div class="p-4 rounded-xl bg-sky-50/70 dark:bg-sky-900/15 border border-sky-200 dark:border-sky-800/70 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <span class="material-icons-round text-sky-600 dark:text-sky-400 text-lg">system_update</span>
+            <div>
+              <h4 class="text-xs md:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <span>تحديثات البرنامج التلقائية (GitHub Releases)</span>
+                <span id="st-app-version" class="px-2 py-0.5 rounded-full text-[11px] font-num bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300">v1.0.0</span>
+              </h4>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400">فحص وتثبيت أحدث إصدار للبرنامج تلقائياً عند توفر إنترنت مع الحفاظ الكامل على قاعدة البيانات والعمل الأوفلاين</p>
+            </div>
+          </div>
+          <button id="btn-check-updates-now" type="button" class="px-3.5 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors">
+            <span class="material-icons-round text-sm">refresh</span>
+            <span>التحقق من وجود تحديثات الآن</span>
+          </button>
+        </div>
+        <label class="flex items-start gap-2.5 p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 cursor-pointer">
+          <input id="st-auto-update-check" type="checkbox" checked class="mt-0.5 w-4 h-4 accent-blue-600"/>
+          <div>
+            <span class="font-bold text-xs text-slate-900 dark:text-white block">التحقق التلقائي من توفر إصدار جديد عند تشغيل البرنامج</span>
+            <span class="text-[11px] text-slate-500 dark:text-slate-400">عند التفعيل: يفحص البرنامج GitHub Releases في الخلفية عند الفتح ويعرض رسالة ترقية إذا وجد إصداراً أحدث (ولا يسبب أي بطء أو أخطاء عند انقطاع الإنترنت).</span>
+          </div>
+        </label>
+        <div id="st-update-result" class="hidden p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs space-y-2.5"></div>
+      </div>
       <!-- إعدادات التنبيهات الصوتية والمرئية وحد الائتمان أثناء البيع -->
       <div class="p-4 rounded-xl bg-emerald-50/70 dark:bg-emerald-900/15 border border-emerald-200 dark:border-emerald-800/70 space-y-3">
         <div class="flex items-center gap-2">
@@ -1064,6 +1091,7 @@ function fillStoreTab() {
   $('st-pos-print-preview').checked = SETTINGS.pos_print_preview !== '0';
   $('st-print-show-dialog').checked = SETTINGS.print_show_dialog === '1';
   if ($('st-close-exit-app')) $('st-close-exit-app').checked = SETTINGS.close_exit_app === '1';
+  if ($('st-auto-update-check')) $('st-auto-update-check').checked = SETTINGS.auto_update_check !== '0';
   if ($('st-pos-sound-enabled')) $('st-pos-sound-enabled').checked = SETTINGS.pos_sound_enabled !== '0';
   if ($('st-pos-low-stock-alert')) $('st-pos-low-stock-alert').checked = SETTINGS.pos_low_stock_alert !== '0';
   if ($('st-customer-default-credit-limit')) $('st-customer-default-credit-limit').value = SETTINGS.customer_default_credit_limit || '0';
@@ -1169,6 +1197,7 @@ $('btn-save-store-settings').addEventListener('click', async () => {
     print_show_dialog: $('st-print-show-dialog').checked ? '1' : '0',
     print_printer_name: ($('st-print-printer-name') && $('st-print-printer-name').value) || '',
     close_exit_app: ($('st-close-exit-app') && $('st-close-exit-app').checked) ? '1' : '0',
+    auto_update_check: ($('st-auto-update-check') && $('st-auto-update-check').checked) ? '1' : '0',
     pos_sound_enabled: ($('st-pos-sound-enabled') && $('st-pos-sound-enabled').checked) ? '1' : '0',
     pos_low_stock_alert: ($('st-pos-low-stock-alert') && $('st-pos-low-stock-alert').checked) ? '1' : '0',
     customer_default_credit_limit: ($('st-customer-default-credit-limit') && $('st-customer-default-credit-limit').value) || '0',
@@ -1235,6 +1264,7 @@ $('btn-reset-egypt-defaults').addEventListener('click', () => {
   $('st-pos-print-preview').checked = true;
   $('st-print-show-dialog').checked = false;
   if ($('st-close-exit-app')) $('st-close-exit-app').checked = false;
+  if ($('st-auto-update-check')) $('st-auto-update-check').checked = true;
   if ($('st-print-printer-name')) $('st-print-printer-name').value = '';
   toast('أُعيدت الحقول لافتراضي مصر — اضغط حفظ لتثبيتها', 'warn');
 });
@@ -1978,6 +2008,127 @@ async function loadExcelHub() {
 }
 if ($('btn-excel-refresh')) $('btn-excel-refresh').addEventListener('click', loadExcelHub);
 
+/* ==================== مركز فحص وتثبيت تحديثات البرنامج من الإعدادات ==================== */
+let ST_LATEST_UPDATE = null;
+let ST_UPD_POLL = null;
+
+async function loadAppVersionBadge() {
+  try {
+    const vinfo = await api('app_version_info');
+    if (vinfo && vinfo.current_version && $('st-app-version')) {
+      $('st-app-version').textContent = 'v' + vinfo.current_version;
+    }
+  } catch (e) {}
+}
+
+async function runSettingsUpdateCheck() {
+  const box = $('st-update-result');
+  const btn = $('btn-check-updates-now');
+  if (!box) return;
+  box.classList.remove('hidden');
+  box.innerHTML = '<div class="text-slate-500 flex items-center gap-2"><span class="material-icons-round text-base animate-spin">sync</span><span>جاري التحقق من أحدث إصدار على GitHub Releases...</span></div>';
+  if (btn) btn.disabled = true;
+  try {
+    const res = await api('update_check', { force: true, silent: false });
+    if (res && res.current_version && $('st-app-version')) {
+      $('st-app-version').textContent = 'v' + res.current_version;
+    }
+    if (!res || res.offline) {
+      box.innerHTML = `<div class="flex items-center gap-2 text-amber-700 dark:text-amber-300 font-bold"><span class="material-icons-round text-base">wifi_off</span><span>${esc((res && res.error) || 'لا يوجد اتصال بالإنترنت حالياً — يعمل البرنامج محلياً بدون إنترنت بشكل طبيعي.')}</span></div>`;
+    } else if (!res.has_update) {
+      box.innerHTML = `<div class="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-bold"><span class="material-icons-round text-base">check_circle</span><span>أنت تستخدم أحدث إصدار بالفعل (v${esc(res.current_version)}).</span></div>`;
+    } else {
+      ST_LATEST_UPDATE = res;
+      const szMb = res.asset_size ? ((res.asset_size / (1024 * 1024)).toFixed(1) + ' MB') : '';
+      box.innerHTML = `
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div class="font-black text-emerald-700 dark:text-emerald-300 text-sm">يتوفر إصدار جديد: ${esc(res.release_name || ('TechZone V' + res.latest_version))}</div>
+            <div class="text-[11px] text-slate-500 mt-0.5">الإصدار الحالي: <span class="font-num font-bold">v${esc(res.current_version)}</span> ← الجديد: <span class="font-num font-bold text-emerald-600">v${esc(res.latest_version)}</span> ${szMb ? '• ' + esc(szMb) : ''}</div>
+          </div>
+          <button type="button" id="btn-st-install-upd" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm">
+            <span class="material-icons-round text-sm">download</span>
+            <span>ترقية وتثبيت الآن</span>
+          </button>
+        </div>
+        ${res.release_notes ? `<div class="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] whitespace-pre-wrap max-h-28 overflow-y-auto">${esc(res.release_notes)}</div>` : ''}
+        <div id="st-upd-progress" class="hidden space-y-1.5 pt-1">
+          <div class="flex items-center justify-between text-[11px] font-bold">
+            <span id="st-upd-msg">جاري التحميل...</span>
+            <span id="st-upd-pct" class="font-num text-emerald-600">0%</span>
+          </div>
+          <div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+            <div id="st-upd-bar" class="h-full rounded-full transition-all" style="width:0%;background:#10b981"></div>
+          </div>
+        </div>
+      `;
+      const instBtn = $('btn-st-install-upd');
+      if (instBtn) instBtn.addEventListener('click', startSettingsUpgrade);
+    }
+  } catch (e) {
+    box.innerHTML = `<div class="text-red-600 font-bold">${esc((e && e.message) || 'تعذر التحقق من التحديثات')}</div>`;
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function startSettingsUpgrade() {
+  if (!ST_LATEST_UPDATE || !ST_LATEST_UPDATE.asset_url) {
+    toast('لا يوجد رابط تحميل متاح لهذا الإصدار', 'error');
+    return;
+  }
+  const instBtn = $('btn-st-install-upd');
+  const prog = $('st-upd-progress');
+  const msg = $('st-upd-msg');
+  const pct = $('st-upd-pct');
+  const bar = $('st-upd-bar');
+  if (instBtn) instBtn.disabled = true;
+  if (prog) prog.classList.remove('hidden');
+  try {
+    await api('update_download', {
+      asset_url: ST_LATEST_UPDATE.asset_url,
+      asset_name: ST_LATEST_UPDATE.asset_name,
+      checksum_url: ST_LATEST_UPDATE.checksum_url || '',
+      version: ST_LATEST_UPDATE.latest_version || '',
+    });
+  } catch (e) {
+    toast((e && e.message) || 'تعذر بدء تحميل التحديث', 'error');
+    if (instBtn) instBtn.disabled = false;
+    return;
+  }
+  if (ST_UPD_POLL) clearInterval(ST_UPD_POLL);
+  ST_UPD_POLL = setInterval(async () => {
+    try {
+      const st = await api('update_status');
+      if (!st) return;
+      const p = Math.max(0, Math.min(100, Number(st.percent || 0)));
+      if (bar) bar.style.width = p + '%';
+      if (pct) pct.textContent = p + '%';
+      if (msg) msg.textContent = st.message || 'جاري التحميل...';
+      if (st.state === 'error') {
+        clearInterval(ST_UPD_POLL); ST_UPD_POLL = null;
+        toast(st.error || 'فشل تحميل التحديث', 'error');
+        if (instBtn) instBtn.disabled = false;
+      } else if (st.state === 'ready') {
+        clearInterval(ST_UPD_POLL); ST_UPD_POLL = null;
+        if (msg) msg.textContent = 'جاري أخذ نسخة احتياطية وتثبيت الإصدار الجديد وإعادة التشغيل...';
+        try {
+          const res = await api('update_install');
+          if (res && res.dev_mode) {
+            toast(res.message || 'تم تشغيل المثبّت بنجاح');
+            if (instBtn) instBtn.disabled = false;
+          }
+        } catch (ie) {
+          toast((ie && ie.message) || 'تعذر تشغيل المثبت', 'error');
+          if (instBtn) instBtn.disabled = false;
+        }
+      }
+    } catch (pe) {}
+  }, 500);
+}
+
+if ($('btn-check-updates-now')) $('btn-check-updates-now').addEventListener('click', runSettingsUpdateCheck);
+
 (async () => {
   const user = await pageInit('settings', { perm: ['settings_view_edit', 'templates_manage', 'backups_manage'] });
   if (!user) return;
@@ -2003,6 +2154,7 @@ if ($('btn-excel-refresh')) $('btn-excel-refresh').addEventListener('click', loa
   fillStoreTab();
   fillLoginTab();
   fillInvoicesTab();
+  loadAppVersionBadge();
 
   const allowedTabs = [
     canStore ? 'store' : null,

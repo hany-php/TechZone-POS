@@ -663,7 +663,7 @@
     background: rgba(37, 99, 235, 0.45);
     color: #fff;
   }
-  #top-settings-btn.hidden, #os-shift-pill.hidden, .ctx-item.hidden {
+  #top-settings-btn.hidden, #top-update-pill.hidden, #os-shift-pill.hidden, .ctx-item.hidden {
     display: none !important;
   }
 
@@ -781,6 +781,10 @@
     </button>
 
     <div class="flex items-center gap-2">
+      <button id="top-update-pill" type="button" onclick="TZOS.openUpdateModal()" class="top-btn hidden px-2.5 py-1 rounded-full text-xs font-bold" style="background:rgba(16,185,129,0.16);color:#059669;border:1px solid rgba(16,185,129,0.35)" title="يتوفر إصدار جديد — اضغط للترقية والتثبيت">
+        <span class="material-icons-round text-sm">system_update</span>
+        <span id="top-update-label">تحديث جديد</span>
+      </button>
       <button id="top-settings-btn" onclick="TZOS.openApp('settings')" class="top-btn hidden" title="فتح صفحة إعدادات النظام الشاملة">
         <span class="material-icons-round text-sm text-primary">settings</span>
         <span class="hidden md:inline">الإعدادات</span>
@@ -860,7 +864,10 @@
             <img src="icon.png" alt="TechZone" class="w-5 h-5 object-contain"/>
           </div>
           <div>
-            <h3 class="font-bold text-sm">قائمة ابدأ — جميع تطبيقات النظام</h3>
+            <h3 class="font-bold text-sm flex items-center gap-2">
+              <span>قائمة ابدأ — جميع تطبيقات النظام</span>
+              <span id="start-app-version" class="text-[10px] font-num px-2 py-0.5 rounded-full bg-primary/15 text-primary"></span>
+            </h3>
             <p class="text-[11px] text-slate-400">اضغط على أي تطبيق لفتحه في نافذة مستقلة قابلة للتكبير والتصغير</p>
           </div>
         </div>
@@ -1032,6 +1039,72 @@
 
 
 
+
+<!-- ===== نافذة إشعار توفر إصدار جديد والترقية التلقائية (GitHub Releases Auto-Updater) ===== -->
+<div id="update-available-modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[110] p-4" role="dialog" aria-modal="true" aria-label="يتوفر إصدار جديد من البرنامج">
+  <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 w-full max-w-lg shadow-2xl border border-slate-200 dark:border-slate-700 space-y-4">
+    <div class="flex items-start justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white shrink-0 shadow-lg" style="background:linear-gradient(135deg,#059669,#10b981)">
+          <span class="material-icons-round text-2xl">system_update</span>
+        </div>
+        <div>
+          <h3 class="text-lg font-black text-slate-900 dark:text-white">هناك إصدار جديد متاح للترقية!</h3>
+          <p id="upd-release-title" class="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">TechZone V1.0.1</p>
+        </div>
+      </div>
+      <button id="btn-upd-close-x" type="button" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">
+        <span class="material-icons-round">close</span>
+      </button>
+    </div>
+
+    <div class="grid grid-cols-2 gap-2.5 text-xs">
+      <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+        <div class="text-[11px] text-slate-500">الإصدار الحالي المثبّت</div>
+        <div id="upd-cur-ver" class="font-num font-black text-sm text-slate-800 dark:text-slate-100 mt-0.5">v1.0.0</div>
+      </div>
+      <div class="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
+        <div class="text-[11px] text-emerald-700 dark:text-emerald-300">الإصدار الجديد الأحدث</div>
+        <div class="flex items-center justify-between mt-0.5">
+          <span id="upd-new-ver" class="font-num font-black text-sm text-emerald-700 dark:text-emerald-300">v1.0.1</span>
+          <span id="upd-file-size" class="text-[10px] font-num text-slate-500"></span>
+        </div>
+      </div>
+    </div>
+
+    <div id="upd-notes-wrap" class="hidden">
+      <div class="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">ما الجديد في هذا الإصدار:</div>
+      <div id="upd-notes" class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300 max-h-36 overflow-y-auto whitespace-pre-wrap leading-relaxed"></div>
+    </div>
+
+    <div class="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/70 text-[11px] text-blue-800 dark:text-blue-200 flex items-start gap-2">
+      <span class="material-icons-round text-base text-blue-600 dark:text-blue-400 shrink-0">verified_user</span>
+      <span>سيقوم البرنامج تلقائياً بأخذ نسخة احتياطية كاملة لقاعدة البيانات والتحقق من سلامة الملف (SHA-256) قبل الترقية — جميع فواتيرك وبياناتك محفوظة 100%.</span>
+    </div>
+
+    <div id="upd-progress-wrap" class="hidden space-y-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+      <div class="flex items-center justify-between text-xs font-bold">
+        <span id="upd-status-text" class="text-slate-700 dark:text-slate-200">جاري تجهيز التحديث...</span>
+        <span id="upd-percent-text" class="font-num text-emerald-600 dark:text-emerald-400">0%</span>
+      </div>
+      <div class="w-full h-2.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+        <div id="upd-progress-bar" class="h-full rounded-full transition-all duration-300" style="width:0%;background:linear-gradient(90deg,#059669,#10b981)"></div>
+      </div>
+    </div>
+
+    <div id="upd-error-box" class="hidden p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-xs font-bold text-red-700 dark:text-red-300"></div>
+
+    <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+      <button id="btn-upd-later" type="button" class="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">
+        لاحقاً
+      </button>
+      <button id="btn-upd-start" type="button" class="flex-1 py-2.5 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs md:text-sm font-bold shadow-lg flex items-center justify-center gap-2 transition-all">
+        <span class="material-icons-round text-base">download</span>
+        <span>نعم، ترقية وتثبيت الإصدار الأخير</span>
+      </button>
+    </div>
+  </div>
+</div>
 
 <!-- ===== شاشة القفل التلقائي عند الخمول (Auto-Lock on Idle Overlay) ===== -->
 <div id="os-lock-overlay" class="hidden" role="dialog" aria-modal="true" aria-label="شاشة قفل النظام">
@@ -2199,6 +2272,150 @@ document.getElementById('os-workspace').addEventListener('contextmenu', (e) => {
   if (targetApp && targetApp !== 'desktop' && targetApp !== 'none') {
     const allowedTarget = PERMITTED_APPS.some((a) => a.id === targetApp) ? targetApp : (PERMITTED_APPS[0] ? PERMITTED_APPS[0].id : null);
     if (allowedTarget) TZOS.openApp(allowedTarget, null, targetMode === 'maximized');
+  }
+
+  /* ===== التحقق التلقائي من تحديثات GitHub Releases وإشعار الترقية السلس ===== */
+  let LATEST_UPDATE_INFO = null;
+  let UPD_POLL_TIMER = null;
+
+  function _fmtBytesMB(b) {
+    const n = Number(b || 0);
+    if (!n) return '';
+    return (n / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  TZOS.closeUpdateModal = () => {
+    const m = document.getElementById('update-available-modal');
+    if (m) { m.classList.add('hidden'); m.classList.remove('flex'); }
+  };
+
+  TZOS.openUpdateModal = (info) => {
+    const data = info || LATEST_UPDATE_INFO;
+    if (!data || !data.has_update) return;
+    LATEST_UPDATE_INFO = data;
+    const m = document.getElementById('update-available-modal');
+    if (!m) return;
+    const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    setTxt('upd-release-title', data.release_name || ('TechZone V' + data.latest_version));
+    setTxt('upd-cur-ver', 'v' + (data.current_version || '1.0.0'));
+    setTxt('upd-new-ver', 'v' + (data.latest_version || ''));
+    setTxt('upd-file-size', _fmtBytesMB(data.asset_size));
+    const notesWrap = document.getElementById('upd-notes-wrap');
+    const notesEl = document.getElementById('upd-notes');
+    if (notesWrap && notesEl) {
+      if (data.release_notes) {
+        notesEl.textContent = data.release_notes;
+        notesWrap.classList.remove('hidden');
+      } else {
+        notesWrap.classList.add('hidden');
+      }
+    }
+    const errBox = document.getElementById('upd-error-box');
+    if (errBox) { errBox.textContent = ''; errBox.classList.add('hidden'); }
+    m.classList.remove('hidden');
+    m.classList.add('flex');
+  };
+
+  TZOS.startAutoUpgrade = async () => {
+    const data = LATEST_UPDATE_INFO;
+    if (!data || !data.asset_url) {
+      toast('لا يوجد رابط تحميل متاح لهذا الإصدار', 'error');
+      return;
+    }
+    const btnStart = document.getElementById('btn-upd-start');
+    const btnLater = document.getElementById('btn-upd-later');
+    const progWrap = document.getElementById('upd-progress-wrap');
+    const progBar = document.getElementById('upd-progress-bar');
+    const progPct = document.getElementById('upd-percent-text');
+    const progTxt = document.getElementById('upd-status-text');
+    const errBox = document.getElementById('upd-error-box');
+    if (errBox) { errBox.textContent = ''; errBox.classList.add('hidden'); }
+    if (progWrap) progWrap.classList.remove('hidden');
+    if (btnStart) { btnStart.disabled = true; btnStart.classList.add('opacity-60'); }
+    if (btnLater) btnLater.disabled = true;
+
+    try {
+      await api('update_download', {
+        asset_url: data.asset_url,
+        asset_name: data.asset_name,
+        checksum_url: data.checksum_url || '',
+        version: data.latest_version || '',
+      });
+    } catch (e) {
+      if (errBox) { errBox.textContent = (e && e.message) || 'تعذر بدء تحميل التحديث'; errBox.classList.remove('hidden'); }
+      if (btnStart) { btnStart.disabled = false; btnStart.classList.remove('opacity-60'); }
+      if (btnLater) btnLater.disabled = false;
+      return;
+    }
+
+    if (UPD_POLL_TIMER) clearInterval(UPD_POLL_TIMER);
+    UPD_POLL_TIMER = setInterval(async () => {
+      try {
+        const st = await api('update_status');
+        if (!st) return;
+        const pct = Math.max(0, Math.min(100, Number(st.percent || 0)));
+        if (progBar) progBar.style.width = pct + '%';
+        if (progPct) progPct.textContent = pct + '%';
+        if (progTxt) progTxt.textContent = st.message || 'جاري التحميل...';
+
+        if (st.state === 'error') {
+          clearInterval(UPD_POLL_TIMER); UPD_POLL_TIMER = null;
+          if (errBox) { errBox.textContent = st.error || 'فشل تحميل التحديث'; errBox.classList.remove('hidden'); }
+          if (btnStart) { btnStart.disabled = false; btnStart.classList.remove('opacity-60'); }
+          if (btnLater) btnLater.disabled = false;
+        } else if (st.state === 'ready') {
+          clearInterval(UPD_POLL_TIMER); UPD_POLL_TIMER = null;
+          if (progTxt) progTxt.textContent = 'جاري أخذ نسخة احتياطية وتثبيت الإصدار الأخير وإعادة تشغيل البرنامج...';
+          try {
+            const inst = await api('update_install');
+            if (inst && inst.dev_mode) {
+              toast(inst.message || 'تم تشغيل مثبّت التحديث');
+              if (btnStart) { btnStart.disabled = false; btnStart.classList.remove('opacity-60'); }
+              if (btnLater) btnLater.disabled = false;
+            }
+          } catch (ie) {
+            if (errBox) { errBox.textContent = (ie && ie.message) || 'تعذر تشغيل المثبت'; errBox.classList.remove('hidden'); }
+            if (btnStart) { btnStart.disabled = false; btnStart.classList.remove('opacity-60'); }
+            if (btnLater) btnLater.disabled = false;
+          }
+        }
+      } catch (pe) {}
+    }, 500);
+  };
+
+  const _btnUpdLater = document.getElementById('btn-upd-later');
+  const _btnUpdX = document.getElementById('btn-upd-close-x');
+  const _btnUpdGo = document.getElementById('btn-upd-start');
+  if (_btnUpdLater) _btnUpdLater.addEventListener('click', () => TZOS.closeUpdateModal());
+  if (_btnUpdX) _btnUpdX.addEventListener('click', () => TZOS.closeUpdateModal());
+  if (_btnUpdGo) _btnUpdGo.addEventListener('click', () => TZOS.startAutoUpgrade());
+
+  // عرض رقم الإصدار الحالي في قائمة ابدأ + فحص التحديثات بالخلفية بعد 2.5 ثانية دون أي تأثير على سرعة الإقلاع
+  api('app_version_info').then((vinfo) => {
+    if (vinfo && vinfo.current_version) {
+      const sv = document.getElementById('start-app-version');
+      if (sv) sv.textContent = 'v' + vinfo.current_version;
+    }
+  }).catch(() => {});
+
+  if (SETTINGS.auto_update_check !== '0' && hasPerm('settings_view_edit', user)) {
+    setTimeout(async () => {
+      try {
+        const res = await api('update_check', { silent: true });
+        if (res && res.has_update && res.asset_url) {
+          LATEST_UPDATE_INFO = res;
+          const pill = document.getElementById('top-update-pill');
+          const lbl = document.getElementById('top-update-label');
+          if (lbl) lbl.textContent = 'تحديث v' + res.latest_version;
+          if (pill) pill.classList.remove('hidden');
+          const dismissedKey = 'tz-upd-dismissed-' + res.latest_version;
+          if (!sessionStorage.getItem(dismissedKey)) {
+            sessionStorage.setItem(dismissedKey, '1');
+            TZOS.openUpdateModal(res);
+          }
+        }
+      } catch (e) {}
+    }, 2500);
   }
 })();
 </script>

@@ -2183,6 +2183,72 @@ check("Excel Export Preview, Selective Row/Col Export, Import Diff Preview & Sel
       and '_STATE["window"] = window' in _main_py_xl)
 
 
+# ق) فحص نظام الإصدارات التلقائي (GitHub Auto-Releases) والتحديث التلقائي الآمن في البرنامج
+import version as _ver_mod
+import api_updater as _upd_mod
+
+check("version.py parses & compares SemVer accurately",
+      _ver_mod.normalize_version("v1.0.1") == "1.0.1"
+      and _ver_mod.normalize_version("TechZone V1.2.3") == "1.2.3"
+      and _ver_mod.is_newer_version("v1.0.1", "1.0.0") is True
+      and _ver_mod.is_newer_version("v1.0.0", "1.0.0") is False
+      and _ver_mod.is_newer_version("v0.9.9", "1.0.0") is False
+      and _ver_mod.is_newer_version("v1.10.0", "1.2.9") is True)
+
+_sample_rel = {
+    "tag_name": "v1.0.1",
+    "name": "TechZone V1.0.1",
+    "body": "- تحسين الأداء وإضافة التحديث التلقائي",
+    "published_at": "2026-11-25T10:00:00Z",
+    "html_url": "https://github.com/hany-php/TechZone-POS/releases/tag/v1.0.1",
+    "assets": [
+        {"name": "SHA256SUMS.txt", "size": 173, "browser_download_url": "https://github.com/hany-php/TechZone-POS/releases/download/v1.0.1/SHA256SUMS.txt"},
+        {"name": "TechZone-Setup-v1.0.1.exe", "size": 18500000, "browser_download_url": "https://github.com/hany-php/TechZone-POS/releases/download/v1.0.1/TechZone-Setup-v1.0.1.exe"},
+        {"name": "TechZone.exe", "size": 17200000, "browser_download_url": "https://github.com/hany-php/TechZone-POS/releases/download/v1.0.1/TechZone.exe"},
+    ],
+}
+_parsed_inst = _upd_mod._parse_release_payload(_sample_rel, "1.0.0", "installer")
+_parsed_port = _upd_mod._parse_release_payload(_sample_rel, "1.0.0", "portable")
+_sums_test = _upd_mod._parse_sha256_sums("a" * 64 + "  TechZone-Setup-v1.0.1.exe\n" + "b" * 64 + "  TechZone.exe\n")
+check("api_updater parses GitHub release, selects setup/portable assets, validates HTTPS hosts & parses SHA256SUMS",
+      _parsed_inst["has_update"] is True
+      and _parsed_inst["asset_name"] == "TechZone-Setup-v1.0.1.exe"
+      and _parsed_inst["checksum_url"].endswith("SHA256SUMS.txt")
+      and _parsed_port["asset_name"] == "TechZone.exe"
+      and _sums_test.get("techzone-setup-v1.0.1.exe") == "a" * 64
+      and _upd_mod._is_trusted_https_url("https://github.com/hany-php/TechZone-POS/releases/download/v1.0.1/TechZone.exe") is True
+      and _upd_mod._is_trusted_https_url("http://github.com/hany-php/TechZone-POS/a.exe") is False
+      and _upd_mod._is_trusted_https_url("https://evil.example.com/TechZone.exe") is False)
+
+_vinfo_r = call(a, "app_version_info")
+_ust_r = call(a, "update_status")
+_bad_dl = call(a, "update_download", {"asset_url": "https://evil.example.com/fake.exe", "asset_name": "fake.exe"})
+_auto_upd_save = call(a, "settings_save", {"auto_update_check": "0"})
+_auto_upd_restore = call(a, "settings_save", {"auto_update_check": "1"})
+call(a, "login", {"username": "cashier", "pin": "1111"})
+_cash_dl_denied = not call(a, "update_download", {"asset_url": "https://github.com/hany-php/TechZone-POS/releases/download/v1.0.1/TechZone.exe"})["ok"]
+_cash_inst_denied = not call(a, "update_install")["ok"]
+call(a, "login", {"username": "admin", "pin": "8642"})
+
+_wf_yml = (ROOT / ".github" / "workflows" / "build-installer.yml").read_text(encoding="utf-8")
+_desk_upd = (ROOT / "web" / "desktop.html").read_text(encoding="utf-8")
+_set_upd = (ROOT / "web" / "settings.html").read_text(encoding="utf-8")
+_main_upd = (ROOT / "app" / "main.py").read_text(encoding="utf-8")
+_spec_upd = (ROOT / "TechZone.spec").read_text(encoding="utf-8")
+check("Auto-Updater API, RBAC, GitHub Actions auto-release on push to main & UI wiring verified",
+      _vinfo_r["ok"] and bool(_vinfo_r["data"].get("current_version"))
+      and _ust_r["ok"] and _ust_r["data"].get("state") == "idle"
+      and not _bad_dl["ok"]
+      and _auto_upd_save["ok"] and _auto_upd_save["data"].get("auto_update_check") == "0"
+      and _auto_upd_restore["ok"] and _auto_upd_restore["data"].get("auto_update_check") == "1"
+      and _cash_dl_denied and _cash_inst_denied
+      and "branches:" in _wf_yml and "- main" in _wf_yml and "softprops/action-gh-release@v2" in _wf_yml and "TechZone V${{ env.APP_VERSION }}" in _wf_yml
+      and "version.txt" in _spec_upd
+      and "request_app_shutdown" in _main_upd
+      and "update-available-modal" in _desk_upd and "#top-update-pill.hidden" in _desk_upd
+      and "st-auto-update-check" in _set_upd and "btn-check-updates-now" in _set_upd)
+
+
 check("all documentation files enforce Modular Plug-and-Play rule & document latest features",
       all(df.exists() and "Modular Plug-and-Play" in df.read_text(encoding="utf-8") for df in _required_doc_files)
       and all(tok in (ROOT / "AGENTS.md").read_text(encoding="utf-8") for tok in ("close_exit_app", "_hidden_desktop", "sales_cogs", "account_move", "report_comprehensive", "tzGenerateBarcodeSvg", "verify_lock_pin", "activity_audit_list", "db_optimize_images"))

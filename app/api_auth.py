@@ -930,11 +930,11 @@ class AuthSettingsMixin:
                     "store_email", "store_cr", "store_vat", "receipt_thanks", "receipt_footer",
                     "receipt_logo", "receipt_show_logo", "receipt_show_barcode",
                     "receipt_show_tax", "receipt_show_payments", "whatsapp_send_enabled",
-                    "pos_print_preview", "print_show_dialog", "print_printer_name", "close_exit_app", "app_default_lang",
+                    "pos_print_preview", "print_show_dialog", "print_printer_name", "close_exit_app", "auto_update_check", "app_default_lang",
                     "idle_lock_minutes", "pos_sound_enabled", "pos_low_stock_alert", "customer_default_credit_limit", "enforce_credit_limit",
                     "login_max_attempts", "login_lockout_minutes",
                     "template_a4_config", "template_pos_config", "pos_categories_config"}
-        show = {"tax_enabled", "receipt_show_logo", "receipt_show_barcode", "receipt_show_tax", "receipt_show_payments", "whatsapp_send_enabled", "pos_print_preview", "print_show_dialog", "close_exit_app", "pos_sound_enabled", "pos_low_stock_alert", "enforce_credit_limit"}
+        show = {"tax_enabled", "receipt_show_logo", "receipt_show_barcode", "receipt_show_tax", "receipt_show_payments", "whatsapp_send_enabled", "pos_print_preview", "print_show_dialog", "close_exit_app", "auto_update_check", "pos_sound_enabled", "pos_low_stock_alert", "enforce_credit_limit"}
         valid_login_modes = {"pin_only", "select_user_pin", "username_password"}
         valid_start_modes = {"window", "maximized", "direct"}
         with db.connect() as conn:

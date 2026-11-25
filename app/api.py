@@ -29,6 +29,7 @@ from api_quotes import QuotesMixin
 from api_reports import ReportsMixin
 from api_sales import SalesMixin
 from api_services import ServicesMixin
+from api_updater import UpdaterMixin
 from modules_map import API_MODULE_MAP
 
 
@@ -45,6 +46,7 @@ class Api(
     QuotesMixin,
     ServicesMixin,
     ReportsMixin,
+    UpdaterMixin,
     _BaseApiMixin,
 ):
     def __init__(self):

@@ -1554,6 +1554,7 @@ def _ensure_schema_columns(conn: sqlite3.Connection):
         conn.execute("INSERT OR IGNORE INTO settings(key, value) VALUES('print_show_dialog', '0')")
         conn.execute("INSERT OR IGNORE INTO settings(key, value) VALUES('print_printer_name', '')")
         conn.execute("INSERT OR IGNORE INTO settings(key, value) VALUES('close_exit_app', '0')")
+        conn.execute("INSERT OR IGNORE INTO settings(key, value) VALUES('auto_update_check', '1')")
         conn.execute("INSERT OR IGNORE INTO settings(key, value) VALUES('app_default_lang', 'ar')")
         u_cols = {r["name"] for r in conn.execute("PRAGMA table_info(users)").fetchall()}
         if "lang" not in u_cols:
@@ -2191,6 +2192,7 @@ def _seed(conn: sqlite3.Connection) -> None:
         "print_show_dialog": "0",
         "print_printer_name": "",
         "close_exit_app": "0",
+        "auto_update_check": "1",
         "login_max_attempts": "5",
         "login_lockout_minutes": "10",
         "migration_v2_strict_perms": "1",

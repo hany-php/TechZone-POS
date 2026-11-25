@@ -58,6 +58,10 @@ To stage, commit, and push project updates safely to the remote GitHub repositor
 .\push-github.bat
 ```
 
+### 3.3 Automated GitHub Releases & In-App Auto-Updater (`.github/workflows/build-installer.yml` & `app/api_updater.py`)
+- **Zero-Touch Auto-Releases:** Every `push` to `main` automatically triggers GitHub Actions to compute the next SemVer version (`v1.0.0` → `v1.0.1` → `v1.0.2`, or `[minor]`/`[major]` commit tags), inject it into `version.txt` and `app/version.py`, run `app/selfcheck.py`, compile `TechZone.exe` and `TechZone-Setup-v<ver>.exe`, generate `SHA256SUMS.txt`, and publish a GitHub Release (`TechZone V<ver>`).
+- **Offline-Safe In-App Upgrade:** Installed `TechZone.exe` instances check GitHub Releases silently on startup (when `auto_update_check='1'` and online; zero errors when offline). When a newer release exists, a native Arabic modal prompts the manager to upgrade: it verifies HTTPS host + `SHA-256`, saves a `before_update` SQLite backup, runs an in-place silent upgrade preserving `data/`, and relaunches the latest version automatically.
+
 ---
 
 ## 4. Shop Installation & Deployment Steps

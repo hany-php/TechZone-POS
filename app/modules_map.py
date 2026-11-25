@@ -35,6 +35,12 @@ CORE_METHODS = {
     "backups_list",
     "db_restore",
     "db_optimize_images",
+    # التحديث التلقائي عبر GitHub Releases (أوفلاين آمن)
+    "app_version_info",
+    "update_check",
+    "update_status",
+    "update_download",
+    "update_install",
     # الإيصال وقراءة الفاتورة الواحدة والطباعة (receipt قسم أساسي)
     "receipt_text",
     "sale",

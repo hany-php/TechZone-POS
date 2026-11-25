@@ -13,7 +13,7 @@ rem --- Auto-increment version in version.txt ---
 if not "%~1"=="" (
     echo %~1>version.txt
 ) else (
-    python -c "import os; f='version.txt'; v=open(f).read().strip().split('.') if os.path.exists(f) else ['2','0','-1']; v[-1]=str(int(v[-1])+1); open(f,'w').write('.'.join(v))"
+    python -c "import os, re; f='version.txt'; raw=open(f,encoding='utf-8').read().strip() if os.path.exists(f) else ''; m=re.search(r'(\d+)\.(\d+)\.(\d+)', raw); v=[int(x) for x in m.groups()] if m else [1,0,0]; v[-1]+=1; ver='.'.join(map(str,v)); open(f,'w',encoding='utf-8').write(ver+'\n')"
 )
 set /p APP_VERSION=<version.txt
 echo [INFO] Building Version: %APP_VERSION%
@@ -25,7 +25,7 @@ if exist build rmdir /s /q build
 if exist dist rmdir /s /q dist
 
 echo [1/3] Building dist\TechZone.exe via PyInstaller...
-python -m PyInstaller --noconfirm --clean --name TechZone --windowed --onefile --icon "icon.ico" --add-data "web;web" --add-data "icon.ico;." app\main.py || (echo [ERROR] PyInstaller build failed & pause & exit /b 1)
+python -m PyInstaller --noconfirm --clean --name TechZone --windowed --onefile --icon "icon.ico" --add-data "web;web" --add-data "icon.ico;." --add-data "version.txt;." app\main.py || (echo [ERROR] PyInstaller build failed & pause & exit /b 1)
 
 set "ISCC="
 if exist "%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe" set "ISCC=%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe"
