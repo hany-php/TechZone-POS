@@ -260,12 +260,17 @@ window.UI_CONFIG = null;
 
 async function loadUiConfig(force = false) {
   if (!force && window.UI_CONFIG && Array.isArray(window.UI_CONFIG.modules)) {
+    if (window.UI_CONFIG.images_base_url) window.TZ_IMAGES_BASE = window.UI_CONFIG.images_base_url;
     return window.UI_CONFIG;
   }
   try {
     const cfg = await api('ui_config');
     if (cfg && Array.isArray(cfg.modules)) {
       window.UI_CONFIG = cfg;
+      if (cfg.images_base_url) {
+        window.TZ_IMAGES_BASE = cfg.images_base_url;
+        try { if (window.top) window.top.TZ_IMAGES_BASE = cfg.images_base_url; } catch (e) {}
+      }
       return cfg;
     }
   } catch (e) {}
@@ -1851,10 +1856,18 @@ function tzBuildBarcodeLabelsPrintHtml(items, cfg = {}) {
 function tzImgSrc(val) {
   const s = String(val || '').trim();
   if (!s) return '';
-  if (s.startsWith('data:image/') || s.startsWith('http://') || s.startsWith('https://') || s.startsWith('../') || s.startsWith('/')) {
+  if (s.startsWith('data:image/') || s.startsWith('http://') || s.startsWith('https://') || s.startsWith('file://') || s.startsWith('../') || s.startsWith('/')) {
     return s;
   }
-  return '../data/images/' + s.replace(/^\/+/, '');
+  const rel = s.replace(/^\/+/, '');
+  let base = '';
+  try {
+    base = String(window.TZ_IMAGES_BASE || (window.UI_CONFIG && window.UI_CONFIG.images_base_url) || (window.top && window.top.TZ_IMAGES_BASE) || '').replace(/\/+$/, '');
+  } catch (e) {}
+  if (base && typeof location !== 'undefined' && location.protocol === 'file:') {
+    return base + '/' + rel;
+  }
+  return '../data/images/' + rel;
 }
 
 /* ===== دوال مساعدة موحدة لتحميل ومعاينة ومقارنة وتصدير واستيراد ملفات Excel (.xlsx / .csv) لجميع الأقسام ===== */

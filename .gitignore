@@ -21,8 +21,7 @@ dist/
 # node
 node_modules/
 
-# خطوط web/fonts الكبيرة (23 ملف woff2 ~1MB) — مستثناة حجماً، تُجلب محلياً (انظر README)
-web/fonts/
+# ملاحظة: خطوط وأيقونات web/fonts/ (23 ملف woff2 ~1MB) محفوظة عمداً في git لكي تُدمج داخل TechZone.exe على GitHub Actions بدون إنترنت
 
 # سجل البرنامج إن وجد
 tz-debug.log

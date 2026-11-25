@@ -354,6 +354,7 @@ class OwnerMixin:
                 "labels": lbls,
                 "default_labels": dict(DEFAULT_LABELS),
                 "profile": st.get("business_profile") or "retail_electronics",
+                "images_base_url": db.images_dir().resolve().as_uri(),
             }
 
     def modules_all(self):

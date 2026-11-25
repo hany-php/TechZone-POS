@@ -150,8 +150,19 @@ jobs:
         run: |
           python app\selfcheck.py
 
-      - name: 6. بناء البرنامج التنفيذي (PyInstaller)
+      - name: 6. التحقق من وجود الخطوط والأيقونات وبناء البرنامج التنفيذي (PyInstaller)
+        shell: pwsh
         run: |
+          $reqFonts = @(
+            "web\fonts\material-icons.woff2",
+            "web\fonts\material-icons-round.woff2",
+            "web\fonts\material-icons-outlined.woff2",
+            "web\fonts\cairo-400-arabic.woff2",
+            "web\fonts\ibm-plex-sans-arabic-400-arabic.woff2"
+          )
+          foreach ($f in $reqFonts) {
+            if (-not (Test-Path $f)) { throw "Missing required bundled font/icon asset: $f" }
+          }
           python -m PyInstaller --noconfirm --clean --name TechZone --windowed --onefile --icon "icon.ico" --add-data "web;web" --add-data "icon.ico;." --add-data "version.txt;." app\main.py
 
       - name: 7. تجميع ملف التثبيت (Inno Setup 6)

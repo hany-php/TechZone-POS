@@ -2249,6 +2249,22 @@ check("Auto-Updater API, RBAC, GitHub Actions auto-release on push to main & UI 
       and "st-auto-update-check" in _set_upd and "btn-check-updates-now" in _set_upd)
 
 
+_gi_txt = (ROOT / ".gitignore").read_text(encoding="utf-8")
+_ui_cfg_r = call(a, "ui_config")
+_req_fonts = (
+    "material-icons.woff2",
+    "material-icons-round.woff2",
+    "material-icons-outlined.woff2",
+    "cairo-400-arabic.woff2",
+    "ibm-plex-sans-arabic-400-arabic.woff2",
+)
+check("All bundled web/fonts (.woff2 icons & Arabic fonts) are tracked (not gitignored) & ui_config provides images_base_url",
+      all((ROOT / "web" / "fonts" / fn).exists() for fn in _req_fonts)
+      and not any(line.strip() in ("web/fonts/", "web/fonts") for line in _gi_txt.splitlines())
+      and _ui_cfg_r["ok"] and str(_ui_cfg_r["data"].get("images_base_url") or "").startswith("file://")
+      and "TZ_IMAGES_BASE" in (ROOT / "web" / "app.js").read_text(encoding="utf-8"))
+
+
 check("all documentation files enforce Modular Plug-and-Play rule & document latest features",
       all(df.exists() and "Modular Plug-and-Play" in df.read_text(encoding="utf-8") for df in _required_doc_files)
       and all(tok in (ROOT / "AGENTS.md").read_text(encoding="utf-8") for tok in ("close_exit_app", "_hidden_desktop", "sales_cogs", "account_move", "report_comprehensive", "tzGenerateBarcodeSvg", "verify_lock_pin", "activity_audit_list", "db_optimize_images"))

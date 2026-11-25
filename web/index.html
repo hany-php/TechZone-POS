@@ -74,7 +74,7 @@
               <span class="bg-green-500 w-2 h-2 rounded-full animate-pulse"></span>
               <span class="text-sm font-medium opacity-90">النظام يعمل بكفاءة — تعرف ذكي من الرمز السري</span>
             </div>
-            <p class="text-sm opacity-80 font-numeric">v2.5.0 (Offline OS)</p>
+            <p id="login-app-version" class="text-sm opacity-80 font-numeric">v1.0.0 (Offline OS)</p>
           </div>
         </div>
       </div>
@@ -714,6 +714,8 @@
           USERS = cfg.users || [];
           LOGIN_MODE = cfg.login_mode || 'pin_only';
           applyStoreBranding(cfg);
+          const verEl = document.getElementById('login-app-version');
+          if (verEl && cfg.app_version) verEl.textContent = 'v' + cfg.app_version + ' (Offline OS)';
           if (cfg.login_locked_until && cfg.login_locked_until > Date.now() / 1000) {
             startLoginCountdown(Math.ceil(cfg.login_locked_until - Date.now() / 1000));
           }

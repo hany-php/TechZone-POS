@@ -181,7 +181,10 @@ Defined in `app/permissions.py`:
   3. Added `auto_update_check` setting (default `'1'`) and RBAC gating (`settings_view_edit` required for download/install).
 - **Arabic Upgrade Modal & Settings Update Center (`web/desktop.html`, `web/settings.html`)**:
   1. Added automatic background check on desktop launch showing `#update-available-modal` ("هناك إصدار جديد متاح للترقية!") with release notes, live download progress bar, one-click upgrade, and persistent `#top-update-pill` topbar badge.
-  2. Added the Software Updates card in `web/settings.html` (`#st-app-version`, `#st-auto-update-check`, `#btn-check-updates-now`) and 3 new automated checks in `app/selfcheck.py`.
+  2. Added the Software Updates card in `web/settings.html` (`#st-app-version`, `#st-auto-update-check`, `#btn-check-updates-now`) and automated checks in `app/selfcheck.py`.
+- **Bundled Fonts/Icons & Frozen EXE Product Images Fix (`.gitignore`, `app/api_owner.py`, `app/api_auth.py`, `web/app.js`, `web/index.html`, `.github/workflows/build-installer.yml`)**:
+  1. Removed `web/fonts/` from `.gitignore` so all 23 local `.woff2` files (Material Icons + Cairo + IBM Plex Sans Arabic + Space Grotesk) are committed to Git and bundled into every GitHub Actions `TechZone.exe` release (with a CI pre-build verification guard).
+  2. Exposed `images_base_url` (`db.images_dir().resolve().as_uri()`) in `ui_config()` and updated `tzImgSrc()` in `web/app.js` to resolve `data/images/...` reliably when running from PyInstaller `--onefile` (`_MEIPASS`), plus dynamic `#login-app-version` on `web/index.html`.
 
 ### 2026-11-18 — Accounting Fixes (Separated Sale/COGS Entries, Single-Run Opening Wizard, COA Drag-and-Drop, Universal Print), Comprehensive Financial Reports Hub (Excel/PDF/WhatsApp), & Mandatory Plug-and-Play Documentation (`main`)
 - **Separated Financial Invoice vs. COGS Journal Entries (`app/erp_hooks.py`, `web/accounting.html`)**:

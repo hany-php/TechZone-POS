@@ -11,6 +11,7 @@ from decimal import Decimal, ROUND_HALF_UP
 
 import db
 from permissions import ALL_PERM_KEYS, PERMISSION_GROUPS
+from version import get_app_version
 from api_common import (
     ApiError,
     _FALLBACK_JPEG,
@@ -62,6 +63,7 @@ class AuthSettingsMixin:
                 "default_start_page": def_sp,
                 "default_start_mode": st.get("default_start_mode") or "window",
                 "os_default_theme": st.get("os_default_theme") or "dark",
+                "app_version": get_app_version(),
                 "login_locked_until": locked_until,
                 "users": [{"id": r["id"], "username": r["username"], "name": r["name"], "avatar": r["avatar"]} for r in rows],
             }
