@@ -2245,7 +2245,7 @@ check("Auto-Updater API, RBAC, GitHub Actions auto-release on push to main & UI 
       and "branches:" in _wf_yml and "- main" in _wf_yml and "softprops/action-gh-release@v2" in _wf_yml and "TechZone V${{ env.APP_VERSION }}" in _wf_yml
       and "version.txt" in _spec_upd
       and "request_app_shutdown" in _main_upd
-      and "update-available-modal" in _desk_upd and "#top-update-pill.hidden" in _desk_upd
+      and "update-available-modal" in _desk_upd and "#top-update-pill.hidden" in _desk_upd and "2147483640" in _desk_upd
       and "st-auto-update-check" in _set_upd and "btn-check-updates-now" in _set_upd)
 
 

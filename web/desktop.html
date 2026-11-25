@@ -683,6 +683,15 @@
   #os-lock-overlay.hidden {
     display: none !important;
   }
+  #update-available-modal {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 2147483640 !important;
+    pointer-events: auto !important;
+  }
+  #update-available-modal.hidden {
+    display: none !important;
+  }
   body.tz-screen-locked #os-root {
     pointer-events: none !important;
     user-select: none !important;
@@ -1041,7 +1050,7 @@
 
 
 <!-- ===== نافذة إشعار توفر إصدار جديد والترقية التلقائية (GitHub Releases Auto-Updater) ===== -->
-<div id="update-available-modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[110] p-4" role="dialog" aria-modal="true" aria-label="يتوفر إصدار جديد من البرنامج">
+<div id="update-available-modal" style="z-index:2147483640" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="يتوفر إصدار جديد من البرنامج">
   <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 w-full max-w-lg shadow-2xl border border-slate-200 dark:border-slate-700 space-y-4">
     <div class="flex items-start justify-between gap-3">
       <div class="flex items-center gap-3">
@@ -1074,7 +1083,7 @@
 
     <div id="upd-notes-wrap" class="hidden">
       <div class="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">ما الجديد في هذا الإصدار:</div>
-      <div id="upd-notes" class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300 max-h-36 overflow-y-auto whitespace-pre-wrap leading-relaxed"></div>
+      <div id="upd-notes" dir="auto" class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300 max-h-36 overflow-y-auto whitespace-pre-wrap leading-relaxed select-text"></div>
     </div>
 
     <div class="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/70 text-[11px] text-blue-800 dark:text-blue-200 flex items-start gap-2">
@@ -2304,7 +2313,7 @@ document.getElementById('os-workspace').addEventListener('contextmenu', (e) => {
     const notesEl = document.getElementById('upd-notes');
     if (notesWrap && notesEl) {
       if (data.release_notes) {
-        notesEl.textContent = data.release_notes;
+        notesEl.textContent = String(data.release_notes).replace(/\*\*/g, '');
         notesWrap.classList.remove('hidden');
       } else {
         notesWrap.classList.add('hidden');
@@ -2386,9 +2395,15 @@ document.getElementById('os-workspace').addEventListener('contextmenu', (e) => {
   const _btnUpdLater = document.getElementById('btn-upd-later');
   const _btnUpdX = document.getElementById('btn-upd-close-x');
   const _btnUpdGo = document.getElementById('btn-upd-start');
+  const _updModalEl = document.getElementById('update-available-modal');
   if (_btnUpdLater) _btnUpdLater.addEventListener('click', () => TZOS.closeUpdateModal());
   if (_btnUpdX) _btnUpdX.addEventListener('click', () => TZOS.closeUpdateModal());
   if (_btnUpdGo) _btnUpdGo.addEventListener('click', () => TZOS.startAutoUpgrade());
+  if (_updModalEl) {
+    _updModalEl.addEventListener('click', (ev) => {
+      if (ev.target === _updModalEl && _btnUpdLater && !_btnUpdLater.disabled) TZOS.closeUpdateModal();
+    });
+  }
 
   // عرض رقم الإصدار الحالي في قائمة ابدأ + فحص التحديثات بالخلفية بعد 2.5 ثانية دون أي تأثير على سرعة الإقلاع
   api('app_version_info').then((vinfo) => {
