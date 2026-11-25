@@ -10,9 +10,10 @@ __pycache__/
 *.db-journal
 !data/.gitkeep
 
-# ملفات فواتير PDF المولدة والنسخ الاحتياطية
+# ملفات فواتير PDF المولدة والنسخ الاحتياطية والتحديثات المؤقتة
 data/receipts/
 data/backups/
+data/updates/
 
 # PyInstaller
 build/

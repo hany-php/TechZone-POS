@@ -6,6 +6,7 @@ import webview
 
 from api import Api
 from api_common import _STATE
+from version import get_app_version
 
 if getattr(sys, "frozen", False):
     # onedir / onefile: ملفات --add-data داخل sys._MEIPASS
@@ -38,6 +39,11 @@ def store_title():
     except Exception:
         pass
     return "تك زون للإلكترونيات"
+
+
+def app_window_title():
+    """عنوان نافذة البرنامج متضمناً اسم المتجر ورقم الإصدار الحالي."""
+    return f"{store_title()} — v{get_app_version()}"
 
 
 def is_close_exit_enabled() -> bool:
@@ -212,7 +218,7 @@ def _setup_winforms_tray(window, icon_path, start_hidden: bool = False):
                 else:
                     ni.Icon = form.Icon or SystemIcons.Application
 
-                ni.Text = store_title()[:63]
+                ni.Text = app_window_title()[:63]
                 ni.Visible = True
 
                 menu = ContextMenuStrip()
@@ -295,7 +301,7 @@ def main():
     start_in_tray = is_start_in_tray_requested()
 
     window = webview.create_window(
-        title=store_title(),
+        title=app_window_title(),
         url=str(WEB / "index.html"),
         js_api=Api(),
         width=1360,

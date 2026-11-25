@@ -766,6 +766,7 @@
           <img src="icon.png" alt="Logo" class="w-4 h-4 object-contain"/>
         </span>
         <span id="os-store-name" class="font-bold">تك زون للإلكترونيات</span>
+        <span id="os-topbar-version" class="text-[10px] font-num font-bold px-1.5 py-0.5 rounded-md bg-primary/15 text-primary" title="إصدار البرنامج الحالي"></span>
       </button>
       <span class="text-slate-500">|</span>
       <span id="os-active-win-title" class="text-blue-300 font-bold">سطح المكتب</span>
@@ -2405,32 +2406,57 @@ document.getElementById('os-workspace').addEventListener('contextmenu', (e) => {
     });
   }
 
-  // عرض رقم الإصدار الحالي في قائمة ابدأ + فحص التحديثات بالخلفية بعد 2.5 ثانية دون أي تأثير على سرعة الإقلاع
+  // عرض رقم الإصدار الحالي في شريط العنوان وقائمة ابدأ + مراقبة التحديثات تلقائياً في الخلفية عند توفر الإنترنت
   api('app_version_info').then((vinfo) => {
     if (vinfo && vinfo.current_version) {
+      const verTag = 'v' + vinfo.current_version;
       const sv = document.getElementById('start-app-version');
-      if (sv) sv.textContent = 'v' + vinfo.current_version;
+      if (sv) sv.textContent = verTag;
+      const tv = document.getElementById('os-topbar-version');
+      if (tv) tv.textContent = verTag;
+      try { document.title = `${stName} — ${verTag}`; } catch (e) {}
     }
   }).catch(() => {});
 
-  if (SETTINGS.auto_update_check !== '0' && hasPerm('settings_view_edit', user)) {
-    setTimeout(async () => {
-      try {
-        const res = await api('update_check', { silent: true });
-        if (res && res.has_update && res.asset_url) {
-          LATEST_UPDATE_INFO = res;
-          const pill = document.getElementById('top-update-pill');
-          const lbl = document.getElementById('top-update-label');
-          if (lbl) lbl.textContent = 'تحديث v' + res.latest_version;
-          if (pill) pill.classList.remove('hidden');
-          const dismissedKey = 'tz-upd-dismissed-' + res.latest_version;
-          if (!sessionStorage.getItem(dismissedKey)) {
-            sessionStorage.setItem(dismissedKey, '1');
-            TZOS.openUpdateModal(res);
-          }
+  let _UPD_CHECK_IN_FLIGHT = false;
+  TZOS.checkUpdatesInBackground = async (force = false) => {
+    if (_UPD_CHECK_IN_FLIGHT || UPD_POLL_TIMER) return;
+    const st = window.SETTINGS || SETTINGS || {};
+    if (st.auto_update_check === '0') return;
+    if (!hasPerm('settings_view_edit', user)) return;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+    _UPD_CHECK_IN_FLIGHT = true;
+    try {
+      const res = await api('update_check', { force: !!force, silent: true });
+      if (res && res.has_update && res.asset_url) {
+        LATEST_UPDATE_INFO = res;
+        const pill = document.getElementById('top-update-pill');
+        const lbl = document.getElementById('top-update-label');
+        if (lbl) lbl.textContent = 'تحديث v' + res.latest_version;
+        if (pill) pill.classList.remove('hidden');
+        const dismissedKey = 'tz-upd-dismissed-' + res.latest_version;
+        const modalOpen = document.getElementById('update-available-modal') && !document.getElementById('update-available-modal').classList.contains('hidden');
+        const locked = typeof TZOS.isLocked === 'function' && TZOS.isLocked();
+        if (!sessionStorage.getItem(dismissedKey) && !modalOpen && !locked) {
+          sessionStorage.setItem(dismissedKey, '1');
+          TZOS.openUpdateModal(res);
         }
-      } catch (e) {}
-    }, 2500);
+      }
+    } catch (e) {
+    } finally {
+      _UPD_CHECK_IN_FLIGHT = false;
+    }
+  };
+
+  if (hasPerm('settings_view_edit', user)) {
+    // 1) فحص أولي بعد 2.5 ثانية من فتح سطح المكتب
+    setTimeout(() => TZOS.checkUpdatesInBackground(false), 2500);
+    // 2) مراقبة دورية صامتة في الخلفية كل 10 دقائق طالما الإنترنت متاح
+    setInterval(() => TZOS.checkUpdatesInBackground(true), 10 * 60 * 1000);
+    // 3) فحص فوري تلقائي بمجرد عودة اتصال الإنترنت للجهاز
+    window.addEventListener('online', () => {
+      setTimeout(() => TZOS.checkUpdatesInBackground(true), 3000);
+    });
   }
 })();
 </script>
