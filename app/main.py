@@ -69,6 +69,7 @@ def _dispose_tray_icon():
 def request_app_shutdown():
     """إغلاق البرنامج نهائياً بنعومة (يُستخدم أثناء تثبيت التحديثات التلقائية لتجاوز وضع التصغير بجوار الساعة)."""
     _TRAY_STATE["force_exit"] = True
+    _STATE["force_exit"] = True
     _dispose_tray_icon()
     form = _TRAY_STATE.get("form")
     if sys.platform == "win32" and form is not None:
@@ -253,7 +254,7 @@ def _setup_winforms_tray(window, icon_path, start_hidden: bool = False):
                 _TRAY_STATE["notify_icon"] = ni
 
                 def _on_form_closing(sender, e):
-                    if _TRAY_STATE.get("force_exit") or is_close_exit_enabled():
+                    if _TRAY_STATE.get("force_exit") or _STATE.get("force_exit") or is_close_exit_enabled():
                         _dispose_tray_icon()
                         return
                     e.Cancel = True
@@ -304,6 +305,8 @@ def main():
         hidden=start_in_tray,
     )
     _STATE["window"] = window
+    _STATE["force_exit"] = False
+    _STATE["shutdown_cb"] = request_app_shutdown
 
     def _on_window_shown():
         _setup_winforms_tray(window, icon_path, start_hidden=False)
@@ -318,7 +321,7 @@ def main():
             time.sleep(0.1)
 
     def _on_window_closing():
-        if _TRAY_STATE.get("force_exit") or is_close_exit_enabled():
+        if _TRAY_STATE.get("force_exit") or _STATE.get("force_exit") or is_close_exit_enabled():
             _dispose_tray_icon()
             return True
         _setup_winforms_tray(window, icon_path)

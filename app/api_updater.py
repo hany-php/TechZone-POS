@@ -206,23 +206,28 @@ def _sha256_file(path: pathlib.Path) -> str:
     return h.hexdigest().lower()
 
 
-def _trigger_clean_shutdown_delayed(delay_sec: float = 0.5):
-    """إغلاق البرنامج بنعومة بعد إرجاع رد API للواجهة (حتى لو كان وضع شريط النظام System Tray مفعلاً)."""
+def _trigger_clean_shutdown_delayed(delay_sec: float = 0.45):
+    """إغلاق البرنامج نهائياً بنعومة عبر _STATE المشترك (حتى لو كان وضع شريط النظام System Tray مفعلاً)."""
+    _STATE["force_exit"] = True
+
     def _runner():
         time.sleep(max(0.1, delay_sec))
-        try:
-            import main as main_mod
-            if hasattr(main_mod, "request_app_shutdown"):
-                main_mod.request_app_shutdown()
-                return
-        except Exception:
-            pass
-        try:
-            win = _STATE.get("window")
-            if win is not None:
-                win.destroy()
-        except Exception:
-            pass
+        _STATE["force_exit"] = True
+        cb = _STATE.get("shutdown_cb")
+        if callable(cb):
+            try:
+                cb()
+            except Exception:
+                pass
+        else:
+            try:
+                win = _STATE.get("window")
+                if win is not None:
+                    win.destroy()
+            except Exception:
+                pass
+        # ضمان الخروج التام من العملية بعد 1.5 ثانية حتى لا يبقى التطبيق عالقاً في شريط النظام
+        time.sleep(1.5)
         os._exit(0)
 
     threading.Thread(target=_runner, daemon=True).start()
@@ -234,27 +239,38 @@ def _build_windows_update_script(
     app_dir: pathlib.Path,
     current_exe: pathlib.Path,
     pid: int,
-) -> pathlib.Path:
-    """توليد سكربت ترقية مؤقت ينتظر إغلاق البرنامج الحالي ثم يثبّت الإصدار الأحدث ويعيد فتح البرنامج تلقائياً."""
-    script_path = pathlib.Path(tempfile.gettempdir()) / f"techzone_update_{pid}_{int(time.time())}.cmd"
+) -> tuple[pathlib.Path, pathlib.Path]:
+    """توليد سكربت ترقية مؤقت + مشغّل VBS مخفي تماماً (بدون شاشة cmd سوداء) يثبّت التحديث ويعيد فتح البرنامج."""
+    ts = int(time.time())
+    tmp_dir = pathlib.Path(tempfile.gettempdir())
+    script_path = tmp_dir / f"techzone_update_{pid}_{ts}.cmd"
+    vbs_path = tmp_dir / f"techzone_update_{pid}_{ts}.vbs"
+    log_path = _updates_dir() / "update_install.log"
     dl_str = str(downloaded_exe.resolve())
     dir_str = str(app_dir.resolve())
     exe_str = str(current_exe.resolve())
+    log_str = str(log_path.resolve())
+    vbs_str = str(vbs_path.resolve())
     is_setup = ("setup" in downloaded_exe.name.lower()) or ("installer" in downloaded_exe.name.lower())
 
     lines = [
         "@echo off",
         "chcp 65001 >nul",
         "setlocal",
+        f"echo [%DATE% %TIME%] Starting TechZone update > \"{log_str}\"",
         f"set \"TARGET_PID={pid}\"",
         "set /a TRIES=0",
         ":wait_loop",
         "tasklist /FI \"PID eq %TARGET_PID%\" 2>nul | find \"%TARGET_PID%\" >nul",
         "if errorlevel 1 goto do_update",
         "set /a TRIES+=1",
-        "if %TRIES% GEQ 40 goto do_update",
+        "if %TRIES% GEQ 8 goto force_kill",
         "ping -n 2 127.0.0.1 >nul",
         "goto wait_loop",
+        ":force_kill",
+        f"echo [%DATE% %TIME%] Force closing remaining TechZone.exe instances >> \"{log_str}\"",
+        "taskkill /F /T /IM TechZone.exe >nul 2>nul",
+        "ping -n 2 127.0.0.1 >nul",
         ":do_update",
         "ping -n 2 127.0.0.1 >nul",
     ]
@@ -262,7 +278,9 @@ def _build_windows_update_script(
     if is_setup or install_mode == "installer":
         # ترقية صامتة في نفس مجلد التثبيت دون المساس بمجلد data\ ثم إعادة تشغيل TechZone.exe تلقائياً
         lines.extend([
-            f"\"{dl_str}\" /SILENT /NORESTART /SUPPRESSMSGBOXES /CLOSEAPPLICATIONS /DIR=\"{dir_str}\"",
+            f"echo [%DATE% %TIME%] Running installer: {dl_str} >> \"{log_str}\"",
+            f"\"{dl_str}\" /SILENT /NORESTART /SUPPRESSMSGBOXES /CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS /DIR=\"{dir_str}\"",
+            f"echo [%DATE% %TIME%] Installer exited with code %ERRORLEVEL% >> \"{log_str}\"",
             "ping -n 2 127.0.0.1 >nul",
             f"if exist \"{dir_str}\\TechZone.exe\" start \"\" \"{dir_str}\\TechZone.exe\"",
         ])
@@ -279,11 +297,16 @@ def _build_windows_update_script(
         ])
 
     lines.extend([
-        "(goto) 2>nul & del \"%~f0\"",
+        f"del /f /q \"{vbs_str}\" >nul 2>nul",
+        "(goto) 2>nul & del /f /q \"%~f0\"",
     ])
 
     script_path.write_text("\r\n".join(lines) + "\r\n", encoding="utf-8")
-    return script_path
+    # مشغّل VBS يعمل عبر wscript.exe (GUI subsystem) لضمان عدم ظهور أي نافذة سوداء على ويندوز 10 و 11
+    cmd_escaped = str(script_path.resolve()).replace('"', '""')
+    vbs_content = f'CreateObject("WScript.Shell").Run "cmd.exe /c ""{cmd_escaped}""", 0, False\r\n'
+    vbs_path.write_text(vbs_content, encoding="utf-8")
+    return script_path, vbs_path
 
 
 class UpdaterMixin:
@@ -548,20 +571,29 @@ class UpdaterMixin:
                 "message": "تم تشغيل مثبّت الإصدار الجديد (وضع التطوير).",
             }
 
-        # وضع التشغيل الفعلي (TechZone.exe): توليد سكربت الترقية الصامتة + إغلاق نظيف + إعادة تشغيل تلقائي
-        script = _build_windows_update_script(
+        # وضع التشغيل الفعلي (TechZone.exe): توليد سكربت الترقية الصامتة ومشغّل VBS مخفي + إغلاق نظيف + إعادة تشغيل تلقائي
+        script, vbs_launcher = _build_windows_update_script(
             downloaded_exe=downloaded_exe,
             install_mode=install_mode,
             app_dir=_app_root_dir(),
             current_exe=pathlib.Path(sys.executable).resolve(),
             pid=os.getpid(),
         )
-        creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) | getattr(subprocess, "DETACHED_PROCESS", 0)
-        subprocess.Popen(
-            ["cmd.exe", "/c", str(script)],
-            creationflags=creation_flags,
-            close_fds=True,
-        )
+        try:
+            subprocess.Popen(
+                ["wscript.exe", "//B", "//Nologo", str(vbs_launcher)],
+                close_fds=True,
+            )
+        except Exception:
+            si = subprocess.STARTUPINFO()
+            si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            si.wShowWindow = 0
+            subprocess.Popen(
+                ["cmd.exe", "/c", str(script)],
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                startupinfo=si,
+                close_fds=True,
+            )
         _trigger_clean_shutdown_delayed(0.45)
         return {
             "installing": True,
